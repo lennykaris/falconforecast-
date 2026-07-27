@@ -50,7 +50,7 @@ export const AppContent: React.FC = () => {
       <div>
         <Navbar onOpenCheckout={() => handleOpenCheckout(SUBSCRIPTION_PLANS[1])} />
 
-        <main>
+        <main className="pb-24 md:pb-0">
           <Routes>
             <Route path="/" element={<HomePage onOpenCheckout={handleOpenCheckout} />} />
             <Route path="/post-tip" element={<PostTipPage />} />
