@@ -302,10 +302,10 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
             {(displayedGroups.length > 0 ? displayedGroups : allLeaguesMatchesData).map(group => (
               <div
                 key={group.league}
-                className="bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs"
+                className="bg-white dark:bg-[#111c30] border border-sky-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm"
               >
                 {/* League Card Header */}
-                <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div className="bg-sky-50 dark:bg-slate-800/50 px-4 py-3 border-b border-sky-100 dark:border-slate-800 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-[#00a8ff]" />
                     <h2 className="font-bold text-sm text-slate-900 dark:text-white">{group.league}</h2>
@@ -321,7 +321,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className="border-b border-slate-100 dark:border-slate-800/60 text-slate-400 font-semibold bg-slate-50/50 dark:bg-slate-900/30">
+                      <tr className="border-b border-sky-100 dark:border-slate-800/60 text-slate-500 dark:text-slate-400 font-semibold bg-sky-50/60 dark:bg-slate-900/30">
                         <th className="py-2.5 px-4 w-16">Time</th>
                         <th className="py-2.5 px-4">Match</th>
                         <th className="py-2.5 px-4 w-16 text-center">Score</th>
@@ -331,11 +331,11 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
                         <th className="py-2.5 px-4 w-12 text-center"></th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
+                    <tbody className="divide-y divide-sky-100 dark:divide-slate-800/40">
                       {group.matches.map(match => (
                         <tr
                           key={match.id}
-                          className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                          className="hover:bg-sky-50 dark:hover:bg-slate-800/40 transition-colors"
                         >
                           {/* Time */}
                           <td className="py-3 px-4 font-bold text-emerald-600 dark:text-emerald-400 font-mono">
@@ -414,8 +414,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
           </div>
 
           {/* LEAGUE TEAMS & STANDINGS WIDGET */}
-          <div className="bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs space-y-3 p-4">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div className="bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm space-y-3 p-4">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                 <Shield className="w-4 h-4 text-[#00a8ff]" />
                 {selectedLeague} Teams & Standings
@@ -426,7 +426,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="text-slate-400 font-semibold bg-slate-50 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800">
+                  <tr className="text-slate-500 dark:text-slate-400 font-semibold bg-sky-50 dark:bg-slate-900/40 border-b border-sky-100 dark:border-slate-800">
                     <th className="py-2 px-3 w-10 text-center">#</th>
                     <th className="py-2 px-3">Team</th>
                     <th className="py-2 px-2 text-center">P</th>
@@ -437,9 +437,9 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
                     <th className="py-2 px-3 text-center">Form</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
+                <tbody className="divide-y divide-sky-100 dark:divide-slate-800/40">
                   {currentTeamsList.map(t => (
-                    <tr key={t.team} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                    <tr key={t.team} className="hover:bg-sky-50 dark:hover:bg-slate-800/40 transition-colors">
                       <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-500">{t.rank}</td>
                       <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">{t.team}</td>
                       <td className="py-2.5 px-2 text-center font-mono">{t.played}</td>

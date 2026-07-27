@@ -7,7 +7,7 @@ interface FeaturedTipsterProps {
 
 export const FeaturedTipster: React.FC<FeaturedTipsterProps> = ({ onUnlock }) => {
   return (
-    <div className="bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm space-y-3">
+    <div className="bg-white dark:bg-[#111c30] border border-sky-200 dark:border-slate-800 rounded-xl p-4 shadow-sm space-y-3">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
           Featured Tipster
@@ -29,8 +29,8 @@ export const FeaturedTipster: React.FC<FeaturedTipsterProps> = ({ onUnlock }) =>
         </div>
       </div>
 
-      <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700/60 space-y-1">
-        <p className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
+      <div className="p-3 bg-sky-50 dark:bg-slate-800/60 rounded-lg border border-sky-200 dark:border-slate-700/60 space-y-1">
+        <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
           ARS vs TOT: Arsenal to win (1X2)
         </p>
         <p className="text-[10px] text-slate-400">

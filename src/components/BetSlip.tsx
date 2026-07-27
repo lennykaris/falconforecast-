@@ -16,7 +16,7 @@ export const BetSlip: React.FC = () => {
   } = useBetSlip();
 
   return (
-    <div className="bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+    <div className="bg-white dark:bg-[#111c30] border border-sky-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
       {/* Header */}
       <div className="bg-[#00a8ff] text-white px-4 py-3 flex items-center justify-between">
         <h3 className="font-bold text-sm tracking-wide">Bet Slip</h3>
@@ -37,7 +37,7 @@ export const BetSlip: React.FC = () => {
         ) : selections.length === 0 ? (
           /* Empty State */
           <div className="py-10 text-center flex flex-col items-center justify-center space-y-3">
-            <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800/80 flex items-center justify-center text-slate-400">
+            <div className="w-14 h-14 rounded-full bg-sky-50 dark:bg-slate-800/80 border border-sky-200 dark:border-slate-700 flex items-center justify-center text-sky-300 dark:text-slate-400">
               <ShoppingBag className="w-7 h-7" />
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[200px] leading-relaxed">
@@ -47,7 +47,7 @@ export const BetSlip: React.FC = () => {
         ) : (
           /* Active Selections State */
           <div className="space-y-4">
-            <div className="flex items-center justify-between text-xs text-slate-500 pb-2 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between text-xs text-slate-500 pb-2 border-b border-sky-100 dark:border-slate-800">
               <span>Selections ({selections.length})</span>
               <button
                 onClick={clearSlip}
@@ -61,7 +61,7 @@ export const BetSlip: React.FC = () => {
               {selections.map(sel => (
                 <div
                   key={sel.id}
-                  className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700/60 flex items-start justify-between gap-2"
+                  className="p-3 bg-sky-50 dark:bg-slate-800/60 rounded-lg border border-sky-200 dark:border-slate-700/60 flex items-start justify-between gap-2"
                 >
                   <div className="space-y-1">
                     <p className="text-[11px] text-slate-400 font-medium">{sel.matchTitle}</p>
@@ -85,7 +85,7 @@ export const BetSlip: React.FC = () => {
             </div>
 
             {/* Stake and Payout Summary */}
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+            <div className="pt-3 border-t border-sky-100 dark:border-slate-800 space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-600 dark:text-slate-300 font-medium">Stake ($):</span>
                 <input
@@ -103,7 +103,7 @@ export const BetSlip: React.FC = () => {
                 <span className="text-slate-900 dark:text-white font-mono">{totalOdds.toFixed(2)}</span>
               </div>
 
-              <div className="flex items-center justify-between text-sm font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-800/40">
+              <div className="flex items-center justify-between text-sm font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-800/40">
                 <span>Est. Payout:</span>
                 <span className="font-mono">${potentialPayout.toFixed(2)}</span>
               </div>
