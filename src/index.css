@@ -2,64 +2,62 @@
 
 @theme {
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  --font-display: 'Chakra Petch', sans-serif;
+  --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
-/* ─── CSS THEME VARIABLES ─── */
-/* Dark mode (default) */
+/* ─── CSS THEME VARIABLES (BetTerminal Light-First Sky-Blue Design) ─── */
 :root,
-html.dark {
-  --bg-base:        #060a12;
-  --bg-surface:     #0d1527;
-  --bg-elevated:    #111d35;
-  --bg-muted:       #0a0f1e;
-  --border:         rgba(255,255,255,0.08);
-  --border-hover:   #38bdf8;
-  --text-primary:   #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted:     #475569;
-  --brand:          #38bdf8;
-  --brand-dark:     #0ea5e9;
-  --card-shadow:    0 4px 20px -2px rgba(0,0,0,0.5);
-  --card-shadow-h:  0 10px 30px -5px rgba(56,189,248,0.15);
-  --nav-bg:         rgba(11, 18, 32, 0.85);
-  --nav-border:     rgba(255, 255, 255, 0.12);
-  --nav-text:       #f8fafc;
-  --nav-text-muted: #94a3b8;
-  --footer-bg:             #0d1527;
-  --footer-border:         rgba(255, 255, 255, 0.08);
-  --footer-text-primary:   #f8fafc;
-  --footer-text-secondary: #94a3b8;
-  --footer-text-muted:     #475569;
-  --footer-card-bg:        #111d35;
-}
-
-/* Light mode */
 html.light {
-  --bg-base:        #f8fafc;
+  --bg-base:        #f0f4f8;
   --bg-surface:     #ffffff;
-  --bg-elevated:    #f1f5f9;
-  --bg-muted:       #e2e8f0;
-  --border:         rgba(0,0,0,0.1);
-  --border-hover:   #0ea5e9;
+  --bg-sky-header: #dcebfa;
+  --bg-elevated:    #ffffff;
+  --bg-muted:       #f1f5f9;
+  --bg-dark-ticker: #0f172a;
+  --border:         #e2e8f0;
+  --border-strong:  #cbd5e1;
+  --border-hover:   #00a8ff;
   --text-primary:   #0f172a;
   --text-secondary: #475569;
   --text-muted:     #94a3b8;
-  --brand:          #0ea5e9;
-  --brand-dark:     #0284c7;
-  --card-shadow:    0 4px 20px -2px rgba(14,165,233,0.08);
-  --card-shadow-h:  0 12px 30px -10px rgba(14,165,233,0.18);
-  --nav-bg:         rgba(11, 18, 32, 0.88);
-  --nav-border:     rgba(255, 255, 255, 0.15);
-  --nav-text:       #f8fafc;
-  --nav-text-muted: #94a3b8;
-  --footer-bg:             #0f172a;
-  --footer-border:         rgba(255, 255, 255, 0.12);
-  --footer-text-primary:   #ffffff;
-  --footer-text-secondary: #cbd5e1;
-  --footer-text-muted:     #94a3b8;
-  --footer-card-bg:        #1e293b;
+  --brand:          #00a8ff;
+  --brand-dark:     #0090e0;
+  --brand-sky:       #38bdf8;
+  --brand-light:    #e6f6ff;
+  --live-green:     #22c55e;
+  --live-green-bg:  #dcfce7;
+  --card-shadow:    0 2px 10px -2px rgba(15,23,42,0.05);
+  --card-shadow-h:  0 8px 24px -4px rgba(0,168,255,0.12);
+  --nav-bg:         #dcebfa;
+  --nav-border:     #cbd5e1;
+  --footer-bg:      #ffffff;
+}
+
+html.dark {
+  --bg-base:        #0b1320;
+  --bg-surface:     #111c30;
+  --bg-sky-header: #111c30;
+  --bg-elevated:    #17243c;
+  --bg-muted:       #1a2844;
+  --bg-dark-ticker: #070d18;
+  --border:         rgba(255,255,255,0.1);
+  --border-strong:  rgba(255,255,255,0.2);
+  --border-hover:   #38bdf8;
+  --text-primary:   #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted:     #64748b;
+  --brand:          #00a8ff;
+  --brand-dark:     #0090e0;
+  --brand-sky:       #38bdf8;
+  --brand-light:    rgba(0,168,255,0.15);
+  --live-green:     #22c55e;
+  --live-green-bg:  rgba(34,197,94,0.15);
+  --card-shadow:    0 4px 20px -2px rgba(0,0,0,0.4);
+  --card-shadow-h:  0 10px 30px -5px rgba(0,168,255,0.2);
+  --nav-bg:         #111c30;
+  --nav-border:     rgba(255,255,255,0.1);
+  --footer-bg:      #111c30;
 }
 
 /* ─── BASE ─── */
@@ -67,90 +65,146 @@ html.light {
 
 html {
   transition: background-color 0.2s ease, color 0.2s ease;
+  scroll-behavior: smooth;
 }
 
 body {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   min-height: 100vh;
-  background-color: var(--bg-base);
-  color: var(--text-primary);
+  background-color: var(--bg-base) !important;
+  color: var(--text-primary) !important;
 }
 
-/* ─── TYPOGRAPHY ─── */
-.font-display { font-family: 'Chakra Petch', sans-serif; }
-.font-mono    { font-family: 'JetBrains Mono', monospace; }
-
-/* ─── CARD SYSTEM ─── */
+/* ─── CARD STYLING ─── */
 .bet-card {
   background-color: var(--bg-surface);
   border: 1px solid var(--border);
+  border-radius: 12px;
   box-shadow: var(--card-shadow);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: all 0.2s ease;
 }
+
 .bet-card:hover {
   border-color: var(--border-hover);
-  box-shadow: var(--card-shadow-h);
 }
 
-.bet-header {
-  background-color: var(--bg-muted);
-  border-bottom: 1px solid var(--border);
+/* ─── ODDS BUTTON ─── */
+.odds-btn {
+  position: relative;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: #0f172a;
+  padding: 0.5rem 0.75rem;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.bet-odds-box {
-  background-color: var(--bg-muted);
-  border: 1px solid var(--border);
+html.dark .odds-btn {
+  background-color: #1a2844;
+  border-color: rgba(255,255,255,0.15);
+  color: #f8fafc;
 }
 
-/* ─── FLOATING ISLAND NAV ─── */
-.nav-island {
-  background: var(--nav-bg);
-  border: 1px solid var(--nav-border);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+.odds-btn:hover {
+  border-color: #00a8ff;
+  background-color: #e6f6ff;
+  color: #0088d0;
 }
 
-/* ─── THEME UTILITY CLASSES ─── */
-.bg-base     { background-color: var(--bg-base); }
-.bg-surface  { background-color: var(--bg-surface); }
-.bg-elevated { background-color: var(--bg-elevated); }
-.text-primary   { color: var(--text-primary); }
-.text-secondary { color: var(--text-secondary); }
-.text-muted-c   { color: var(--text-muted); }
-.border-theme   { border-color: var(--border); }
-.brand-color    { color: var(--brand); }
-.brand-bg       { background-color: var(--brand); }
+html.dark .odds-btn:hover {
+  background-color: rgba(0,168,255,0.2);
+  color: #38bdf8;
+}
 
-/* ─── INPUT THEME ─── */
+.odds-btn.active {
+  background-color: #00a8ff;
+  border-color: #00a8ff;
+  color: #ffffff;
+}
+
+/* Indicator lines on odds boxes (green for favorite/up, red for underdog/down) */
+.odds-btn.up::after {
+  content: '';
+  position: absolute;
+  right: 2px;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  background-color: #22c55e;
+  border-radius: 2px;
+}
+
+.odds-btn.down::after {
+  content: '';
+  position: absolute;
+  right: 2px;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  background-color: #ef4444;
+  border-radius: 2px;
+}
+
+/* ─── INPUTS ─── */
 .input-field {
-  background-color: var(--bg-elevated);
-  border: 1px solid var(--border);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
   color: var(--text-primary);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
   transition: border-color 0.15s ease;
 }
+
 .input-field:focus {
   outline: none;
   border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(0,168,255,0.15);
 }
-.input-field::placeholder { color: var(--text-muted); }
 
-/* ─── GRADIENT TEXT ─── */
-.text-gradient-sky {
-  background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.input-field::placeholder {
+  color: var(--text-muted);
+}
+
+/* ─── BUTTONS ─── */
+.btn-primary {
+  background-color: #00a8ff;
+  color: #ffffff;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 0.5rem 1.25rem;
+  transition: all 0.15s ease;
+}
+
+.btn-primary:hover {
+  background-color: #0090e0;
+  box-shadow: 0 4px 12px rgba(0,168,255,0.3);
+}
+
+/* ─── TICKER ANIMATION ─── */
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-ticker {
+  display: flex;
+  width: max-content;
+  animation: ticker 35s linear infinite;
+}
+
+.animate-ticker:hover {
+  animation-play-state: paused;
 }
 
 /* ─── SCROLLBAR ─── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg-base); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--brand); }
-
-/* ─── RANGE SLIDER ─── */
-input[type="range"] { accent-color: var(--brand); }
-
-/* ─── FADE ANIMATION ─── */
-@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
-.animate-fadein { animation: fadeIn 0.15s ease forwards; }

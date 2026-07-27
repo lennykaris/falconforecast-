@@ -1,327 +1,485 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { usePredictions } from '../context/PredictionsContext';
-import { PredictionCard } from '../components/PredictionCard';
-import { SUBSCRIPTION_PLANS } from '../data/predictions';
-import type { SubscriptionPlan } from '../types/prediction';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { SlidersHorizontal, Plus, Shield, Trophy } from 'lucide-react';
+import { Sidebar } from '../components/Sidebar';
+import { BetSlip } from '../components/BetSlip';
+import { FeaturedTipster } from '../components/FeaturedTipster';
+import { useBetSlip } from '../context/BetSlipContext';
 
 interface HomePageProps {
-  onOpenCheckout: (plan: SubscriptionPlan) => void;
+  onOpenCheckout?: (plan?: any) => void;
 }
 
 export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
-  const { predictions } = usePredictions();
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const location = useLocation();
+  const [selectedLeague, setSelectedLeague] = useState('Premier League');
+  const { toggleSelection, selections } = useBetSlip();
 
-  const freeTips = predictions.filter(p => p.tier === 'free').slice(0, 3);
-  const vipTeasers = predictions.filter(p => p.tier === 'vip').slice(0, 2);
-  const popularPlan = SUBSCRIPTION_PLANS.find(p => p.popular) || SUBSCRIPTION_PLANS[1];
+  // Sync selectedLeague with URL route if user came from Navbar
+  useEffect(() => {
+    const path = location.pathname.toLowerCase();
+    if (path.includes('la-liga')) {
+      setSelectedLeague('La Liga');
+    } else if (path.includes('champions-league')) {
+      setSelectedLeague('Champions League');
+    } else if (path.includes('serie-a')) {
+      setSelectedLeague('Serie A');
+    } else if (path.includes('bundesliga')) {
+      setSelectedLeague('Bundesliga');
+    } else if (path.includes('premier-league')) {
+      setSelectedLeague('Premier League');
+    }
+  }, [location.pathname]);
 
-  const stats = [
-    { val: '87.4%', label: 'Win Rate' },
-    { val: '+34.8%', label: 'Monthly ROI' },
-    { val: '14,500+', label: 'VIP Members' },
-    { val: '4.9 / 5.0', label: 'Rating' },
+  const leagueTeamsMap: Record<string, { rank: number; team: string; played: number; won: number; draw: number; lost: number; points: number; form: string[] }[]> = {
+    'Premier League': [
+      { rank: 1, team: 'Arsenal', played: 28, won: 20, draw: 5, lost: 3, points: 65, form: ['W', 'W', 'W', 'D', 'W'] },
+      { rank: 2, team: 'Manchester City', played: 28, won: 19, draw: 6, lost: 3, points: 63, form: ['W', 'W', 'D', 'W', 'W'] },
+      { rank: 3, team: 'Liverpool', played: 28, won: 18, draw: 7, lost: 3, points: 61, form: ['W', 'D', 'W', 'W', 'L'] },
+      { rank: 4, team: 'Aston Villa', played: 28, won: 16, draw: 5, lost: 7, points: 53, form: ['L', 'W', 'W', 'W', 'D'] },
+      { rank: 5, team: 'Tottenham Hotspur', played: 28, won: 15, draw: 5, lost: 8, points: 50, form: ['W', 'L', 'W', 'L', 'W'] },
+      { rank: 6, team: 'Manchester United', played: 28, won: 14, draw: 5, lost: 9, points: 47, form: ['W', 'W', 'L', 'L', 'W'] },
+      { rank: 7, team: 'Newcastle United', played: 28, won: 13, draw: 4, lost: 11, points: 43, form: ['D', 'W', 'L', 'W', 'W'] },
+      { rank: 8, team: 'Chelsea', played: 28, won: 11, draw: 6, lost: 11, points: 39, form: ['W', 'D', 'L', 'W', 'D'] },
+    ],
+    'La Liga': [
+      { rank: 1, team: 'Real Madrid', played: 28, won: 21, draw: 6, lost: 1, points: 69, form: ['W', 'W', 'D', 'W', 'W'] },
+      { rank: 2, team: 'FC Barcelona', played: 28, won: 18, draw: 7, lost: 3, points: 61, form: ['W', 'D', 'W', 'W', 'W'] },
+      { rank: 3, team: 'Girona', played: 28, won: 19, draw: 2, lost: 7, points: 59, form: ['L', 'W', 'L', 'W', 'L'] },
+      { rank: 4, team: 'Atletico Madrid', played: 28, won: 17, draw: 4, lost: 7, points: 55, form: ['L', 'W', 'D', 'W', 'L'] },
+      { rank: 5, team: 'Athletic Bilbao', played: 28, won: 14, draw: 8, lost: 6, points: 50, form: ['W', 'D', 'W', 'L', 'W'] },
+      { rank: 6, team: 'Real Sociedad', played: 28, won: 11, draw: 10, lost: 7, points: 43, form: ['W', 'L', 'L', 'W', 'L'] },
+      { rank: 7, team: 'Real Betis', played: 28, won: 10, draw: 12, lost: 6, points: 42, form: ['L', 'L', 'W', 'D', 'W'] },
+      { rank: 8, team: 'Sevilla', played: 28, won: 7, draw: 10, lost: 11, points: 31, form: ['D', 'W', 'D', 'L', 'W'] },
+    ],
+    'Champions League': [
+      { rank: 1, team: 'Real Madrid', played: 8, won: 7, draw: 1, lost: 0, points: 22, form: ['W', 'W', 'W', 'W', 'D'] },
+      { rank: 2, team: 'Manchester City', played: 8, won: 7, draw: 1, lost: 0, points: 22, form: ['W', 'W', 'W', 'D', 'W'] },
+      { rank: 3, team: 'Bayern Munich', played: 8, won: 6, draw: 1, lost: 1, points: 19, form: ['W', 'W', 'L', 'W', 'W'] },
+      { rank: 4, team: 'Arsenal', played: 8, won: 5, draw: 2, lost: 1, points: 17, form: ['W', 'D', 'W', 'W', 'L'] },
+      { rank: 5, team: 'Paris Saint-Germain', played: 8, won: 4, draw: 3, lost: 1, points: 15, form: ['D', 'W', 'W', 'L', 'W'] },
+      { rank: 6, team: 'Inter Milan', played: 8, won: 4, draw: 3, lost: 1, points: 15, form: ['W', 'D', 'L', 'W', 'W'] },
+      { rank: 7, team: 'Borussia Dortmund', played: 8, won: 4, draw: 2, lost: 2, points: 14, form: ['W', 'L', 'W', 'D', 'W'] },
+      { rank: 8, team: 'FC Barcelona', played: 8, won: 4, draw: 1, lost: 3, points: 13, form: ['L', 'W', 'W', 'L', 'W'] },
+    ],
+    'Serie A': [
+      { rank: 1, team: 'Inter Milan', played: 28, won: 24, draw: 3, lost: 1, points: 75, form: ['W', 'W', 'W', 'W', 'W'] },
+      { rank: 2, team: 'AC Milan', played: 28, won: 18, draw: 5, lost: 5, points: 59, form: ['W', 'W', 'D', 'W', 'L'] },
+      { rank: 3, team: 'Juventus', played: 28, won: 17, draw: 7, lost: 4, points: 58, form: ['D', 'L', 'W', 'D', 'L'] },
+      { rank: 4, team: 'Bologna', played: 28, won: 14, draw: 9, lost: 5, points: 51, form: ['L', 'W', 'W', 'W', 'W'] },
+      { rank: 5, team: 'AS Roma', played: 28, won: 14, draw: 6, lost: 8, points: 48, form: ['W', 'W', 'W', 'D', 'W'] },
+      { rank: 6, team: 'Atalanta', played: 28, won: 14, draw: 5, lost: 9, points: 47, form: ['D', 'L', 'L', 'D', 'W'] },
+      { rank: 7, team: 'Napoli', played: 28, won: 12, draw: 8, lost: 8, points: 44, form: ['D', 'W', 'W', 'D', 'L'] },
+      { rank: 8, team: 'Lazio', played: 28, won: 12, draw: 4, lost: 12, points: 40, form: ['L', 'L', 'L', 'W', 'L'] },
+    ],
+    'Bundesliga': [
+      { rank: 1, team: 'Bayer Leverkusen', played: 25, won: 21, draw: 4, lost: 0, points: 67, form: ['W', 'W', 'W', 'W', 'W'] },
+      { rank: 2, team: 'Bayern Munich', played: 25, won: 18, draw: 3, lost: 4, points: 57, form: ['W', 'D', 'W', 'L', 'W'] },
+      { rank: 3, team: 'VfB Stuttgart', played: 25, won: 17, draw: 2, lost: 6, points: 53, form: ['W', 'W', 'D', 'W', 'W'] },
+      { rank: 4, team: 'Borussia Dortmund', played: 25, won: 13, draw: 8, lost: 4, points: 47, form: ['W', 'W', 'L', 'D', 'W'] },
+      { rank: 5, team: 'RB Leipzig', played: 25, won: 14, draw: 4, lost: 7, points: 46, form: ['W', 'W', 'L', 'W', 'L'] },
+      { rank: 6, team: 'Eintracht Frankfurt', played: 25, won: 10, draw: 10, lost: 5, points: 40, form: ['W', 'W', 'D', 'D', 'L'] },
+    ],
+  };
+
+  const allLeaguesMatchesData = [
+    {
+      league: 'Premier League',
+      isLive: true,
+      matches: [
+        {
+          id: 'pl-1',
+          time: "67'",
+          homeTeam: 'Arsenal',
+          awayTeam: 'Tottenham Hotspur',
+          homeScore: 2,
+          awayScore: 1,
+          odds: { home: 1.45, draw: 4.20, away: 6.50 },
+        },
+        {
+          id: 'pl-2',
+          time: 'HT',
+          homeTeam: 'Manchester United',
+          awayTeam: 'Chelsea',
+          homeScore: 1,
+          awayScore: 0,
+          odds: { home: 2.10, draw: 3.40, away: 3.50 },
+        },
+        {
+          id: 'pl-3',
+          time: '20:00',
+          homeTeam: 'Manchester City',
+          awayTeam: 'Liverpool',
+          homeScore: 0,
+          awayScore: 0,
+          odds: { home: 1.95, draw: 3.60, away: 3.80 },
+        },
+        {
+          id: 'pl-4',
+          time: 'Tomorrow',
+          homeTeam: 'Aston Villa',
+          awayTeam: 'Newcastle United',
+          homeScore: 0,
+          awayScore: 0,
+          odds: { home: 2.25, draw: 3.30, away: 3.10 },
+        },
+      ],
+    },
+    {
+      league: 'La Liga',
+      isLive: true,
+      matches: [
+        {
+          id: 'll-1',
+          time: "23'",
+          homeTeam: 'Real Madrid',
+          awayTeam: 'FC Barcelona',
+          homeScore: 0,
+          awayScore: 0,
+          odds: { home: 2.60, draw: 3.20, away: 2.75 },
+        },
+        {
+          id: 'll-2',
+          time: "78'",
+          homeTeam: 'Atletico Madrid',
+          awayTeam: 'Sevilla',
+          homeScore: 2,
+          awayScore: 0,
+          odds: { home: 1.65, draw: 3.80, away: 5.20 },
+        },
+        {
+          id: 'll-3',
+          time: '21:00',
+          homeTeam: 'Real Sociedad',
+          awayTeam: 'Athletic Bilbao',
+          homeScore: 0,
+          awayScore: 0,
+          odds: { home: 2.30, draw: 3.10, away: 3.20 },
+        },
+      ],
+    },
+    {
+      league: 'Champions League',
+      isLive: true,
+      matches: [
+        {
+          id: 'ucl-1',
+          time: "42'",
+          homeTeam: 'Bayern Munich',
+          awayTeam: 'Paris Saint-Germain',
+          homeScore: 1,
+          awayScore: 1,
+          odds: { home: 2.05, draw: 3.50, away: 3.40 },
+        },
+        {
+          id: 'ucl-2',
+          time: 'Tomorrow',
+          homeTeam: 'Inter Milan',
+          awayTeam: 'Borussia Dortmund',
+          homeScore: 0,
+          awayScore: 0,
+          odds: { home: 1.85, draw: 3.60, away: 4.10 },
+        },
+        {
+          id: 'ucl-3',
+          time: 'Tomorrow',
+          homeTeam: 'Real Madrid',
+          awayTeam: 'Arsenal',
+          homeScore: 0,
+          awayScore: 0,
+          odds: { home: 2.10, draw: 3.40, away: 3.20 },
+        },
+      ],
+    },
+    {
+      league: 'Serie A',
+      isLive: false,
+      matches: [
+        {
+          id: 'sa-1',
+          time: '19:45',
+          homeTeam: 'AC Milan',
+          awayTeam: 'AS Roma',
+          homeScore: 0,
+          awayScore: 0,
+          odds: { home: 2.15, draw: 3.25, away: 3.40 },
+        },
+        {
+          id: 'sa-2',
+          time: 'Tomorrow',
+          homeTeam: 'Napoli',
+          awayTeam: 'Lazio',
+          homeScore: 0,
+          awayScore: 0,
+          odds: { home: 1.90, draw: 3.40, away: 4.00 },
+        },
+        {
+          id: 'sa-3',
+          time: 'Tomorrow',
+          homeTeam: 'Inter Milan',
+          awayTeam: 'Juventus',
+          homeScore: 0,
+          awayScore: 0,
+          odds: { home: 1.80, draw: 3.50, away: 4.20 },
+        },
+      ],
+    },
+    {
+      league: 'Bundesliga',
+      isLive: false,
+      matches: [
+        {
+          id: 'bl-1',
+          time: '18:30',
+          homeTeam: 'Bayer Leverkusen',
+          awayTeam: 'RB Leipzig',
+          homeScore: 0,
+          awayScore: 0,
+          odds: { home: 1.90, draw: 3.75, away: 3.60 },
+        },
+        {
+          id: 'bl-2',
+          time: 'Tomorrow',
+          homeTeam: 'Eintracht Frankfurt',
+          awayTeam: 'VfB Stuttgart',
+          homeScore: 0,
+          awayScore: 0,
+          odds: { home: 2.40, draw: 3.40, away: 2.80 },
+        },
+      ],
+    },
   ];
 
-  const faqs = [
-    {
-      q: 'How are predictions generated?',
-      a: 'We combine xG (Expected Goals) algorithms with expert tactical analysis, tracking injury reports, manager tendencies, and market line movements.',
-    },
-    {
-      q: 'What is the verified win rate?',
-      a: 'Our historical performance holds an 87.4% win rate on high-confidence picks and +34.8% average monthly ROI, verified independently.',
-    },
-    {
-      q: 'Can I cancel anytime?',
-      a: 'Yes. No long-term contracts. Pause or cancel instantly from your Dashboard. No questions asked.',
-    },
-    {
-      q: 'Which leagues are covered?',
-      a: 'UEFA Champions League, Premier League, La Liga, Serie A, and Bundesliga. More leagues added monthly.',
-    },
-  ];
+  // Filter matches by selected league
+  const displayedGroups = selectedLeague === 'Favorites'
+    ? allLeaguesMatchesData
+    : allLeaguesMatchesData.filter(g => g.league.toLowerCase() === selectedLeague.toLowerCase());
 
-  const features = [
-    {
-      title: 'Statistical Form Modeling',
-      desc: 'Predictive models analyse xG, defensive shape, injury data, and set-piece efficiency across 10,000+ historical fixtures.',
-    },
-    {
-      title: 'Value Accumulators',
-      desc: 'VIP members receive curated doubles and trebles engineered to maximise expected value against bookmaker margins.',
-    },
-    {
-      title: 'Transparent Record',
-      desc: 'Every tip is logged at publication time. No retroactive changes. Performance publicly audited monthly.',
-    },
-  ];
+  const currentTeamsList = leagueTeamsMap[selectedLeague] || leagueTeamsMap['Premier League'];
+
+  const handleOddsClick = (match: any, selectionType: '1' | 'X' | '2', oddsVal: number) => {
+    const selName = selectionType === '1' ? `${match.homeTeam}` : selectionType === 'X' ? 'Draw' : `${match.awayTeam}`;
+    toggleSelection({
+      id: `${match.id}-${selectionType}`,
+      matchId: match.id,
+      matchTitle: `${match.homeTeam} vs ${match.awayTeam}`,
+      league: match.league || 'Match',
+      selection: `${selName} (${selectionType})`,
+      odds: oddsVal,
+    });
+  };
+
+  const isOddsSelected = (matchId: string, selectionType: string) => {
+    return selections.some(s => s.id === `${matchId}-${selectionType}`);
+  };
 
   return (
-    <div style={{ backgroundColor: 'var(--bg-base)' }}>
+    <div className="min-h-screen bg-[#f0f4f8] dark:bg-[#0b1320] py-6 px-4 sm:px-6 lg:px-8 transition-colors">
+      <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-6">
+        
+        {/* LEFT COLUMN: Sidebar Leagues */}
+        <Sidebar activeLeague={selectedLeague} onSelectLeague={setSelectedLeague} />
 
-      {/* ─── HERO ─── */}
-      <section className="relative flex items-center justify-center overflow-hidden pt-6 pb-12 sm:pt-12 sm:pb-16 md:py-24 md:min-h-screen">
-        {/* Stadium background */}
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: "url('/hero-stadium.png')" }}
-        />
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(6,10,18,0.85) 0%, rgba(6,10,18,0.55) 40%, rgba(6,10,18,0.98) 100%)' }} />
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(6,10,18,0.6) 0%, transparent 50%, rgba(6,10,18,0.6) 100%)' }} />
-
-        <div className="relative z-10 w-full max-w-4xl mx-auto px-5 sm:px-8 text-center">
-
-          {/* Eyebrow */}
-          <p
-            className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.2em] mb-4 sm:mb-6"
-            style={{ color: 'var(--brand)' }}
-          >
-            Data-Backed Football Predictions
-          </p>
-
-          {/* Headline */}
-          <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-[84px] font-black tracking-tight text-white leading-[0.92] font-display mb-5 sm:mb-6">
-            FIELD<br />
-            <span style={{ color: 'var(--brand)' }}>FORECASTS</span>
-          </h1>
-
-          <p className="text-sm sm:text-base text-white/50 max-w-md mx-auto leading-relaxed mb-8">
-            Free tips every morning. High-probability VIP value bets for serious bettors.
-          </p>
-
-          {/* CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
-            <button
-              onClick={() => onOpenCheckout(popularPlan)}
-              className="w-full sm:w-auto px-7 py-3.5 font-bold text-xs sm:text-sm text-slate-950 rounded-xl transition-all hover:brightness-110 shadow-lg shadow-sky-500/20"
-              style={{ backgroundColor: 'var(--brand)' }}
-            >
-              Unlock VIP — $29/mo
-            </button>
-            <Link
-              to="/tips"
-              className="w-full sm:w-auto px-7 py-3.5 font-semibold text-xs sm:text-sm text-white rounded-xl border border-white/15 hover:border-white/30 hover:bg-white/5 transition-all text-center"
-            >
-              Today's Free Tips
-            </Link>
-          </div>
-
-          {/* ─── STATS — Compact 2x2 on mobile, 4-col on desktop ─── */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 border border-white/10 rounded-2xl p-2.5 max-w-lg mx-auto backdrop-blur-md bg-white/[0.03]">
-            {stats.map(({ val, label }) => (
-              <div
-                key={label}
-                className="py-2.5 px-2 text-center rounded-xl bg-white/[0.02] border border-white/5"
-              >
-                <div className="text-base sm:text-lg font-black text-white font-mono leading-none whitespace-nowrap">{val}</div>
-                <div className="text-[9px] text-white/40 font-semibold uppercase tracking-wider mt-1 whitespace-nowrap">{label}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* League tags */}
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-1.5">
-            {['Premier League', 'La Liga', 'Serie A', 'Champions League', 'Bundesliga'].map(league => (
-              <span
-                key={league}
-                className="px-2.5 py-1 text-[9px] font-medium uppercase tracking-widest rounded"
-                style={{ color: 'rgba(255,255,255,0.3)', border: '1px solid rgba(255,255,255,0.08)' }}
-              >
-                {league}
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── FREE PICKS ─── */}
-      <section className="max-w-7xl mx-auto px-5 sm:px-8 py-16 sm:py-20">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-10 gap-3">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-widest mb-1.5" style={{ color: 'var(--brand)' }}>
-              Free Picks
-            </p>
-            <h2 className="text-2xl sm:text-3xl font-black font-display" style={{ color: 'var(--text-primary)' }}>
-              Today's Predictions
-            </h2>
-          </div>
-          <Link
-            to="/tips"
-            className="text-xs font-semibold underline underline-offset-4 transition-colors"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            See all tips
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {freeTips.map(prediction => (
-            <PredictionCard key={prediction.id} prediction={prediction} />
-          ))}
-        </div>
-      </section>
-
-      {/* ─── VIP TEASER ─── */}
-      <section className="max-w-7xl mx-auto px-5 sm:px-8 pb-16 sm:pb-20">
-        <div
-          className="relative rounded-2xl overflow-hidden border"
-          style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-surface)' }}
-        >
-          {/* Subtle stadium texture */}
-          <div
-            className="absolute inset-0 bg-cover bg-center opacity-[0.04]"
-            style={{ backgroundImage: "url('/hero-stadium.png')" }}
-          />
-
-          <div className="relative z-10 p-6 sm:p-12 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-            <div className="space-y-4 sm:space-y-5">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--brand)' }}>
-                  VIP Selections
-                </p>
-                <h2 className="text-2xl sm:text-3xl font-black leading-tight font-display" style={{ color: 'var(--text-primary)' }}>
-                  Tonight's High-Probability Picks
-                </h2>
-              </div>
-
-              <p className="text-xs sm:text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                Model flagged <strong style={{ color: 'var(--text-primary)' }}>2 value picks</strong> with 90%+ win probability and odds of 2.10+. Subscribers only.
+        {/* CENTER COLUMN: Live Matches & League Standings */}
+        <main className="flex-1 space-y-6">
+          
+          {/* Header Title */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                <Trophy className="w-6 h-6 text-[#00a8ff]" />
+                {selectedLeague} Matches & Teams
+              </h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Real-time scores, odds comparison, and league standings.
               </p>
-
-              <ul className="space-y-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                {[
-                  'Real Madrid vs Bayern Munich',
-                  'Man City vs Liverpool — Asian Handicap -1.0',
-                ].map(pick => (
-                  <li key={pick} className="flex items-center gap-2.5">
-                    <span
-                      className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: 'var(--brand)' }}
-                    />
-                    {pick}
-                  </li>
-                ))}
-              </ul>
-
-              <button
-                onClick={() => onOpenCheckout(popularPlan)}
-                className="inline-block px-6 py-3 font-bold text-xs uppercase tracking-wider text-slate-950 rounded-xl transition-all hover:brightness-110"
-                style={{ backgroundColor: 'var(--brand)' }}
-              >
-                Unlock VIP — $29/mo
-              </button>
             </div>
-
-            <div className="grid grid-cols-1 gap-4">
-              {vipTeasers.map(p => (
-                <PredictionCard
-                  key={p.id}
-                  prediction={p}
-                  onUnlockClick={() => onOpenCheckout(popularPlan)}
-                />
-              ))}
-            </div>
+            
+            <button className="p-2 bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-lg text-slate-600 dark:text-slate-300 hover:border-[#00a8ff]">
+              <SlidersHorizontal className="w-4 h-4" />
+            </button>
           </div>
-        </div>
-      </section>
 
-      {/* ─── WHY ─── */}
-      <section className="max-w-7xl mx-auto px-5 sm:px-8 pb-16 sm:pb-20">
-        <div className="mb-8">
-          <h2 className="text-2xl sm:text-3xl font-black font-display" style={{ color: 'var(--text-primary)' }}>
-            Why Bettors Choose Us
-          </h2>
-          <p className="text-xs sm:text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-            No guesswork. Pure statistics and market intelligence.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
-          {features.map(({ title, desc }) => (
-            <div key={title} className="p-6 sm:p-7 rounded-2xl bet-card space-y-2.5">
-              <h3 className="text-sm font-bold font-display" style={{ color: 'var(--text-primary)' }}>{title}</h3>
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ─── FAQ ─── */}
-      <section className="max-w-3xl mx-auto px-5 sm:px-8 pb-16 sm:pb-20">
-        <h2
-          className="text-2xl font-black mb-6 font-display"
-          style={{ color: 'var(--text-primary)' }}
-        >
-          Questions
-        </h2>
-
-        <div className="space-y-2">
-          {faqs.map((faq, idx) => {
-            const isOpen = openFaq === idx;
-            return (
-              <div key={idx} className="rounded-xl overflow-hidden bet-card">
-                <button
-                  onClick={() => setOpenFaq(isOpen ? null : idx)}
-                  className="w-full px-5 py-4 text-left flex items-center justify-between text-xs sm:text-sm font-semibold transition-colors"
-                  style={{ color: 'var(--text-primary)' }}
-                >
-                  <span>{faq.q}</span>
-                  <span
-                    className="ml-4 flex-shrink-0 text-lg leading-none font-light"
-                    style={{ color: 'var(--brand)' }}
-                  >
-                    {isOpen ? '−' : '+'}
-                  </span>
-                </button>
-                {isOpen && (
-                  <div
-                    className="px-5 pb-5 text-xs leading-relaxed border-t pt-4"
-                    style={{ color: 'var(--text-secondary)', borderColor: 'var(--border)' }}
-                  >
-                    {faq.a}
+          {/* Matches List grouped by League */}
+          <div className="space-y-6">
+            {(displayedGroups.length > 0 ? displayedGroups : allLeaguesMatchesData).map(group => (
+              <div
+                key={group.league}
+                className="bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs"
+              >
+                {/* League Card Header */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[#00a8ff]" />
+                    <h2 className="font-bold text-sm text-slate-900 dark:text-white">{group.league}</h2>
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </section>
+                  {group.isLive && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
+                    </span>
+                  )}
+                </div>
 
-      {/* ─── BOTTOM CTA ─── */}
-      <section className="max-w-7xl mx-auto px-5 sm:px-8 pb-24 sm:pb-20">
-        <div
-          className="relative rounded-2xl overflow-hidden text-center py-16 px-6 border"
-          style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-surface)' }}
-        >
-          <div
-            className="absolute inset-0 bg-cover bg-center opacity-[0.04]"
-            style={{ backgroundImage: "url('/hero-stadium.png')" }}
-          />
-          <div className="relative z-10 max-w-md mx-auto space-y-4">
-            <h2
-              className="text-2xl sm:text-4xl font-black font-display"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              Bet Smarter.
-            </h2>
-            <p className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Join 14,500+ subscribers. Cancel anytime.
-            </p>
-            <div className="pt-2">
-              <button
-                onClick={() => onOpenCheckout(popularPlan)}
-                className="px-8 py-3.5 font-bold text-xs sm:text-sm text-slate-950 rounded-xl transition-all hover:brightness-110"
-                style={{ backgroundColor: 'var(--brand)' }}
-              >
-                Get Started — $29/mo
-              </button>
+                {/* Matches Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-100 dark:border-slate-800/60 text-slate-400 font-semibold bg-slate-50/50 dark:bg-slate-900/30">
+                        <th className="py-2.5 px-4 w-16">Time</th>
+                        <th className="py-2.5 px-4">Match</th>
+                        <th className="py-2.5 px-4 w-16 text-center">Score</th>
+                        <th className="py-2.5 px-2 w-20 text-center">1</th>
+                        <th className="py-2.5 px-2 w-20 text-center">X</th>
+                        <th className="py-2.5 px-2 w-20 text-center">2</th>
+                        <th className="py-2.5 px-4 w-12 text-center"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
+                      {group.matches.map(match => (
+                        <tr
+                          key={match.id}
+                          className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                        >
+                          {/* Time */}
+                          <td className="py-3 px-4 font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                            {match.time}
+                          </td>
+
+                          {/* Teams */}
+                          <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
+                            <div className="space-y-1">
+                              <div>{match.homeTeam}</div>
+                              <div>{match.awayTeam}</div>
+                            </div>
+                          </td>
+
+                          {/* Scores */}
+                          <td className="py-3 px-4 font-extrabold text-slate-900 dark:text-white font-mono text-center">
+                            <div className="space-y-1">
+                              <div>{match.homeScore}</div>
+                              <div>{match.awayScore}</div>
+                            </div>
+                          </td>
+
+                          {/* Odds 1 */}
+                          <td className="py-3 px-2">
+                            <button
+                              onClick={() => handleOddsClick(match, '1', match.odds.home)}
+                              className={`w-full odds-btn ${
+                                isOddsSelected(match.id, '1') ? 'active' : ''
+                              }`}
+                            >
+                              {match.odds.home.toFixed(2)}
+                            </button>
+                          </td>
+
+                          {/* Odds X */}
+                          <td className="py-3 px-2">
+                            <button
+                              onClick={() => handleOddsClick(match, 'X', match.odds.draw)}
+                              className={`w-full odds-btn ${
+                                isOddsSelected(match.id, 'X') ? 'active' : ''
+                              }`}
+                            >
+                              {match.odds.draw.toFixed(2)}
+                            </button>
+                          </td>
+
+                          {/* Odds 2 */}
+                          <td className="py-3 px-2">
+                            <button
+                              onClick={() => handleOddsClick(match, '2', match.odds.away)}
+                              className={`w-full odds-btn ${
+                                isOddsSelected(match.id, '2') ? 'active' : ''
+                              }`}
+                            >
+                              {match.odds.away.toFixed(2)}
+                            </button>
+                          </td>
+
+                          {/* Action Icon */}
+                          <td className="py-3 px-4 text-center">
+                            <button
+                              onClick={() => handleOddsClick(match, '1', match.odds.home)}
+                              className="p-1 text-slate-400 hover:text-[#00a8ff] transition-colors"
+                              title="Add to slip"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* LEAGUE TEAMS & STANDINGS WIDGET */}
+          <div className="bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs space-y-3 p-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                <Shield className="w-4 h-4 text-[#00a8ff]" />
+                {selectedLeague} Teams & Standings
+              </h3>
+              <span className="text-[11px] font-semibold text-slate-400">Season 2024/25</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="text-slate-400 font-semibold bg-slate-50 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800">
+                    <th className="py-2 px-3 w-10 text-center">#</th>
+                    <th className="py-2 px-3">Team</th>
+                    <th className="py-2 px-2 text-center">P</th>
+                    <th className="py-2 px-2 text-center">W</th>
+                    <th className="py-2 px-2 text-center">D</th>
+                    <th className="py-2 px-2 text-center">L</th>
+                    <th className="py-2 px-3 text-center font-bold">PTS</th>
+                    <th className="py-2 px-3 text-center">Form</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
+                  {currentTeamsList.map(t => (
+                    <tr key={t.team} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-500">{t.rank}</td>
+                      <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">{t.team}</td>
+                      <td className="py-2.5 px-2 text-center font-mono">{t.played}</td>
+                      <td className="py-2.5 px-2 text-center font-mono text-emerald-600">{t.won}</td>
+                      <td className="py-2.5 px-2 text-center font-mono text-amber-600">{t.draw}</td>
+                      <td className="py-2.5 px-2 text-center font-mono text-red-500">{t.lost}</td>
+                      <td className="py-2.5 px-3 text-center font-mono font-extrabold text-slate-900 dark:text-white">{t.points}</td>
+                      <td className="py-2.5 px-3 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          {t.form.map((res, i) => (
+                            <span
+                              key={i}
+                              className={`w-4 h-4 rounded text-[9px] font-mono font-bold flex items-center justify-center text-white ${
+                                res === 'W' ? 'bg-emerald-500' : res === 'D' ? 'bg-amber-500' : 'bg-red-500'
+                              }`}
+                            >
+                              {res}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-        </div>
-      </section>
 
+        </main>
+
+        {/* RIGHT COLUMN: Bet Slip & Featured Tipster */}
+        <aside className="w-full lg:w-80 flex-shrink-0 space-y-6">
+          <BetSlip />
+          <FeaturedTipster onUnlock={() => onOpenCheckout && onOpenCheckout()} />
+        </aside>
+
+      </div>
     </div>
   );
 };

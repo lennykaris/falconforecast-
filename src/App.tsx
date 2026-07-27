@@ -3,13 +3,15 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { PredictionsProvider } from './context/PredictionsContext';
+import { BetSlipProvider } from './context/BetSlipContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { CheckoutModal } from './components/CheckoutModal';
 
 import { HomePage } from './pages/HomePage';
-import { FreeTipsPage } from './pages/FreeTipsPage';
-import { VipPage } from './pages/VipPage';
+import { PostTipPage } from './pages/PostTipPage';
+import { PremiumTipsPage } from './pages/PremiumTipsPage';
+import { OddsComparisonPage } from './pages/OddsComparisonPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { AdminPage } from './pages/AdminPage';
 import { LoginPage } from './pages/LoginPage';
@@ -24,7 +26,6 @@ import { PrivacyPage } from './pages/PrivacyPage';
 import type { SubscriptionPlan } from './types/prediction';
 import { SUBSCRIPTION_PLANS } from './data/predictions';
 
-// Helper component to scroll page to top on route navigation
 const ScrollToTop: React.FC = () => {
   const { pathname } = useLocation();
   useEffect(() => {
@@ -43,7 +44,7 @@ export const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-between font-sans selection:bg-[#38bdf8] selection:text-slate-950">
+    <div className="min-h-screen flex flex-col justify-between font-sans selection:bg-[#00a8ff] selection:text-white">
       <ScrollToTop />
 
       <div>
@@ -52,8 +53,22 @@ export const AppContent: React.FC = () => {
         <main>
           <Routes>
             <Route path="/" element={<HomePage onOpenCheckout={handleOpenCheckout} />} />
-            <Route path="/tips" element={<FreeTipsPage onOpenCheckout={handleOpenCheckout} />} />
-            <Route path="/vip" element={<VipPage onOpenCheckout={handleOpenCheckout} />} />
+            <Route path="/post-tip" element={<PostTipPage />} />
+            <Route path="/premium-tips" element={<PremiumTipsPage onOpenCheckout={handleOpenCheckout} />} />
+            <Route path="/odds-comparison" element={<OddsComparisonPage />} />
+            
+            {/* Football League Routes */}
+            <Route path="/premier-league" element={<HomePage onOpenCheckout={handleOpenCheckout} />} />
+            <Route path="/la-liga" element={<HomePage onOpenCheckout={handleOpenCheckout} />} />
+            <Route path="/champions-league" element={<HomePage onOpenCheckout={handleOpenCheckout} />} />
+            <Route path="/serie-a" element={<HomePage onOpenCheckout={handleOpenCheckout} />} />
+            <Route path="/bundesliga" element={<HomePage onOpenCheckout={handleOpenCheckout} />} />
+            
+            {/* Auxiliary Routes */}
+            <Route path="/vip" element={<PremiumTipsPage onOpenCheckout={handleOpenCheckout} />} />
+            <Route path="/tips" element={<HomePage onOpenCheckout={handleOpenCheckout} />} />
+            <Route path="/live-scores" element={<HomePage onOpenCheckout={handleOpenCheckout} />} />
+            
             <Route path="/dashboard" element={<DashboardPage onOpenCheckout={handleOpenCheckout} />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/login" element={<LoginPage />} />
@@ -64,14 +79,12 @@ export const AppContent: React.FC = () => {
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/copyright" element={<CopyrightPage />} />
             <Route path="/refund-policy" element={<RefundPolicyPage />} />
-            <Route path="/refunds" element={<RefundPolicyPage />} />
           </Routes>
         </main>
       </div>
 
       <Footer />
 
-      {/* Global Checkout Simulator Modal */}
       <CheckoutModal
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
@@ -87,7 +100,9 @@ export function App() {
       <ThemeProvider>
         <AuthProvider>
           <PredictionsProvider>
-            <AppContent />
+            <BetSlipProvider>
+              <AppContent />
+            </BetSlipProvider>
           </PredictionsProvider>
         </AuthProvider>
       </ThemeProvider>
