@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { SlidersHorizontal, Plus, Shield, Trophy } from 'lucide-react';
-import { Sidebar } from '../components/Sidebar';
+
 import { BetSlip } from '../components/BetSlip';
 import { FeaturedTipster } from '../components/FeaturedTipster';
 import { useBetSlip } from '../context/BetSlipContext';
@@ -274,11 +274,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f0f4f8] dark:bg-[#0b1320] py-6 px-4 sm:px-6 lg:px-8 transition-colors">
+    <div className="min-h-screen bg-white dark:bg-[#0b1320] py-6 px-4 sm:px-6 lg:px-8 transition-colors">
       <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-6">
-        
-        {/* LEFT COLUMN: Sidebar Leagues */}
-        <Sidebar activeLeague={selectedLeague} onSelectLeague={setSelectedLeague} />
 
         {/* CENTER COLUMN: Live Matches & League Standings */}
         <main className="flex-1 space-y-6">

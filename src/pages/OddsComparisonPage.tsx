@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Calendar, Star, TrendingUp, ExternalLink } from 'lucide-react';
-import { Sidebar } from '../components/Sidebar';
+
 
 export const OddsComparisonPage: React.FC = () => {
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
@@ -60,11 +60,8 @@ export const OddsComparisonPage: React.FC = () => {
   const currentMatch = featuredMatches[activeMatchIndex];
 
   return (
-    <div className="min-h-screen bg-[#f0f4f8] dark:bg-[#0b1320] py-6 px-4 sm:px-6 lg:px-8 transition-colors">
+    <div className="min-h-screen bg-white dark:bg-[#0b1320] py-6 px-4 sm:px-6 lg:px-8 transition-colors">
       <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-6">
-        
-        {/* Left Sidebar */}
-        <Sidebar />
 
         {/* Main Area */}
         <main className="flex-1 space-y-6">
