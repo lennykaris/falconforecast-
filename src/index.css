@@ -9,11 +9,11 @@
 /* ─── CSS THEME VARIABLES (BetTerminal Light-First Sky-Blue Design) ─── */
 :root,
 html.light {
-  --bg-base:        #f0f4f8;
+  --bg-base:        #ffffff;
   --bg-surface:     #ffffff;
-  --bg-sky-header: #dcebfa;
+  --bg-sky-header: #ffffff;
   --bg-elevated:    #ffffff;
-  --bg-muted:       #f1f5f9;
+  --bg-muted:       #f8fafc;
   --bg-dark-ticker: #0f172a;
   --border:         #e2e8f0;
   --border-strong:  #cbd5e1;
@@ -29,8 +29,8 @@ html.light {
   --live-green-bg:  #dcfce7;
   --card-shadow:    0 2px 10px -2px rgba(15,23,42,0.05);
   --card-shadow-h:  0 8px 24px -4px rgba(0,168,255,0.12);
-  --nav-bg:         #dcebfa;
-  --nav-border:     #cbd5e1;
+  --nav-bg:         #ffffff;
+  --nav-border:     #e2e8f0;
   --footer-bg:      #ffffff;
 }
 

@@ -33,7 +33,7 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
   return (
     <>
       {/* ─── DESKTOP & TABLET TOP HEADER BAR ─── */}
-      <header className="sticky top-0 z-50 bg-[#dbeafe] dark:bg-[#111c30] border-b border-blue-200/80 dark:border-slate-800 shadow-xs transition-colors">
+      <header className="sticky top-0 z-50 bg-white dark:bg-[#111c30] border-b border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 gap-4">
             
