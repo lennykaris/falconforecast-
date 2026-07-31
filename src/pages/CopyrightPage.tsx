@@ -31,7 +31,7 @@ export const CopyrightPage: React.FC = () => {
           Copyright Notice & Ownership
         </h1>
         <p className="text-xs sm:text-sm max-w-2xl mx-auto leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-          Official copyright, intellectual property statement, and usage guidelines for <span className="font-bold text-sky-400">Field Forecast</span> (fieldforecast.com).
+          Official copyright, intellectual property statement, and usage guidelines for <span className="font-bold text-sky-400">Falcon Forecast</span> (falconforecast.com).
         </p>
       </section>
 
@@ -49,7 +49,7 @@ export const CopyrightPage: React.FC = () => {
             </h2>
           </div>
           <p className="text-xs sm:text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-            All materials published on this website, including text, graphics, data visualizations, software code, layout, and digital assets, are the exclusive property of Field Forecast (fieldforecast.com).
+            All materials published on this website, including text, graphics, data visualizations, software code, layout, and digital assets, are the exclusive property of Falcon Forecast (falconforecast.com).
           </p>
           <p className="text-xs font-bold uppercase tracking-wider text-sky-400">This includes but is not limited to:</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -66,7 +66,7 @@ export const CopyrightPage: React.FC = () => {
               All rights are reserved and protected under the competent international laws on intellectual property protection.
             </p>
             <p>
-              Field Forecast may have third-party partnerships. All raw data provided on the website remain the intellectual property of their respective licensors. However, the collection, organization, formatting, display, and analysis of such data on the Field Forecast platform constitute original intellectual work fully owned by Field Forecast.
+              Falcon Forecast may have third-party partnerships. All raw data provided on the website remain the intellectual property of their respective licensors. However, the collection, organization, formatting, display, and analysis of such data on the Falcon Forecast platform constitute original intellectual work fully owned by Falcon Forecast.
             </p>
             <p>
               Unauthorized access, scraping, duplication, or redistribution of this data or system output is strictly prohibited. All user data collected are managed in compliance with the Data Protection Act applicable under the exclusive jurisdiction of competent international legal frameworks and authorities and international privacy standards.
@@ -85,7 +85,7 @@ export const CopyrightPage: React.FC = () => {
             </h2>
           </div>
           <p className="text-xs sm:text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-            No content or component of the Field Forecast website may be:
+            No content or component of the Falcon Forecast website may be:
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {prohibitedUses.map((use, idx) => (
@@ -111,7 +111,7 @@ export const CopyrightPage: React.FC = () => {
               </h2>
             </div>
             <p className="text-xs sm:text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              Users are granted a limited, non-transferable right to access and use Field Forecast for personal, non-commercial purposes. Premium or subscription-based content is strictly for authorized subscribers and must not be shared, copied, or redistributed.
+              Users are granted a limited, non-transferable right to access and use Falcon Forecast for personal, non-commercial purposes. Premium or subscription-based content is strictly for authorized subscribers and must not be shared, copied, or redistributed.
             </p>
           </section>
 
@@ -123,7 +123,7 @@ export const CopyrightPage: React.FC = () => {
               </h2>
             </div>
             <p className="text-xs sm:text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              The name <strong>Field Forecast</strong>, its logo, design elements, and associated brand identifiers are trademarks and service marks owned by the website. No right or license is granted to use these marks without prior written approval.
+              The name <strong>Falcon Forecast</strong>, its logo, design elements, and associated brand identifiers are trademarks and service marks owned by the website. No right or license is granted to use these marks without prior written approval.
             </p>
           </section>
         </div>
@@ -139,7 +139,7 @@ export const CopyrightPage: React.FC = () => {
           </p>
           
           <div className="pt-2 text-xs font-mono font-bold" style={{ color: 'var(--brand)' }}>
-            © 2025 Field Forecast. All Rights Reserved.
+            © 2025 Falcon Forecast. All Rights Reserved.
           </div>
         </section>
 

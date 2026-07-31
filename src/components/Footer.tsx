@@ -13,10 +13,10 @@ export const Footer: React.FC = () => {
               F
             </div>
             <span className="font-extrabold text-base text-slate-900 dark:text-white">
-              Field<span className="text-[#00a8ff]">Forecasts</span>
+              Falcon<span className="text-[#00a8ff]">Forecast</span>
             </span>
           </div>
-          <p>© 2024 FieldForecasts. Please gamble responsibly. 18+</p>
+          <p>© 2024 Falcon Forecast. Please gamble responsibly. 18+</p>
         </div>
 
         {/* Links */}

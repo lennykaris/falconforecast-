@@ -63,7 +63,7 @@ export const PostTipPage: React.FC = () => {
               Post a New Tip
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Share your insights with the FieldForecasts community.
+              Share your insights with the Falcon Forecast community.
             </p>
           </div>
 
@@ -124,7 +124,7 @@ export const PostTipPage: React.FC = () => {
               <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">Tip Published Successfully!</h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                Your prediction for {selectedMatch.teams} has been submitted and is now live on FieldForecasts.
+                Your prediction for {selectedMatch.teams} has been submitted and is now live on Falcon Forecast.
               </p>
               <button
                 onClick={() => {

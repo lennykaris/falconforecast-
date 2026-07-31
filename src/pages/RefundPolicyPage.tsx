@@ -39,7 +39,7 @@ export const RefundPolicyPage: React.FC = () => {
           Refund & Chargeback Policy
         </h1>
         <p className="text-xs sm:text-sm max-w-2xl mx-auto leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-          At <span className="font-bold text-sky-400">FieldForecasts.com</span>, we are committed to providing a transparent and fair payment experience. Customers are encouraged to contact our support team directly before initiating a chargeback with their card issuer.
+          At <span className="font-bold text-sky-400">FalconForecast.com</span>, we are committed to providing a transparent and fair payment experience. Customers are encouraged to contact our support team directly before initiating a chargeback with their card issuer.
         </p>
 
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border text-xs font-semibold"
@@ -94,7 +94,7 @@ export const RefundPolicyPage: React.FC = () => {
             </h2>
           </div>
           <p className="text-xs sm:text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-            When a chargeback is initiated, FieldForecasts.com reserves the right to contest invalid or fraudulent disputes by providing the payment processor or issuing bank with supporting evidence, including but not limited to:
+            When a chargeback is initiated, FalconForecast.com reserves the right to contest invalid or fraudulent disputes by providing the payment processor or issuing bank with supporting evidence, including but not limited to:
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
             {chargebackEvidence.map((item, idx) => (
@@ -131,7 +131,7 @@ export const RefundPolicyPage: React.FC = () => {
               ))}
             </ul>
             <p className="text-xs leading-relaxed pt-2" style={{ color: 'var(--text-muted)' }}>
-              Where permitted by law, FieldForecasts.com may suspend or terminate access to services while the dispute is under investigation.
+              Where permitted by law, FalconForecast.com may suspend or terminate access to services while the dispute is under investigation.
             </p>
           </section>
 
@@ -155,7 +155,7 @@ export const RefundPolicyPage: React.FC = () => {
               6. Merchant Rights
             </h2>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              FieldForecasts.com reserves the right to:
+              FalconForecast.com reserves the right to:
             </p>
             <ul className="space-y-1.5 text-xs" style={{ color: 'var(--text-primary)' }}>
               {merchantRights.map((r, i) => (
@@ -189,20 +189,20 @@ export const RefundPolicyPage: React.FC = () => {
           
           <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
             <a
-              href="mailto:info@fieldforecasts.com"
+              href="mailto:info@FalconForecast.com"
               className="px-5 py-2.5 rounded-xl border text-xs font-bold transition-all hover:bg-sky-500/10 flex items-center gap-2"
               style={{ borderColor: 'var(--brand)', color: 'var(--brand)' }}
             >
               <Mail className="w-4 h-4" />
-              info@fieldforecasts.com
+              info@FalconForecast.com
             </a>
             <a
-              href="mailto:fieldforecasts@gmail.com"
+              href="mailto:Falcon Forecast@gmail.com"
               className="px-5 py-2.5 rounded-xl border text-xs font-bold transition-all hover:bg-sky-500/10 flex items-center gap-2"
               style={{ borderColor: 'var(--brand)', color: 'var(--brand)' }}
             >
               <Mail className="w-4 h-4" />
-              fieldforecasts@gmail.com
+              Falcon Forecast@gmail.com
             </a>
           </div>
         </section>

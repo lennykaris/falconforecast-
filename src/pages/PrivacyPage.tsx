@@ -34,7 +34,7 @@ export const PrivacyPage: React.FC = () => {
   ];
 
   const userRights = [
-    "Access personal information stored on Field Forecast",
+    "Access personal information stored on Falcon Forecast",
     "Request correction or deletion of personal data",
     "Withdraw consent for data processing at any time",
     "Object to the use of data for marketing purposes",
@@ -55,7 +55,7 @@ export const PrivacyPage: React.FC = () => {
           Privacy Policy
         </h1>
         <p className="text-xs sm:text-sm max-w-2xl mx-auto leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-          <span className="font-bold text-sky-400">Field Forecasts</span> (fieldforecasts.com) is committed to protecting the privacy and personal data of all its users. This policy explains how personal information is collected, processed, stored, and protected.
+          <span className="font-bold text-sky-400">Falcon Forecast</span> (FalconForecast.com) is committed to protecting the privacy and personal data of all its users. This policy explains how personal information is collected, processed, stored, and protected.
         </p>
       </section>
 
@@ -68,7 +68,7 @@ export const PrivacyPage: React.FC = () => {
             1. Introduction & Agreement
           </h2>
           <p className="text-xs sm:text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-            By accessing Field Forecasts, you agree to the collection and use of information as described in this policy. The platform upholds the principles of data protection and aligns with global privacy standards under the Data Protection Act.
+            By accessing Falcon Forecast, you agree to the collection and use of information as described in this policy. The platform upholds the principles of data protection and aligns with global privacy standards under the Data Protection Act.
           </p>
         </section>
 
@@ -112,7 +112,7 @@ export const PrivacyPage: React.FC = () => {
           <div className="p-4 rounded-2xl border space-y-1" style={{ backgroundColor: 'var(--bg-elevated)', borderColor: 'var(--border)' }}>
             <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">c. Analytical and Predictive Data</span>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              In connection with sports analytics, Field Forecast may collect anonymized usage patterns and aggregated statistics to enhance prediction accuracy and overall user experience.
+              In connection with sports analytics, Falcon Forecast may collect anonymized usage patterns and aggregated statistics to enhance prediction accuracy and overall user experience.
             </p>
           </div>
         </section>
@@ -143,7 +143,7 @@ export const PrivacyPage: React.FC = () => {
               </h2>
             </div>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              Field Forecasts uses cookies to store user preferences, maintain login sessions, monitor traffic patterns, and measure marketing performance. Users can modify cookie preferences through browser settings.
+              Falcon Forecast uses cookies to store user preferences, maintain login sessions, monitor traffic patterns, and measure marketing performance. Users can modify cookie preferences through browser settings.
             </p>
           </section>
 
@@ -174,7 +174,7 @@ export const PrivacyPage: React.FC = () => {
             </h2>
           </div>
           <p className="text-xs sm:text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-            <strong>Field Forecast does not sell, rent, or trade personal data.</strong> Information is shared only with trusted technical partners for hosting/analytics or when required by law.
+            <strong>Falcon Forecast does not sell, rent, or trade personal data.</strong> Information is shared only with trusted technical partners for hosting/analytics or when required by law.
           </p>
           <p className="text-xs font-bold uppercase tracking-wider text-sky-400">As per applicable privacy laws, users have the right to:</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -195,7 +195,7 @@ export const PrivacyPage: React.FC = () => {
               10. Children's Privacy (18+)
             </h2>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              Field Forecast's services are intended strictly for users aged 18 years and above. The platform does not knowingly collect personal data from minors. Any such data discovered will be purged immediately.
+              Falcon Forecast's services are intended strictly for users aged 18 years and above. The platform does not knowingly collect personal data from minors. Any such data discovered will be purged immediately.
             </p>
           </section>
 
@@ -211,7 +211,7 @@ export const PrivacyPage: React.FC = () => {
 
         {/* Legal Declaration Footer */}
         <div className="text-center pt-2 text-xs font-mono font-bold" style={{ color: 'var(--text-muted)' }}>
-          © 2025 Field Forecast. All Rights Reserved.
+          © 2025 Falcon Forecast. All Rights Reserved.
         </div>
 
       </div>

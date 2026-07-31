@@ -19,7 +19,7 @@ export const AboutPage: React.FC = () => {
     {
       icon: ShieldCheck,
       title: "Integrity & Trust",
-      desc: "Field Forecasts continues to evolve, while consistently upgrading our systems to enhance value for every visitor, ensuring that anyone exploring live scores, data, predictions, insights, or analytics can rely on a well-organized and dependable sports information experience.",
+      desc: "Falcon Forecast continues to evolve, while consistently upgrading our systems to enhance value for every visitor, ensuring that anyone exploring live scores, data, predictions, insights, or analytics can rely on a well-organized and dependable sports information experience.",
       accent: "#34d399"
     }
   ];
@@ -39,13 +39,13 @@ export const AboutPage: React.FC = () => {
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-bold uppercase tracking-widest"
              style={{ borderColor: 'var(--brand)', color: 'var(--brand)', backgroundColor: 'rgba(56,189,248,0.08)' }}>
           <TrendingUp className="w-3.5 h-3.5" />
-          About Field Forecasts
+          About Falcon Forecast
         </div>
         <h1 className="text-3xl sm:text-5xl font-black font-display tracking-tight" style={{ color: 'var(--text-primary)' }}>
           Empowering Fans & Analysts with Data Precision
         </h1>
         <p className="text-sm sm:text-base leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-          Field Forecasts is a modern sports platform built to provide sports information by combining live scores, real-time updates, and well-organized data insights to help fans, analysts, and enthusiasts stay informed throughout every match.
+          Falcon Forecast is a modern sports platform built to provide sports information by combining live scores, real-time updates, and well-organized data insights to help fans, analysts, and enthusiasts stay informed throughout every match.
         </p>
       </section>
 
@@ -102,10 +102,10 @@ export const AboutPage: React.FC = () => {
         </h2>
         <div className="prose prose-invert max-w-none text-xs sm:text-sm leading-relaxed space-y-4" style={{ color: 'var(--text-secondary)' }}>
           <p>
-            With global coverage across major and minor leagues, Field Forecasts sources its data from trusted providers and presents it through a clean, user-friendly interface created for both everyday fans and professionals.
+            With global coverage across major and minor leagues, Falcon Forecast sources its data from trusted providers and presents it through a clean, user-friendly interface created for both everyday fans and professionals.
           </p>
           <p>
-            Field Forecasts continues to evolve, while consistently upgrading our systems to enhance value for every visitor, ensuring that anyone exploring live scores, data, predictions, insights, or analytics can rely on a well-organized and dependable sports information experience.
+            Falcon Forecast continues to evolve, while consistently upgrading our systems to enhance value for every visitor, ensuring that anyone exploring live scores, data, predictions, insights, or analytics can rely on a well-organized and dependable sports information experience.
           </p>
         </div>
 

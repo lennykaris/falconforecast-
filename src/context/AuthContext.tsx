@@ -12,7 +12,7 @@ interface AuthContextType {
   subscribeToPlan: (planId: string) => void;
 }
 
-const STORAGE_KEY = 'fieldforecast_user_session';
+const STORAGE_KEY = 'falconforecast_user_session';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -58,11 +58,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithPreset = (preset: 'free' | 'vip' | 'admin') => {
     if (preset === 'free') {
-      login('free.user@fieldforecast.com', 'Alex Rivera', 'user', 'free');
+      login('free.user@falconforecast.com', 'Alex Rivera', 'user', 'free');
     } else if (preset === 'vip') {
-      login('vip.pro@fieldforecast.com', 'Marcus Sterling', 'user', 'monthly_vip');
+      login('vip.pro@falconforecast.com', 'Marcus Sterling', 'user', 'monthly_vip');
     } else if (preset === 'admin') {
-      login('admin@fieldforecast.com', 'Chief Tipster Admin', 'admin', 'annual_vip');
+      login('admin@falconforecast.com', 'Chief Tipster Admin', 'admin', 'annual_vip');
     }
   };
 
@@ -81,7 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     } else {
       // Auto-create VIP user if subscribing while guest
-      login('new.subscriber@fieldforecast.com', 'New VIP Member', 'user', planType);
+      login('new.subscriber@falconforecast.com', 'New VIP Member', 'user', planType);
     }
   };
 

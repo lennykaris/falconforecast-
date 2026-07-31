@@ -1,6 +1,6 @@
-# Fieldforecasts (Frontend Demo)
+# Falcon Forecast (Frontend Demo)
 
-**Fieldforecasts** is a modern, high-converting sports prediction subscription platform demo built with **Vite + React + TypeScript + Tailwind CSS**.
+**Falcon Forecast** is a modern, high-converting sports prediction subscription platform demo built with **Vite + React + TypeScript + Tailwind CSS**.
 
 This project is a pure frontend scaffolding built to validate user experience, layout, and subscription flow prior to backend integration (Stripe/PayPal + CMS API).
 

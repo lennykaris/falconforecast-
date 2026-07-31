@@ -11,7 +11,7 @@ interface PredictionsContextType {
   resetPredictions: () => void;
 }
 
-const STORAGE_KEY = 'fieldforecast_predictions_data';
+const STORAGE_KEY = 'falconforecast_predictions_data';
 
 const PredictionsContext = createContext<PredictionsContextType | undefined>(undefined);
 

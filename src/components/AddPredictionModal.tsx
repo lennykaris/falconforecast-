@@ -38,7 +38,7 @@ export const AddPredictionModal: React.FC<AddPredictionModalProps> = ({ isOpen, 
       odds: Number(odds),
       confidence: Number(confidence),
       tier,
-      analysis: analysis || 'Expert breakdown provided by Fieldforecasts team.',
+      analysis: analysis || 'Expert breakdown provided by Falcon Forecast team.',
       status: 'pending',
     });
 

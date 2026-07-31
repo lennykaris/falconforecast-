@@ -55,7 +55,7 @@ export const GdprPage: React.FC = () => {
           GDPR and Journalism Policy
         </h1>
         <p className="text-xs sm:text-sm max-w-2xl mx-auto leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-          At <span className="font-bold text-sky-400">Field Forecast</span>, we are committed to protecting the privacy of our users while preserving the right to freedom of expression and information in relation to sports reporting, editorial analysis, and statistical publications.
+          At <span className="font-bold text-sky-400">Falcon Forecast</span>, we are committed to protecting the privacy of our users while preserving the right to freedom of expression and information in relation to sports reporting, editorial analysis, and statistical publications.
         </p>
       </section>
 
@@ -73,7 +73,7 @@ export const GdprPage: React.FC = () => {
             </h2>
           </div>
           <p className="text-xs sm:text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-            Field Forecast publishes sports-related information including, but not limited to:
+            Falcon Forecast publishes sports-related information including, but not limited to:
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             {journalisticItems.map((item, idx) => (
@@ -100,7 +100,7 @@ export const GdprPage: React.FC = () => {
             </h2>
           </div>
           <p className="text-xs sm:text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-            Information published on Field Forecast is intended to inform the public on matters of legitimate sporting interest. This includes the use of:
+            Information published on Falcon Forecast is intended to inform the public on matters of legitimate sporting interest. This includes the use of:
           </p>
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs" style={{ color: 'var(--text-primary)' }}>
             {publicInterestData.map((item, idx) => (
@@ -129,7 +129,7 @@ export const GdprPage: React.FC = () => {
             The journalistic exemption does <strong>not</strong> apply to personal data collected from our users.
           </p>
           <p className="text-xs sm:text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-            For account creation, subscriptions, newsletters, analytics, and support services, Field Forecast processes user data in accordance with GDPR principles, including:
+            For account creation, subscriptions, newsletters, analytics, and support services, Falcon Forecast processes user data in accordance with GDPR principles, including:
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="p-4 rounded-2xl border space-y-2" style={{ backgroundColor: 'var(--bg-elevated)', borderColor: 'var(--border)' }}>
@@ -175,7 +175,7 @@ export const GdprPage: React.FC = () => {
             </ul>
             <div className="pt-2 flex items-center gap-2 text-xs font-semibold" style={{ color: 'var(--brand)' }}>
               <Mail className="w-4 h-4" />
-              <span>Contact: info@fieldforecasts.com</span>
+              <span>Contact: info@FalconForecast.com</span>
             </div>
           </section>
         </div>
@@ -189,7 +189,7 @@ export const GdprPage: React.FC = () => {
             </h2>
           </div>
           <p className="text-xs sm:text-sm leading-relaxed text-amber-200/90">
-            All forecasts, probabilities, and predictive insights provided by Field Forecast are statistical in nature and are for informational purposes only. They do not constitute guarantees, financial advice, or betting advice.
+            All forecasts, probabilities, and predictive insights provided by Falcon Forecast are statistical in nature and are for informational purposes only. They do not constitute guarantees, financial advice, or betting advice.
           </p>
         </section>
 

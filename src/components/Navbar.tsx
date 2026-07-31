@@ -44,7 +44,7 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                   F
                 </div>
                 <span className="font-extrabold text-xl tracking-tight text-slate-900 dark:text-white font-sans">
-                  Field<span className="text-[#00a8ff]">Forecasts</span>
+                  Falcon<span className="text-[#00a8ff]">Forecast</span>
                 </span>
               </Link>
 
