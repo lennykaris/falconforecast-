@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { SlidersHorizontal, Plus, Shield, Trophy } from 'lucide-react';
+import { SlidersHorizontal, Shield, Trophy } from 'lucide-react';
 
-import { BetSlip } from '../components/BetSlip';
-import { FeaturedTipster } from '../components/FeaturedTipster';
-import { useBetSlip } from '../context/BetSlipContext';
+import { MySubscriptions } from '../components/MySubscriptions';
+import { TopTipsters } from '../components/TopTipsters';
+import { AdvertBanner } from '../components/AdvertBanner';
+import { Sidebar } from '../components/Sidebar';
 
 interface HomePageProps {
   onOpenCheckout?: (plan?: any) => void;
@@ -13,7 +14,6 @@ interface HomePageProps {
 export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
   const location = useLocation();
   const [selectedLeague, setSelectedLeague] = useState('Premier League');
-  const { toggleSelection, selections } = useBetSlip();
 
   // Sync selectedLeague with URL route if user came from Navbar
   useEffect(() => {
@@ -257,35 +257,28 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
 
   const currentTeamsList = leagueTeamsMap[selectedLeague] || leagueTeamsMap['Premier League'];
 
-  const handleOddsClick = (match: any, selectionType: '1' | 'X' | '2', oddsVal: number) => {
-    const selName = selectionType === '1' ? `${match.homeTeam}` : selectionType === 'X' ? 'Draw' : `${match.awayTeam}`;
-    toggleSelection({
-      id: `${match.id}-${selectionType}`,
-      matchId: match.id,
-      matchTitle: `${match.homeTeam} vs ${match.awayTeam}`,
-      league: match.league || 'Match',
-      selection: `${selName} (${selectionType})`,
-      odds: oddsVal,
-    });
-  };
-
-  const isOddsSelected = (matchId: string, selectionType: string) => {
-    return selections.some(s => s.id === `${matchId}-${selectionType}`);
-  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0b1320] py-6 px-4 sm:px-6 lg:px-8 transition-colors">
       <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-6">
 
+        {/* LEFT COLUMN: League Sidebar (hidden on mobile) */}
+        <div className="hidden lg:block">
+          <Sidebar
+            activeLeague={selectedLeague}
+            onSelectLeague={setSelectedLeague}
+          />
+        </div>
+
         {/* CENTER COLUMN: Live Matches & League Standings */}
-        <main className="flex-1 space-y-6">
+        <main className="flex-1 min-w-0 space-y-6">
           
           {/* Header Title */}
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
                 <Trophy className="w-6 h-6 text-[#00a8ff]" />
-                {selectedLeague} Matches & Teams
+                {selectedLeague} Matches &amp; Teams
               </h1>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Real-time scores, odds comparison, and league standings.
@@ -295,6 +288,23 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
             <button className="p-2 bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-lg text-slate-600 dark:text-slate-300 hover:border-[#00a8ff]">
               <SlidersHorizontal className="w-4 h-4" />
             </button>
+          </div>
+
+          {/* Mobile League Tabs (only shown on mobile, sidebar handles it on desktop) */}
+          <div className="lg:hidden flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1">
+            {['Premier League', 'La Liga', 'Champions League', 'Serie A', 'Bundesliga'].map(league => (
+              <button
+                key={league}
+                onClick={() => setSelectedLeague(league)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap border ${
+                  selectedLeague === league
+                    ? 'bg-[#00a8ff] text-white border-[#00a8ff] shadow-sm'
+                    : 'bg-white dark:bg-[#111c30] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#00a8ff] hover:text-[#00a8ff]'
+                }`}
+              >
+                {league}
+              </button>
+            ))}
           </div>
 
           {/* Matches List grouped by League */}
@@ -320,7 +330,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
                 {/* Matches Table */}
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
-                    <thead>
+                     <thead>
                       <tr className="border-b border-sky-100 dark:border-slate-800/60 text-slate-500 dark:text-slate-400 font-semibold bg-sky-50/60 dark:bg-slate-900/30">
                         <th className="py-2.5 px-4 w-16">Time</th>
                         <th className="py-2.5 px-4">Match</th>
@@ -328,7 +338,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
                         <th className="py-2.5 px-2 w-20 text-center">1</th>
                         <th className="py-2.5 px-2 w-20 text-center">X</th>
                         <th className="py-2.5 px-2 w-20 text-center">2</th>
-                        <th className="py-2.5 px-4 w-12 text-center"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-sky-100 dark:divide-slate-800/40">
@@ -358,51 +367,25 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
                             </div>
                           </td>
 
-                          {/* Odds 1 */}
+                          {/* Odds 1 — display only */}
                           <td className="py-3 px-2">
-                            <button
-                              onClick={() => handleOddsClick(match, '1', match.odds.home)}
-                              className={`w-full odds-btn ${
-                                isOddsSelected(match.id, '1') ? 'active' : ''
-                              }`}
-                            >
+                            <span className="w-full odds-btn block text-center">
                               {match.odds.home.toFixed(2)}
-                            </button>
+                            </span>
                           </td>
 
-                          {/* Odds X */}
+                          {/* Odds X — display only */}
                           <td className="py-3 px-2">
-                            <button
-                              onClick={() => handleOddsClick(match, 'X', match.odds.draw)}
-                              className={`w-full odds-btn ${
-                                isOddsSelected(match.id, 'X') ? 'active' : ''
-                              }`}
-                            >
+                            <span className="w-full odds-btn block text-center">
                               {match.odds.draw.toFixed(2)}
-                            </button>
+                            </span>
                           </td>
 
-                          {/* Odds 2 */}
+                          {/* Odds 2 — display only */}
                           <td className="py-3 px-2">
-                            <button
-                              onClick={() => handleOddsClick(match, '2', match.odds.away)}
-                              className={`w-full odds-btn ${
-                                isOddsSelected(match.id, '2') ? 'active' : ''
-                              }`}
-                            >
+                            <span className="w-full odds-btn block text-center">
                               {match.odds.away.toFixed(2)}
-                            </button>
-                          </td>
-
-                          {/* Action Icon */}
-                          <td className="py-3 px-4 text-center">
-                            <button
-                              onClick={() => handleOddsClick(match, '1', match.odds.home)}
-                              className="p-1 text-slate-400 hover:text-[#00a8ff] transition-colors"
-                              title="Add to slip"
-                            >
-                              <Plus className="w-4 h-4" />
-                            </button>
+                            </span>
                           </td>
                         </tr>
                       ))}
@@ -470,10 +453,13 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
 
         </main>
 
-        {/* RIGHT COLUMN: Bet Slip & Featured Tipster */}
-        <aside className="w-full lg:w-80 flex-shrink-0 space-y-6">
-          <BetSlip />
-          <FeaturedTipster onUnlock={() => onOpenCheckout && onOpenCheckout()} />
+        {/* RIGHT COLUMN: Sticky Ad + Subscriptions + Top Tipsters */}
+        <aside className="w-full lg:w-80 flex-shrink-0">
+          <div className="sticky top-24 space-y-4">
+            <AdvertBanner sticky={false} />
+            <MySubscriptions onUpgrade={onOpenCheckout} />
+            <TopTipsters />
+          </div>
         </aside>
 
       </div>

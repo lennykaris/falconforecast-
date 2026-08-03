@@ -27,7 +27,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const { subscribeToPlan } = useAuth();
   const navigate = useNavigate();
 
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'apple' | 'paypal'>('card');
+  const [paymentMethod, setPaymentMethod] = useState<'mpesa' | 'card' | 'apple'>('mpesa');
+  const [phoneNumber, setPhoneNumber] = useState('0712 345 678');
   const [cardNumber, setCardNumber] = useState('4242 •••• •••• 4242');
   const [expiry, setExpiry] = useState('12/28');
   const [cvc, setCvc] = useState('888');
@@ -119,6 +120,19 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
+                  onClick={() => setPaymentMethod('mpesa')}
+                  className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center space-x-1.5 transition-all ${
+                    paymentMethod === 'mpesa'
+                      ? 'bg-emerald-50 border-emerald-500 text-emerald-700'
+                      : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Zap className="w-4 h-4 text-emerald-600" />
+                  <span>M-Pesa</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setPaymentMethod('card')}
                   className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center space-x-1.5 transition-all ${
                     paymentMethod === 'card'
@@ -139,26 +153,34 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <Zap className="w-4 h-4 text-[#0EA5E9]" />
                   <span>Apple Pay</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('paypal')}
-                  className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center space-x-1.5 transition-all ${
-                    paymentMethod === 'paypal'
-                      ? 'bg-sky-50 border-[#0EA5E9] text-[#0EA5E9]'
-                      : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <span>PayPal</span>
                 </button>
               </div>
             </div>
 
             {/* Checkout Form */}
             <form onSubmit={handleSubmitPayment} className="space-y-4">
+              {paymentMethod === 'mpesa' && (
+                <div className="space-y-3 p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">
+                      M-Pesa Phone Number
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={phoneNumber}
+                      onChange={e => setPhoneNumber(e.target.value)}
+                      placeholder="07XX XXX XXX"
+                      className="w-full bg-white border border-emerald-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <p className="text-[11px] text-emerald-700">
+                    An STK push prompt will be sent to your phone for payment of <strong className="font-bold">{selectedPlan.price}</strong>.
+                  </p>
+                </div>
+              )}
+
               {paymentMethod === 'card' && (
                 <>
                   <div className="space-y-1">
@@ -214,13 +236,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 </>
               )}
 
-              {paymentMethod !== 'card' && (
+              {paymentMethod === 'apple' && (
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center space-y-2">
                   <p className="text-xs text-slate-700 font-medium">
-                    1-Click Express Authorization active for {paymentMethod.toUpperCase()}.
+                    1-Click Apple Pay Authorization Active.
                   </p>
                   <p className="text-[11px] text-slate-500">
-                    Clicking complete will instantly approve subscription in demo mode.
+                    Clicking complete will authorize payment of {selectedPlan.price}.
                   </p>
                 </div>
               )}

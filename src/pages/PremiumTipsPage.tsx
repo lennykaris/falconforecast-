@@ -25,7 +25,7 @@ export const PremiumTipsPage: React.FC<PremiumTipsPageProps> = ({ onOpenCheckout
         odds: 1.95,
       },
       lockedTipsCount: 1,
-      buttonLabel: 'Unlock Tips - $19.99/mo',
+      buttonLabel: 'Unlock Tips - KSh 1,500/mo',
     },
     {
       id: 't2',
@@ -39,7 +39,7 @@ export const PremiumTipsPage: React.FC<PremiumTipsPageProps> = ({ onOpenCheckout
       activeTipsCount: '1 Tip',
       highlightBadge: 'Won last 5 tips in a row',
       lockedTipsCount: 1,
-      buttonLabel: 'Buy Single Tip - $4.99',
+      buttonLabel: 'Buy Single Tip - KSh 300',
     },
     {
       id: 't3',
@@ -58,7 +58,7 @@ export const PremiumTipsPage: React.FC<PremiumTipsPageProps> = ({ onOpenCheckout
         odds: 1.80,
       },
       lockedTipsCount: 1,
-      buttonLabel: 'Unlock Tips - $19.99/mo',
+      buttonLabel: 'Unlock Tips - KSh 1,500/mo',
     },
     {
       id: 't4',

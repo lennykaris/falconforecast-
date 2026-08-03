@@ -2,16 +2,16 @@ import React, { useState } from 'react';
 import {
   ShieldCheck, Plus, Layers,
   Users, UserCheck, UserX, DollarSign,
-  TrendingUp, Star, AlertCircle
+  TrendingUp, Star, AlertCircle, BarChart3, ArrowUpRight, CheckCircle2
 } from 'lucide-react';
 import { usePredictions } from '../context/PredictionsContext';
-import { useTipsters } from '../context/TipstersContext';
+import { useTipsters, PLATFORM_CUT_PCT } from '../context/TipstersContext';
 import { AdminTable } from '../components/AdminTable';
 import { AddPredictionModal } from '../components/AddPredictionModal';
 import { useAuth } from '../context/AuthContext';
 import type { User } from '../types/prediction';
 
-type AdminTab = 'predictions' | 'tipsters' | 'users';
+type AdminTab = 'predictions' | 'revenue' | 'tipsters' | 'users';
 
 export const AdminPage: React.FC = () => {
   const { predictions } = usePredictions();
@@ -40,10 +40,22 @@ export const AdminPage: React.FC = () => {
     ...tipsters,
   ];
 
+  // Per-tipster revenue breakdown for admin
+  const tipsterRevenues = tipsters.map(t => {
+    const mySubs = subscriptions.filter(s => s.tipsterId === t.id && s.status === 'active');
+    const gross = mySubs.reduce((sum, s) => sum + (s.price || 0), 0);
+    const cut = parseFloat((gross * PLATFORM_CUT_PCT).toFixed(2));
+    const net = parseFloat((gross - cut).toFixed(2));
+    return { tipster: t, gross, cut, net, count: mySubs.length };
+  }).sort((a, b) => b.gross - a.gross);
 
+  const totalGross = tipsterRevenues.reduce((s, r) => s + r.gross, 0);
+  const totalPlatformCut = tipsterRevenues.reduce((s, r) => s + r.cut, 0);
+  const totalTipsterNet = tipsterRevenues.reduce((s, r) => s + r.net, 0);
 
   const TABS: { key: AdminTab; label: string; icon: React.ElementType; count?: number }[] = [
     { key: 'predictions', label: 'Predictions CMS', icon: Layers, count: totalPredictions },
+    { key: 'revenue', label: 'Revenue', icon: BarChart3, count: undefined },
     { key: 'tipsters', label: 'Tipsters', icon: Star, count: tipsters.length },
     { key: 'users', label: 'All Users', icon: Users, count: allUsers.length },
   ];
@@ -134,7 +146,7 @@ export const AdminPage: React.FC = () => {
             <span className="text-xs font-bold uppercase">Platform Rev.</span>
             <DollarSign className="w-4 h-4 text-[#0EA5E9]" />
           </div>
-          <span className="text-2xl sm:text-3xl font-black text-[#0EA5E9] font-mono">${platformRevenue.toFixed(2)}</span>
+          <span className="text-2xl sm:text-3xl font-black text-[#0EA5E9] font-mono">KSh {platformRevenue.toLocaleString()}</span>
           <p className="text-[10px] text-slate-400">{totalSubscriptions} active subscriptions</p>
         </div>
       </div>
@@ -185,6 +197,101 @@ export const AdminPage: React.FC = () => {
       {/* Tab: Predictions CMS */}
       {activeTab === 'predictions' && (
         <AdminTable onOpenAddModal={() => setIsAddModalOpen(true)} />
+      )}
+
+      {/* Tab: Platform Revenue & Sources */}
+      {activeTab === 'revenue' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-sky-50 border border-sky-200 rounded-2xl p-5">
+            <div>
+              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-[#0EA5E9]" />
+                Platform Revenue Overview
+              </h3>
+              <p className="text-xs text-slate-600 mt-1">
+                FalconForecast automatically collects a 20% platform cut on every tipster subscription payment.
+              </p>
+            </div>
+            <div className="flex items-center gap-4 text-xs font-mono">
+              <div className="bg-white px-3 py-2 rounded-xl border border-sky-200 shadow-xs">
+                <span className="text-[10px] text-slate-400 block uppercase font-sans font-bold">Total Gross</span>
+                <span className="text-lg font-black text-slate-900">KSh {totalGross.toLocaleString()}</span>
+              </div>
+              <div className="bg-white px-3 py-2 rounded-xl border border-emerald-200 shadow-xs">
+                <span className="text-[10px] text-emerald-600 block uppercase font-sans font-bold">Platform Cut (20%)</span>
+                <span className="text-lg font-black text-emerald-600">KSh {totalPlatformCut.toLocaleString()}</span>
+              </div>
+              <div className="bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-xs">
+                <span className="text-[10px] text-slate-500 block uppercase font-sans font-bold">Tipsters Payout (80%)</span>
+                <span className="text-lg font-black text-slate-700">KSh {totalTipsterNet.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">Revenue Breakdown by Tipster Source</h4>
+              <span className="text-[10px] font-mono text-slate-400">{tipsterRevenues.length} active revenue streams</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-700">
+                <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
+                  <tr>
+                    <th className="py-3.5 px-4">Tipster Source</th>
+                    <th className="py-3.5 px-4 text-center">Active Subs</th>
+                    <th className="py-3.5 px-4 text-center">Weekly / Monthly Price</th>
+                    <th className="py-3.5 px-4 text-center">Gross Generated</th>
+                    <th className="py-3.5 px-4 text-center">Platform Revenue (20%)</th>
+                    <th className="py-3.5 px-4 text-right">Tipster Payout (80%)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {tipsterRevenues.map(({ tipster: t, gross, cut, net, count }) => (
+                    <tr key={t.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center space-x-3">
+                          <img
+                            src={t.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=60'}
+                            alt={t.name}
+                            className="w-8 h-8 rounded-lg object-cover border border-slate-200"
+                          />
+                          <div>
+                            <span className="font-semibold text-slate-900 flex items-center gap-1">
+                              {t.name}
+                              {t.verified && <CheckCircle2 className="w-3 h-3 text-[#0EA5E9]" />}
+                            </span>
+                            <span className="block text-[10px] text-slate-400 font-mono">{t.email}</span>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-800">
+                        {count}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-center font-mono text-slate-500 text-[11px]">
+                        KSh {t.weeklyPrice || 500} / KSh {t.monthlyPrice || 1500}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-900">
+                        KSh {gross.toLocaleString()}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-center font-mono font-bold text-emerald-600 bg-emerald-50/40">
+                        KSh {cut.toLocaleString()}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-700">
+                        KSh {net.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Tab: Tipsters Management */}

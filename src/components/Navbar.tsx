@@ -55,39 +55,7 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                     isActive('/') ? 'text-[#00a8ff] bg-white dark:bg-sky-950/60 shadow-xs' : 'text-slate-700 dark:text-slate-300 hover:text-[#00a8ff]'
                   }`}
                 >
-                  Football
-                </Link>
-                <Link
-                  to="/premier-league"
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                    isActive('/premier-league') ? 'text-[#00a8ff] bg-white dark:bg-sky-950/60 shadow-xs' : 'text-slate-700 dark:text-slate-300 hover:text-[#00a8ff]'
-                  }`}
-                >
-                  Premier League
-                </Link>
-                <Link
-                  to="/la-liga"
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                    isActive('/la-liga') ? 'text-[#00a8ff] bg-white dark:bg-sky-950/60 shadow-xs' : 'text-slate-700 dark:text-slate-300 hover:text-[#00a8ff]'
-                  }`}
-                >
-                  La Liga
-                </Link>
-                <Link
-                  to="/champions-league"
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                    isActive('/champions-league') ? 'text-[#00a8ff] bg-white dark:bg-sky-950/60 shadow-xs' : 'text-slate-700 dark:text-slate-300 hover:text-[#00a8ff]'
-                  }`}
-                >
-                  Champions League
-                </Link>
-                <Link
-                  to="/live-scores"
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                    isActive('/live-scores') ? 'text-[#00a8ff] bg-white dark:bg-sky-950/60 shadow-xs' : 'text-slate-700 dark:text-slate-300 hover:text-[#00a8ff]'
-                  }`}
-                >
-                  Live Scores
+                  Home
                 </Link>
                 <Link
                   to="/odds-comparison"
@@ -103,7 +71,7 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                     isActive('/premium-tips') ? 'text-[#00a8ff] bg-white dark:bg-sky-950/60 shadow-xs' : 'text-slate-700 dark:text-slate-300 hover:text-[#00a8ff]'
                   }`}
                 >
-                  Premium Tips
+                  VIP Tips
                 </Link>
                 <Link
                   to="/tipsters"
@@ -112,6 +80,14 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                   }`}
                 >
                   Tipsters
+                </Link>
+                <Link
+                  to="/about"
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                    isActive('/about') ? 'text-[#00a8ff] bg-white dark:bg-sky-950/60 shadow-xs' : 'text-slate-700 dark:text-slate-300 hover:text-[#00a8ff]'
+                  }`}
+                >
+                  News
                 </Link>
                 {isLoggedIn && user?.role === 'admin' && (
                   <Link
@@ -205,15 +181,15 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
           </div>
         </div>
 
-        {/* ─── LIVE SCORES TICKER SUB-BAR (Dark Navy Ticker) ─── */}
-        <div className="bg-[#0f172a] text-slate-300 py-1.5 px-4 overflow-hidden border-t border-slate-800 text-xs font-mono select-none">
-          <div className="flex items-center gap-6 overflow-x-auto no-scrollbar whitespace-nowrap">
+        {/* ─── LIVE SCORES TICKER SUB-BAR (Auto-scrolling marquee) ─── */}
+        <div className="bg-[#0f172a] text-slate-300 py-1.5 overflow-hidden border-t border-slate-800 text-xs font-mono select-none">
+          <div className="animate-ticker">
             {tickerMatches.concat(tickerMatches).map((match, i) => (
-              <div key={i} className="flex items-center gap-2 flex-shrink-0 hover:text-white transition-colors cursor-pointer">
+              <div key={i} className="flex items-center gap-2 flex-shrink-0 px-4 hover:text-white transition-colors cursor-pointer">
                 {match.live && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
                 <span className="text-emerald-400 font-bold">{match.time}</span>
                 <span className="font-semibold">{match.teams}</span>
-                <span className="text-slate-600">|</span>
+                <span className="text-slate-600 px-2">|</span>
               </div>
             ))}
           </div>

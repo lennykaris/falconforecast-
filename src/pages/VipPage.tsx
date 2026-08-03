@@ -10,7 +10,7 @@ interface VipPageProps {
 
 export const VipPage: React.FC<VipPageProps> = ({ onOpenCheckout }) => {
   const { user } = useAuth();
-  const [stakePerBet, setStakePerBet] = useState<number>(50);
+  const [stakePerBet, setStakePerBet] = useState<number>(500);
   const [betsPerWeek, setBetsPerWeek] = useState<number>(10);
 
   const monthlyWagered = stakePerBet * betsPerWeek * 4;
@@ -21,7 +21,7 @@ export const VipPage: React.FC<VipPageProps> = ({ onOpenCheckout }) => {
     { feature: '85%+ Confidence VIP Picks', free: false, pro: true, champion: true },
     { feature: 'Tactical & Form Deep Analyses', free: false, pro: true, champion: true },
     { feature: 'High-Odds Value Accumulators', free: false, pro: true, champion: true },
-    { feature: 'VIP Telegram Bot Alerts', free: false, pro: true, champion: true },
+    { feature: 'Instant App & Email VIP Alerts', free: false, pro: true, champion: true },
     { feature: 'Bankroll & ROI Calculator', free: false, pro: true, champion: true },
     { feature: '1-on-1 Staking Strategy Advice', free: false, pro: false, champion: true },
     { feature: 'Early-Bird Line Movement Alerts', free: false, pro: false, champion: true },
@@ -96,10 +96,10 @@ export const VipPage: React.FC<VipPageProps> = ({ onOpenCheckout }) => {
               <div className="space-y-3">
                 <div className="flex justify-between text-xs font-semibold">
                   <span style={{ color: 'var(--text-secondary)' }}>Avg. Stake Per Bet</span>
-                  <span className="font-mono" style={{ color: 'var(--brand)' }}>${stakePerBet}</span>
+                  <span className="font-mono" style={{ color: 'var(--brand)' }}>KSh {stakePerBet.toLocaleString()}</span>
                 </div>
                 <input
-                  type="range" min="10" max="500" step="10"
+                  type="range" min="100" max="5000" step="100"
                   value={stakePerBet}
                   onChange={e => setStakePerBet(Number(e.target.value))}
                   className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
@@ -134,10 +134,10 @@ export const VipPage: React.FC<VipPageProps> = ({ onOpenCheckout }) => {
                 className="text-4xl sm:text-5xl font-black font-mono"
                 style={{ color: 'var(--brand)' }}
               >
-                +${estimatedMonthlyProfit.toLocaleString()}
+                +KSh {estimatedMonthlyProfit.toLocaleString()}
               </p>
               <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                On ${monthlyWagered.toLocaleString()} wagered at 34.8% ROI
+                On KSh {monthlyWagered.toLocaleString()} wagered at 34.8% ROI
               </p>
             </div>
           </div>

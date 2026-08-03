@@ -1,5 +1,27 @@
 import type { User } from '../types/prediction';
 
+export const ALL_LEAGUES = [
+  'Premier League',
+  'La Liga',
+  'Serie A',
+  'Bundesliga',
+  'Champions League',
+  'Europa League',
+  'Ligue 1',
+  'Eredivisie',
+];
+
+export const ALL_MARKETS = [
+  'Accumulators',
+  'Over 2.5',
+  'BTTS',
+  'Asian Handicap',
+  'Draw No Bet',
+  'Correct Score',
+  'First Goal Scorer',
+  'In-Play / Live',
+];
+
 export const INITIAL_TIPSTERS: User[] = [
   {
     id: 'tipster-1',
@@ -10,12 +32,14 @@ export const INITIAL_TIPSTERS: User[] = [
     tipsterStatus: 'active',
     bio: 'Chief algorithmic predictor specializing in Premier League & UEFA Champions League high-value accumulators.',
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
-    weeklyPrice: 9.99,
-    monthlyPrice: 29.99,
+    weeklyPrice: 500,
+    monthlyPrice: 1500,
     winRate: 88.5,
     totalTips: 342,
     subscribersCount: 1240,
     verified: true,
+    leagues: ['Premier League', 'Champions League'],
+    markets: ['Accumulators', 'Draw No Bet'],
   },
   {
     id: 'tipster-2',
@@ -26,12 +50,14 @@ export const INITIAL_TIPSTERS: User[] = [
     tipsterStatus: 'active',
     bio: 'Serie A & La Liga tactical expert focused on Both Teams to Score (BTTS) and Asian Handicap value markets.',
     avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=250',
-    weeklyPrice: 12.99,
-    monthlyPrice: 34.99,
+    weeklyPrice: 700,
+    monthlyPrice: 2000,
     winRate: 82.1,
     totalTips: 218,
     subscribersCount: 890,
     verified: true,
+    leagues: ['Serie A', 'La Liga'],
+    markets: ['BTTS', 'Asian Handicap'],
   },
   {
     id: 'tipster-3',
@@ -42,12 +68,14 @@ export const INITIAL_TIPSTERS: User[] = [
     tipsterStatus: 'active',
     bio: 'High-scoring German football specialist. Over 2.5 goals and live in-play predictions with xG modeling.',
     avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=250',
-    weeklyPrice: 7.99,
-    monthlyPrice: 24.99,
+    weeklyPrice: 400,
+    monthlyPrice: 1200,
     winRate: 79.4,
     totalTips: 185,
     subscribersCount: 620,
     verified: true,
+    leagues: ['Bundesliga', 'Europa League'],
+    markets: ['Over 2.5', 'In-Play / Live'],
   },
   {
     id: 'tipster-4',
@@ -58,11 +86,14 @@ export const INITIAL_TIPSTERS: User[] = [
     tipsterStatus: 'pending',
     bio: 'Specialist in identifying mispriced odds and high-odds underdog draws across European cup competitions.',
     avatarUrl: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&q=80&w=250',
-    weeklyPrice: 14.99,
-    monthlyPrice: 39.99,
+    weeklyPrice: 800,
+    monthlyPrice: 2500,
     winRate: 71.0,
     totalTips: 64,
     subscribersCount: 140,
     verified: false,
+    leagues: ['Champions League', 'Europa League', 'Ligue 1'],
+    markets: ['Correct Score', 'Asian Handicap', 'Draw No Bet'],
   },
 ];
+

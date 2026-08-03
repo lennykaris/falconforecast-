@@ -147,20 +147,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onOpenCheckout }) 
 
           <div className="p-6 rounded-2xl bet-card space-y-3">
             <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-              Telegram Alerts
+              VIP Notifications
             </p>
             <h4 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
-              VIP Match Alerts
+              Instant Match Alerts
             </h4>
-            <a
-              href="https://telegram.org"
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs font-semibold underline underline-offset-2"
-              style={{ color: 'var(--brand)' }}
+            <span
+              className="text-xs font-semibold text-emerald-500 flex items-center gap-1"
             >
-              Connect channel →
-            </a>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Active & Enabled
+            </span>
           </div>
         </div>
 

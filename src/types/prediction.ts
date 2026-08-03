@@ -37,6 +37,10 @@ export interface User {
   subscribedTipsterIds?: string[];
   subscribedAt?: string;
   vipExpiresAt?: string;
+  /** Leagues this tipster specialises in, e.g. ['Premier League', 'Champions League'] */
+  leagues?: string[];
+  /** Primary market types, e.g. ['BTTS', 'Over 2.5', 'Accumulators'] */
+  markets?: string[];
 }
 
 export interface TipsterSubscription {

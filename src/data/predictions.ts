@@ -217,8 +217,8 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: 'weekly_pass',
     name: '7-Day VIP Pass',
-    price: '$9.99',
-    rawPrice: 9.99,
+    price: 'KSh 500',
+    rawPrice: 500,
     period: '/week',
     description: 'Perfect for testing our high-converting VIP picks for a single match week.',
     features: [
@@ -232,15 +232,15 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: 'monthly_vip',
     name: 'Pro Predictor',
-    price: '$29.99',
-    rawPrice: 29.99,
+    price: 'KSh 1,500',
+    rawPrice: 1500,
     period: '/month',
     description: 'Our most popular tier for serious sports bettors aiming for consistent monthly ROI.',
     features: [
       'Everything in 7-Day Pass',
       'Exclusive High-Odds VIP Value Accumulators',
       'Subscriber ROI & Bankroll Tracker',
-      'Direct Telegram VIP Channel Access',
+      'Direct Instant VIP Alerts Access',
       'Priority 24/7 VIP Support',
       'Save 30% vs Weekly Rate'
     ],
@@ -249,8 +249,8 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: 'annual_vip',
     name: 'Champion VIP',
-    price: '$199.99',
-    rawPrice: 199.99,
+    price: 'KSh 9,999',
+    rawPrice: 9999,
     period: '/year',
     description: 'Maximum value for long-term investors. Get all predictions across all major leagues.',
     features: [
@@ -261,7 +261,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
       'Exclusive End-of-Season Cash Contests',
       'Best Value - Save over 45%'
     ],
-    savings: 'Save $160/year'
+    savings: 'Save KSh 8,000/year'
   }
 ];
 

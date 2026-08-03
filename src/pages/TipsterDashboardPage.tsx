@@ -109,7 +109,7 @@ export const TipsterDashboardPage: React.FC = () => {
             <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">Gross Revenue</span>
             <DollarSign className="w-4 h-4 opacity-70" />
           </div>
-          <span className="text-3xl font-black font-mono">${revenue.gross.toFixed(2)}</span>
+          <span className="text-3xl font-black font-mono">KSh {revenue.gross.toLocaleString('en-US', { minimumFractionDigits: 0 })}</span>
           <p className="text-[10px] opacity-70">Total collected from subscribers</p>
         </div>
 
@@ -118,7 +118,7 @@ export const TipsterDashboardPage: React.FC = () => {
             <span className="text-[10px] font-bold uppercase tracking-wider">Your Earnings</span>
             <TrendingUp className="w-4 h-4 text-emerald-500" />
           </div>
-          <span className="text-3xl font-black font-mono text-emerald-600">${revenue.net.toFixed(2)}</span>
+          <span className="text-3xl font-black font-mono text-emerald-600">KSh {revenue.net.toLocaleString('en-US', { minimumFractionDigits: 0 })}</span>
           <p className="text-[10px] text-slate-400">After {platformPct}% platform cut deducted</p>
         </div>
 
@@ -127,7 +127,7 @@ export const TipsterDashboardPage: React.FC = () => {
             <span className="text-[10px] font-bold uppercase tracking-wider">Platform Cut</span>
             <Zap className="w-4 h-4 text-amber-400" />
           </div>
-          <span className="text-3xl font-black font-mono text-amber-500">${revenue.platformCut.toFixed(2)}</span>
+          <span className="text-3xl font-black font-mono text-amber-500">KSh {revenue.platformCut.toLocaleString('en-US', { minimumFractionDigits: 0 })}</span>
           <p className="text-[10px] text-slate-400">{platformPct}% retained by FalconForecast</p>
         </div>
 
@@ -179,50 +179,50 @@ export const TipsterDashboardPage: React.FC = () => {
 
           <div className="space-y-3">
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1.5">Weekly Pass</label>
+              <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1.5">Weekly Pass (KSh)</label>
               {editingPrices ? (
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">KSh</span>
                   <input
                     type="number"
-                    step="0.01"
-                    min="1"
+                    step="50"
+                    min="100"
                     value={newWeekly}
                     onChange={e => setNewWeekly(parseFloat(e.target.value))}
-                    className="w-full pl-7 pr-3 py-2.5 border border-sky-300 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/30"
+                    className="w-full pl-12 pr-3 py-2.5 border border-sky-300 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/30"
                   />
                 </div>
               ) : (
                 <div className="flex items-center justify-between px-4 py-3 bg-slate-50 rounded-xl border border-slate-200">
-                  <span className="text-2xl font-black text-slate-900 font-mono">${myProfile?.weeklyPrice?.toFixed(2) || '9.99'}</span>
+                  <span className="text-xl font-black text-slate-900 font-mono">KSh {myProfile?.weeklyPrice || 500}</span>
                   <div className="text-right">
-                    <span className="text-[10px] text-emerald-600 font-bold block">You earn: ${((myProfile?.weeklyPrice || 9.99) * (1 - PLATFORM_CUT_PCT)).toFixed(2)}</span>
-                    <span className="text-[10px] text-slate-400">Platform: ${((myProfile?.weeklyPrice || 9.99) * PLATFORM_CUT_PCT).toFixed(2)}</span>
+                    <span className="text-[10px] text-emerald-600 font-bold block">You earn: KSh {Math.round((myProfile?.weeklyPrice || 500) * (1 - PLATFORM_CUT_PCT))}</span>
+                    <span className="text-[10px] text-slate-400">Platform: KSh {Math.round((myProfile?.weeklyPrice || 500) * PLATFORM_CUT_PCT)}</span>
                   </div>
                 </div>
               )}
             </div>
 
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1.5">Monthly Pass</label>
+              <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1.5">Monthly Pass (KSh)</label>
               {editingPrices ? (
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">KSh</span>
                   <input
                     type="number"
-                    step="0.01"
-                    min="1"
+                    step="100"
+                    min="200"
                     value={newMonthly}
                     onChange={e => setNewMonthly(parseFloat(e.target.value))}
-                    className="w-full pl-7 pr-3 py-2.5 border border-sky-300 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/30"
+                    className="w-full pl-12 pr-3 py-2.5 border border-sky-300 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/30"
                   />
                 </div>
               ) : (
                 <div className="flex items-center justify-between px-4 py-3 bg-slate-50 rounded-xl border border-slate-200">
-                  <span className="text-2xl font-black text-slate-900 font-mono">${myProfile?.monthlyPrice?.toFixed(2) || '29.99'}</span>
+                  <span className="text-xl font-black text-slate-900 font-mono">KSh {myProfile?.monthlyPrice || 1500}</span>
                   <div className="text-right">
-                    <span className="text-[10px] text-emerald-600 font-bold block">You earn: ${((myProfile?.monthlyPrice || 29.99) * (1 - PLATFORM_CUT_PCT)).toFixed(2)}</span>
-                    <span className="text-[10px] text-slate-400">Platform: ${((myProfile?.monthlyPrice || 29.99) * PLATFORM_CUT_PCT).toFixed(2)}</span>
+                    <span className="text-[10px] text-emerald-600 font-bold block">You earn: KSh {Math.round((myProfile?.monthlyPrice || 1500) * (1 - PLATFORM_CUT_PCT))}</span>
+                    <span className="text-[10px] text-slate-400">Platform: KSh {Math.round((myProfile?.monthlyPrice || 1500) * PLATFORM_CUT_PCT)}</span>
                   </div>
                 </div>
               )}
@@ -296,13 +296,13 @@ export const TipsterDashboardPage: React.FC = () => {
                       </td>
 
                       <td className="py-3 px-4 text-center font-mono font-bold text-slate-800">
-                        ${s.price.toFixed(2)}
+                        KSh {s.price}
                       </td>
 
                       <td className="py-3 px-4 text-center font-mono font-bold text-emerald-600">
-                        ${(s.tipsterNet ?? (s.price * (1 - PLATFORM_CUT_PCT))).toFixed(2)}
+                        KSh {(s.tipsterNet ?? (s.price * (1 - PLATFORM_CUT_PCT))).toFixed(0)}
                         <span className="text-slate-300 font-normal"> / </span>
-                        <span className="text-[9px] text-amber-500">-${(s.platformCut ?? (s.price * PLATFORM_CUT_PCT)).toFixed(2)}</span>
+                        <span className="text-[9px] text-amber-500">-KSh {(s.platformCut ?? (s.price * PLATFORM_CUT_PCT)).toFixed(0)}</span>
                       </td>
 
                       <td className="py-3 px-4 text-center">
