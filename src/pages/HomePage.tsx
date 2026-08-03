@@ -307,6 +307,11 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
             ))}
           </div>
 
+          {/* Mobile Advert Card (shown at top of matches on mobile screens) */}
+          <div className="lg:hidden mb-4">
+            <AdvertBanner sticky={false} />
+          </div>
+
           {/* Matches List grouped by League */}
           <div className="space-y-6">
             {(displayedGroups.length > 0 ? displayedGroups : allLeaguesMatchesData).map(group => (
@@ -456,7 +461,9 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
         {/* RIGHT COLUMN: Sticky Ad + Subscriptions + Top Tipsters */}
         <aside className="w-full lg:w-80 flex-shrink-0">
           <div className="sticky top-24 space-y-4">
-            <AdvertBanner sticky={false} />
+            <div className="hidden lg:block">
+              <AdvertBanner sticky={false} />
+            </div>
             <MySubscriptions onUpgrade={onOpenCheckout} />
             <TopTipsters />
           </div>

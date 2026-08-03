@@ -9,12 +9,7 @@ export const Footer: React.FC = () => {
         {/* Brand & Copyright */}
         <div className="space-y-1 text-center md:text-left">
           <div className="flex items-center justify-center md:justify-start gap-2">
-            <div className="w-6 h-6 rounded bg-[#00a8ff] flex items-center justify-center text-white font-extrabold text-xs">
-              F
-            </div>
-            <span className="font-extrabold text-base text-slate-900 dark:text-white">
-              Falcon<span className="text-[#00a8ff]">Forecast</span>
-            </span>
+            <img src="/logo.png" alt="Falcon Forecast" className="h-8 w-auto object-contain mix-blend-multiply dark:mix-blend-normal dark:brightness-125 dark:contrast-125" />
           </div>
           <p>© 2024 Falcon Forecast. Please gamble responsibly. 18+</p>
         </div>
