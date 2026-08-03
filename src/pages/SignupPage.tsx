@@ -3,15 +3,21 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export const SignupPage: React.FC = () => {
-  const { login } = useAuth();
+  const { signupWithSupabase } = useAuth();
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email) { login(email, name || 'New Member'); navigate('/dashboard'); }
+    if (email) {
+      setLoading(true);
+      await signupWithSupabase(email, password, name || 'New Member');
+      setLoading(false);
+      navigate('/dashboard');
+    }
   };
 
   const perks = [
@@ -92,10 +98,11 @@ export const SignupPage: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-3.5 text-xs font-bold uppercase tracking-wider text-slate-950 rounded-xl transition-all hover:brightness-110 mt-1"
+              disabled={loading}
+              className="w-full py-3.5 text-xs font-bold uppercase tracking-wider text-slate-950 rounded-xl transition-all hover:brightness-110 mt-1 disabled:opacity-50"
               style={{ backgroundColor: 'var(--brand)' }}
             >
-              Create Free Account
+              {loading ? 'Creating Account...' : 'Create Free Account'}
             </button>
           </form>
 
@@ -110,3 +117,4 @@ export const SignupPage: React.FC = () => {
     </div>
   );
 };
+

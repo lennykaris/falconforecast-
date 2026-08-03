@@ -3,14 +3,20 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export const LoginPage: React.FC = () => {
-  const { login, loginWithPreset } = useAuth();
+  const { loginWithSupabase, loginWithPreset } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email) { login(email); navigate('/dashboard'); }
+    if (email) {
+      setLoading(true);
+      await loginWithSupabase(email, password);
+      setLoading(false);
+      navigate('/dashboard');
+    }
   };
 
   const handleQuickLogin = (preset: 'free' | 'vip' | 'admin') => {
@@ -52,6 +58,7 @@ export const LoginPage: React.FC = () => {
             ].map(({ key, label }) => (
               <button
                 key={key}
+                type="button"
                 onClick={() => handleQuickLogin(key)}
                 className="py-2 rounded-lg text-[11px] font-semibold border transition-colors"
                 style={{ color: 'var(--text-secondary)', borderColor: 'var(--border)', backgroundColor: 'var(--bg-elevated)' }}
@@ -111,10 +118,11 @@ export const LoginPage: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-3.5 text-xs font-bold uppercase tracking-wider text-slate-950 rounded-xl transition-all hover:brightness-110 mt-2"
+              disabled={loading}
+              className="w-full py-3.5 text-xs font-bold uppercase tracking-wider text-slate-950 rounded-xl transition-all hover:brightness-110 mt-2 disabled:opacity-50"
               style={{ backgroundColor: 'var(--brand)' }}
             >
-              Log In
+              {loading ? 'Logging in...' : 'Log In'}
             </button>
           </form>
 
@@ -133,3 +141,4 @@ export const LoginPage: React.FC = () => {
     </div>
   );
 };
+

@@ -9,7 +9,11 @@ import {
   Filter, 
   Check, 
   X, 
-  RotateCcw
+  RotateCcw,
+  CheckCircle,
+  XCircle,
+  Clock,
+  MinusCircle
 } from 'lucide-react';
 import type { Prediction } from '../types/prediction';
 import { usePredictions } from '../context/PredictionsContext';
@@ -54,6 +58,10 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
       confidence: editConfidence,
     });
     setEditingId(null);
+  };
+
+  const handleStatusChange = (id: string, status: 'pending' | 'won' | 'lost' | 'void') => {
+    updatePrediction(id, { status });
   };
 
   return (
@@ -125,7 +133,7 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
                 <th className="py-3.5 px-4">League</th>
                 <th className="py-3.5 px-4">Recommended Tip</th>
                 <th className="py-3.5 px-4 text-center">Odds</th>
-                <th className="py-3.5 px-4 text-center">Confidence</th>
+                <th className="py-3.5 px-4 text-center">Status Outcome</th>
                 <th className="py-3.5 px-4 text-center">Tier Toggle</th>
                 <th className="py-3.5 px-4 text-right">Actions</th>
               </tr>
@@ -142,6 +150,7 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
               ) : (
                 filteredPredictions.map(p => {
                   const isEditing = editingId === p.id;
+                  const currentStatus = p.status || 'pending';
                   return (
                     <tr key={p.id} className="hover:bg-slate-50 transition-colors">
                       
@@ -195,22 +204,26 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
                         )}
                       </td>
 
-                      {/* Confidence */}
-                      <td className="py-3.5 px-4 text-center font-mono font-bold">
-                        {isEditing ? (
-                          <input
-                            type="number"
-                            min="50"
-                            max="99"
-                            value={editConfidence}
-                            onChange={e => setEditConfidence(parseInt(e.target.value) || 70)}
-                            className="bg-white border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 w-16 text-center focus:outline-none focus:border-[#0EA5E9]"
-                          />
-                        ) : (
-                          <span className="text-[#0EA5E9]">
-                            {p.confidence}%
-                          </span>
-                        )}
+                      {/* Status Outcome */}
+                      <td className="py-3.5 px-4 text-center">
+                        <select
+                          value={currentStatus}
+                          onChange={e => handleStatusChange(p.id, e.target.value as any)}
+                          className={`text-[11px] font-bold rounded-lg px-2.5 py-1 border transition-colors cursor-pointer ${
+                            currentStatus === 'won'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                              : currentStatus === 'lost'
+                              ? 'bg-rose-50 text-rose-700 border-rose-300'
+                              : currentStatus === 'void'
+                              ? 'bg-slate-100 text-slate-600 border-slate-300'
+                              : 'bg-amber-50 text-amber-700 border-amber-300'
+                          }`}
+                        >
+                          <option value="pending">⏳ Pending</option>
+                          <option value="won">✅ WON</option>
+                          <option value="lost">❌ LOST</option>
+                          <option value="void">⚪ VOID</option>
+                        </select>
                       </td>
 
                       {/* Tier Toggle Switch */}
@@ -287,3 +300,4 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
     </div>
   );
 };
+

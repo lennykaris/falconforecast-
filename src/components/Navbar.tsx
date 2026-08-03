@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Search, PlusCircle, User, Sun, Moon, Home, Trophy, TrendingUp, Star, Sparkles } from 'lucide-react';
+import { Search, PlusCircle, User, Sun, Moon, Home, Trophy, TrendingUp, Star, Users, ShieldCheck, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -26,8 +26,8 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
     { to: '/', label: 'Home', icon: Home },
     { to: '/premier-league', label: 'Leagues', icon: Trophy },
     { to: '/odds-comparison', label: 'Odds', icon: TrendingUp },
+    { to: '/tipsters', label: 'Tipsters', icon: Users },
     { to: '/premium-tips', label: 'Tips', icon: Star },
-    { to: '/post-tip', label: 'Post', icon: PlusCircle },
   ];
 
   return (
@@ -105,6 +105,25 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                 >
                   Premium Tips
                 </Link>
+                <Link
+                  to="/tipsters"
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                    isActive('/tipsters') ? 'text-[#00a8ff] bg-white dark:bg-sky-950/60 shadow-xs' : 'text-slate-700 dark:text-slate-300 hover:text-[#00a8ff]'
+                  }`}
+                >
+                  Tipsters
+                </Link>
+                {isLoggedIn && user?.role === 'admin' && (
+                  <Link
+                    to="/admin"
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 ${
+                      isActive('/admin') ? 'text-[#00a8ff] bg-white dark:bg-sky-950/60 shadow-xs' : 'text-slate-700 dark:text-slate-300 hover:text-[#00a8ff]'
+                    }`}
+                  >
+                    <ShieldCheck className="w-3 h-3" />
+                    Admin
+                  </Link>
+                )}
               </nav>
             </div>
 
@@ -131,6 +150,16 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
 
               {isLoggedIn ? (
                 <div className="flex items-center gap-2">
+                  {/* Tipster Dashboard quick link */}
+                  {user?.role === 'tipster' && (
+                    <Link
+                      to="/tipster-dashboard"
+                      className="px-3 py-2 border border-amber-300 bg-amber-50 text-amber-700 hover:border-amber-400 text-xs font-bold rounded-lg transition-colors flex items-center gap-1"
+                    >
+                      <LayoutDashboard className="w-3.5 h-3.5" />
+                      <span>My Panel</span>
+                    </Link>
+                  )}
                   <Link
                     to="/dashboard"
                     className="px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:border-[#00a8ff] text-xs font-bold rounded-lg transition-colors flex items-center gap-1"

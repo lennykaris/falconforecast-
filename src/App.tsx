@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { PredictionsProvider } from './context/PredictionsContext';
+import { TipstersProvider } from './context/TipstersContext';
 import { BetSlipProvider } from './context/BetSlipContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
@@ -22,6 +23,8 @@ import { GdprPage } from './pages/GdprPage';
 import { RefundPolicyPage } from './pages/RefundPolicyPage';
 import { CopyrightPage } from './pages/CopyrightPage';
 import { PrivacyPage } from './pages/PrivacyPage';
+import { TipstersPage } from './pages/TipstersPage';
+import { TipsterDashboardPage } from './pages/TipsterDashboardPage';
 
 import type { SubscriptionPlan } from './types/prediction';
 import { SUBSCRIPTION_PLANS } from './data/predictions';
@@ -71,6 +74,8 @@ export const AppContent: React.FC = () => {
             
             <Route path="/dashboard" element={<DashboardPage onOpenCheckout={handleOpenCheckout} />} />
             <Route path="/admin" element={<AdminPage />} />
+            <Route path="/tipsters" element={<TipstersPage />} />
+            <Route path="/tipster-dashboard" element={<TipsterDashboardPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/about" element={<AboutPage />} />
@@ -100,9 +105,11 @@ export function App() {
       <ThemeProvider>
         <AuthProvider>
           <PredictionsProvider>
-            <BetSlipProvider>
-              <AppContent />
-            </BetSlipProvider>
+            <TipstersProvider>
+              <BetSlipProvider>
+                <AppContent />
+              </BetSlipProvider>
+            </TipstersProvider>
           </PredictionsProvider>
         </AuthProvider>
       </ThemeProvider>

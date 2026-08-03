@@ -12,18 +12,45 @@ export interface Prediction {
   homeLogo?: string;
   awayLogo?: string;
   analysis?: string;
-  status?: 'pending' | 'won' | 'lost';
+  status?: 'pending' | 'won' | 'lost' | 'void';
   result?: string;
+  tipsterId?: string;
+  tipsterName?: string;
+  tipsterAvatar?: string;
 }
 
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'user' | 'admin';
+  role: 'user' | 'tipster' | 'admin';
   plan: 'free' | 'monthly_vip' | 'annual_vip';
+  tipsterStatus?: 'none' | 'pending' | 'active' | 'suspended';
+  bio?: string;
+  avatarUrl?: string;
+  weeklyPrice?: number;
+  monthlyPrice?: number;
+  winRate?: number;
+  totalTips?: number;
+  subscribersCount?: number;
+  verified?: boolean;
+  subscribedTipsterIds?: string[];
   subscribedAt?: string;
   vipExpiresAt?: string;
+}
+
+export interface TipsterSubscription {
+  id: string;
+  userId: string;
+  userName: string;
+  tipsterId: string;
+  billingCycle: 'weekly' | 'monthly';
+  status: 'active' | 'cancelled' | 'expired';
+  price: number;
+  platformCut: number;
+  tipsterNet: number;
+  expiresAt: string;
+  createdAt: string;
 }
 
 export interface SubscriptionPlan {
@@ -37,3 +64,4 @@ export interface SubscriptionPlan {
   popular?: boolean;
   savings?: string;
 }
+
