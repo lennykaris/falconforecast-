@@ -8,8 +8,13 @@ export const Footer: React.FC = () => {
         
         {/* Brand & Copyright */}
         <div className="space-y-1 text-center md:text-left">
-          <div className="flex items-center justify-center md:justify-start gap-2">
-            <img src="/logo.png" alt="Falcon Forecast" className="h-8 w-auto object-contain mix-blend-multiply dark:mix-blend-normal dark:brightness-125 dark:contrast-125" />
+          <div className="flex items-center justify-center md:justify-start">
+            <Link to="/" className="flex items-center select-none">
+              <span className="font-black italic text-base tracking-wider uppercase font-sans">
+                <span className="text-[#00a8ff]">FALCON</span>
+                <span className="text-slate-900 dark:text-white ml-1.5">FORECAST</span>
+              </span>
+            </Link>
           </div>
           <p>© 2024 Falcon Forecast. Please gamble responsibly. 18+</p>
         </div>
