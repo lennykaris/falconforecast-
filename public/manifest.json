@@ -1,4 +1,5 @@
 {
+  "id": "/",
   "short_name": "FalconForecast",
   "name": "Falcon Forecast | Sports Predictions & Odds",
   "description": "High-converting sports prediction platform & multi-vendor tipster community with live odds comparison.",
@@ -7,13 +8,13 @@
       "src": "/pwa-192.png",
       "type": "image/png",
       "sizes": "192x192",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
       "src": "/pwa-512.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
       "src": "/pwa-512.png",
@@ -22,12 +23,14 @@
       "purpose": "maskable"
     }
   ],
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "background_color": "#0f172a",
   "theme_color": "#0284c7",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
   "scope": "/",
+  "prefer_related_applications": false,
   "categories": ["sports", "utilities", "entertainment"],
   "shortcuts": [
     {
