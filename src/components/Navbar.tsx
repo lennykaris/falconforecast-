@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Search, PlusCircle, User, Sun, Moon, Home, Trophy, TrendingUp, Star, Users, ShieldCheck, LayoutDashboard } from 'lucide-react';
+import { Search, PlusCircle, User, Sun, Moon, Home, Trophy, TrendingUp, Star, Users, ShieldCheck, LayoutDashboard, Smartphone, Download } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
-export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
+export const Navbar: React.FC<{ onOpenCheckout?: () => void; onOpenPwaModal?: () => void }> = ({ onOpenPwaModal }) => {
+
   const { isLoggedIn, user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
@@ -157,6 +158,18 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                 </Link>
               )}
 
+              {/* PWA Mobile App Install Button */}
+              {onOpenPwaModal && (
+                <button
+                  onClick={onOpenPwaModal}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-sky-500/40 bg-sky-500/10 text-[#00a8ff] hover:bg-sky-500/20 transition-all text-xs font-bold shadow-xs"
+                  title="Install Mobile App on Phone"
+                >
+                  <Smartphone className="w-3.5 h-3.5" />
+                  <span className="hidden xl:inline">Install App</span>
+                </button>
+              )}
+
               {/* Interactive Theme Switch Toggle */}
               <button
                 onClick={toggleTheme}
@@ -221,6 +234,18 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
               </Link>
             );
           })}
+
+          {/* Quick PWA App install button on mobile dynamic island */}
+          {onOpenPwaModal && (
+            <button
+              onClick={onOpenPwaModal}
+              className="flex flex-col items-center justify-center py-1 px-2.5 text-[#00a8ff] hover:text-[#0090e0] font-bold"
+              title="Install App to Phone"
+            >
+              <Smartphone className="w-4 h-4 animate-bounce" />
+              <span className="text-[9px] font-bold mt-0.5 tracking-tight">App</span>
+            </button>
+          )}
 
           {/* Quick theme toggle on mobile dynamic island */}
           <button

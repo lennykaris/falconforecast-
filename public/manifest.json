@@ -1,0 +1,46 @@
+{
+  "short_name": "FalconForecast",
+  "name": "Falcon Forecast | Sports Predictions & Odds",
+  "description": "High-converting sports prediction platform & multi-vendor tipster community with live odds comparison.",
+  "icons": [
+    {
+      "src": "/pwa-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#0284c7",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "categories": ["sports", "utilities", "entertainment"],
+  "shortcuts": [
+    {
+      "name": "VIP Tips",
+      "short_name": "VIP",
+      "description": "View today's premium football predictions",
+      "url": "/premium-tips"
+    },
+    {
+      "name": "Odds Comparison",
+      "short_name": "Odds",
+      "description": "Compare bookmaker odds",
+      "url": "/odds-comparison"
+    }
+  ]
+}
