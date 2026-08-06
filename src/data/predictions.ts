@@ -25,6 +25,8 @@ export const INITIAL_PREDICTIONS: Prediction[] = [
     odds: 2.10,
     confidence: 94,
     tier: 'vip',
+    isPlatformTip: true,
+    tipsterName: 'Falcon Forecast Platform',
     category: 'Outright / Knockout',
     analysis: 'VIP Value Pick: Real Madrid home European record remains unblemished. Vinicius Jr and Bellingham are fit and starting.',
     status: 'pending'
@@ -53,6 +55,8 @@ export const INITIAL_PREDICTIONS: Prediction[] = [
     odds: 2.35,
     confidence: 91,
     tier: 'vip',
+    isPlatformTip: true,
+    tipsterName: 'Falcon Forecast Platform',
     category: 'Asian Handicap',
     analysis: 'VIP High Odds Pick: City hold an expected goals (xG) differential of +1.8 per 90 at the Etihad. Haaland has scored 6 goals in 4 games against Liverpool at home.',
     status: 'pending'
@@ -81,6 +85,8 @@ export const INITIAL_PREDICTIONS: Prediction[] = [
     odds: 2.05,
     confidence: 89,
     tier: 'vip',
+    isPlatformTip: true,
+    tipsterName: 'Falcon Forecast Platform',
     category: 'Match Result + Goals',
     analysis: 'Dortmund defense concedes an average of 14 shots per away UCL fixture. Dembele & Barcola in peak counter-attacking form.',
     status: 'pending'

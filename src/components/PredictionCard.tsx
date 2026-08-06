@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { Prediction } from '../types/prediction';
 import { useAuth } from '../context/AuthContext';
-import { MessageSquare, Share2 } from 'lucide-react';
+import { MessageSquare, Share2, ShieldCheck, Sparkles } from 'lucide-react';
 import { MatchCommentsModal } from './MatchCommentsModal';
 import { ShareTipModal } from './ShareTipModal';
 
@@ -17,6 +17,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({ prediction, onUn
   const [isShareOpen, setIsShareOpen] = useState(false);
 
   const isLocked = prediction.tier === 'vip' && !isVip;
+  const isPlatformTip = prediction.tier === 'vip' || prediction.isPlatformTip || prediction.tipsterName === 'Falcon Forecast Platform';
 
   const formatKickoff = (dateString: string) => {
     try {
@@ -58,21 +59,43 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({ prediction, onUn
             >
               {formatKickoff(prediction.kickoff)}
             </span>
-            <span
-              className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border"
-              style={
-                prediction.tier === 'vip'
-                  ? { color: 'var(--brand)', borderColor: 'var(--brand)', backgroundColor: 'rgba(56,189,248,0.08)' }
-                  : { color: 'var(--text-muted)', borderColor: 'var(--border)' }
-              }
-            >
-              {prediction.tier === 'vip' ? 'VIP' : 'Free'}
-            </span>
+            
+            {isPlatformTip ? (
+              <span className="text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-sky-400/40 bg-sky-500/15 text-[#00a8ff] flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3 text-[#00a8ff]" />
+                Platform Tip
+              </span>
+            ) : (
+              <span
+                className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border"
+                style={
+                  prediction.tier === 'vip'
+                    ? { color: 'var(--brand)', borderColor: 'var(--brand)', backgroundColor: 'rgba(56,189,248,0.08)' }
+                    : { color: 'var(--text-muted)', borderColor: 'var(--border)' }
+                }
+              >
+                {prediction.tier === 'vip' ? 'VIP' : 'Free'}
+              </span>
+            )}
           </div>
         </div>
 
         {/* Match body */}
         <div className="p-5 flex flex-col flex-1 space-y-4">
+
+          {/* Official Platform Tip Banner for VIP/Platform Picks */}
+          {isPlatformTip && (
+            <div className="flex items-center justify-between text-[11px] font-bold px-3 py-1.5 rounded-xl bg-gradient-to-r from-sky-500/15 via-indigo-500/10 to-transparent border border-sky-500/30 text-sky-600 dark:text-sky-300">
+              <span className="flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#00a8ff]" />
+                <span>Falcon Forecast Official Platform Tip</span>
+              </span>
+              <span className="text-[10px] font-extrabold uppercase bg-sky-500/20 text-[#00a8ff] px-1.5 py-0.5 rounded">
+                Verified AI + Expert
+              </span>
+            </div>
+          )}
+
 
           {/* Teams */}
           <div className="grid grid-cols-11 items-center">

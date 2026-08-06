@@ -81,12 +81,20 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void; onOpenPwaModal?: ()
                   Tipsters
                 </Link>
                 <Link
+                  to="/news"
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                    isActive('/news') ? 'text-[#00a8ff] bg-white dark:bg-sky-950/60 shadow-xs' : 'text-slate-700 dark:text-slate-300 hover:text-[#00a8ff]'
+                  }`}
+                >
+                  News
+                </Link>
+                <Link
                   to="/about"
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                     isActive('/about') ? 'text-[#00a8ff] bg-white dark:bg-sky-950/60 shadow-xs' : 'text-slate-700 dark:text-slate-300 hover:text-[#00a8ff]'
                   }`}
                 >
-                  News
+                  About Us
                 </Link>
                 {isLoggedIn && user?.role === 'admin' && (
                   <Link

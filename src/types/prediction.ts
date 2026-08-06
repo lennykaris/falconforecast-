@@ -9,6 +9,7 @@ export interface Prediction {
   confidence: number; // 0 - 100
   tier: 'free' | 'vip';
   category?: string;
+  isPlatformTip?: boolean;
   homeLogo?: string;
   awayLogo?: string;
   analysis?: string;
@@ -18,6 +19,7 @@ export interface Prediction {
   tipsterName?: string;
   tipsterAvatar?: string;
 }
+
 
 export interface User {
   id: string;

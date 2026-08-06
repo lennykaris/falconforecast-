@@ -18,6 +18,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { AdminPage } from './pages/AdminPage';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
+import { NewsPage } from './pages/NewsPage';
 import { AboutPage } from './pages/AboutPage';
 import { TermsPage } from './pages/TermsPage';
 import { GdprPage } from './pages/GdprPage';
@@ -76,6 +77,7 @@ export const AppContent: React.FC = () => {
             <Route path="/vip" element={<PremiumTipsPage onOpenCheckout={handleOpenCheckout} />} />
             <Route path="/tips" element={<HomePage onOpenCheckout={handleOpenCheckout} />} />
             <Route path="/live-scores" element={<HomePage onOpenCheckout={handleOpenCheckout} />} />
+            <Route path="/news" element={<NewsPage />} />
             
             <Route path="/dashboard" element={<DashboardPage onOpenCheckout={handleOpenCheckout} />} />
             <Route path="/admin" element={<AdminPage />} />
@@ -84,6 +86,7 @@ export const AppContent: React.FC = () => {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/about" element={<AboutPage />} />
+
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/gdpr" element={<GdprPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
