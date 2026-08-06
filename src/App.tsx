@@ -8,7 +8,6 @@ import { BetSlipProvider } from './context/BetSlipContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { CheckoutModal } from './components/CheckoutModal';
-import { PwaInstallModal, PwaInstallBanner } from './components/PwaInstallModal';
 
 import { HomePage } from './pages/HomePage';
 import { PostTipPage } from './pages/PostTipPage';
@@ -41,7 +40,6 @@ const ScrollToTop: React.FC = () => {
 
 export const AppContent: React.FC = () => {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [isPwaModalOpen, setIsPwaModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>(SUBSCRIPTION_PLANS[1]);
 
   const handleOpenCheckout = (plan?: SubscriptionPlan) => {
@@ -56,7 +54,6 @@ export const AppContent: React.FC = () => {
       <div>
         <Navbar
           onOpenCheckout={() => handleOpenCheckout(SUBSCRIPTION_PLANS[1])}
-          onOpenPwaModal={() => setIsPwaModalOpen(true)}
         />
 
         <main className="pb-24 md:pb-0">
@@ -102,15 +99,6 @@ export const AppContent: React.FC = () => {
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
         selectedPlan={selectedPlan}
-      />
-
-      <PwaInstallModal
-        isOpen={isPwaModalOpen}
-        onClose={() => setIsPwaModalOpen(false)}
-      />
-
-      <PwaInstallBanner
-        onOpenModal={() => setIsPwaModalOpen(true)}
       />
     </div>
   );
