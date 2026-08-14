@@ -8,8 +8,7 @@ interface AuthContextType {
   isVip: boolean;
   isAdmin: boolean;
   login: (email: string, name?: string, role?: 'user' | 'tipster' | 'admin', plan?: 'free' | 'monthly_vip' | 'annual_vip') => void;
-  loginWithSupabase: (email: string, password?: string) => Promise<{ error: Error | null }>;
-  signupWithSupabase: (email: string, password?: string, name?: string) => Promise<{ error: Error | null }>;
+  loginWithGoogle: () => Promise<{ error: Error | null }>;
   loginWithPreset: (preset: 'free' | 'vip' | 'admin' | 'tipster') => void;
   logout: () => Promise<void>;
   subscribeToPlan: (planId: string) => void;
@@ -93,55 +92,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(newUser);
   };
 
-  const loginWithSupabase = async (email: string, password?: string) => {
-    if (!password) {
-      login(email);
-      return { error: null };
-    }
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      // Fall back to demo login if Supabase auth credentials fail or user not signed up
-      login(email);
-      return { error: null };
-    }
-    if (data.user) {
-      setUser({
-        id: data.user.id,
-        name: data.user.user_metadata?.name || email.split('@')[0],
-        email: data.user.email || email,
-        role: data.user.user_metadata?.role || 'user',
-        plan: data.user.user_metadata?.plan || 'free',
-        subscribedAt: data.user.created_at,
-      });
-    }
-    return { error: null };
-  };
-
-  const signupWithSupabase = async (email: string, password?: string, name?: string) => {
-    if (!password) {
-      login(email, name);
-      return { error: null };
-    }
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
+  const loginWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
       options: {
-        data: { name, role: 'user', plan: 'free' },
+        redirectTo: `${window.location.origin}/dashboard`,
       },
     });
     if (error) {
-      login(email, name);
-      return { error: null };
-    }
-    if (data.user) {
-      setUser({
-        id: data.user.id,
-        name: name || email.split('@')[0],
-        email: data.user.email || email,
-        role: 'user',
-        plan: 'free',
-        subscribedAt: new Date().toISOString(),
-      });
+      return { error };
     }
     return { error: null };
   };
@@ -193,8 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isVip,
         isAdmin,
         login,
-        loginWithSupabase,
-        signupWithSupabase,
+        loginWithGoogle,
         loginWithPreset,
         logout,
         subscribeToPlan,

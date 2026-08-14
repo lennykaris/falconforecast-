@@ -24,7 +24,7 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
   ];
 
   const mobileTabs = [
-    { to: '/', label: 'Home', icon: Home },
+    { to: '/matches', label: 'Home', icon: Home },
     { to: '/premier-league', label: 'Leagues', icon: Trophy },
     { to: '/odds-comparison', label: 'Odds', icon: TrendingUp },
     { to: '/premium-tips', label: 'Tips', icon: Star },
@@ -40,7 +40,7 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
             
             {/* Logo & Main Nav */}
             <div className="flex items-center gap-4 xl:gap-8 min-w-0">
-              <Link to="/" className="flex items-center gap-1 group select-none flex-shrink-0">
+              <Link to="/matches" className="flex items-center gap-1 group select-none flex-shrink-0">
                 <span className="font-black italic text-xl tracking-wider uppercase font-sans whitespace-nowrap">
                   <span className="text-[#00a8ff]">FALCON</span>
                   <span className="text-slate-900 dark:text-white ml-1.5">FORECAST</span>
@@ -49,9 +49,9 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
 
               <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1 flex-shrink-0">
                 <Link
-                  to="/"
+                  to="/matches"
                   className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
-                    isActive('/') ? 'text-[#00a8ff] bg-white dark:bg-sky-950/60 shadow-xs' : 'text-slate-700 dark:text-slate-300 hover:text-[#00a8ff]'
+                    isActive('/matches') ? 'text-[#00a8ff] bg-white dark:bg-sky-950/60 shadow-xs' : 'text-slate-700 dark:text-slate-300 hover:text-[#00a8ff]'
                   }`}
                 >
                   Home

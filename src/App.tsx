@@ -9,6 +9,7 @@ import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { CheckoutModal } from './components/CheckoutModal';
 
+import { LandingPage } from './pages/LandingPage';
 import { HomePage } from './pages/HomePage';
 import { PostTipPage } from './pages/PostTipPage';
 import { PremiumTipsPage } from './pages/PremiumTipsPage';
@@ -41,6 +42,8 @@ const ScrollToTop: React.FC = () => {
 export const AppContent: React.FC = () => {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>(SUBSCRIPTION_PLANS[1]);
+  const location = useLocation();
+  const isLandingPage = location.pathname === '/';
 
   const handleOpenCheckout = (plan?: SubscriptionPlan) => {
     if (plan) setSelectedPlan(plan);
@@ -52,13 +55,16 @@ export const AppContent: React.FC = () => {
       <ScrollToTop />
 
       <div>
-        <Navbar
-          onOpenCheckout={() => handleOpenCheckout(SUBSCRIPTION_PLANS[1])}
-        />
+        {!isLandingPage && (
+          <Navbar
+            onOpenCheckout={() => handleOpenCheckout(SUBSCRIPTION_PLANS[1])}
+          />
+        )}
 
-        <main className="pb-24 md:pb-0">
+        <main className={isLandingPage ? '' : 'pb-24 md:pb-0'}>
           <Routes>
-            <Route path="/" element={<HomePage onOpenCheckout={handleOpenCheckout} />} />
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/matches" element={<HomePage onOpenCheckout={handleOpenCheckout} />} />
             <Route path="/post-tip" element={<PostTipPage />} />
             <Route path="/premium-tips" element={<PremiumTipsPage onOpenCheckout={handleOpenCheckout} />} />
             <Route path="/odds-comparison" element={<OddsComparisonPage />} />
