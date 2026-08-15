@@ -31,9 +31,12 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({ label, o
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
 
+  const initializedRef = useRef(false);
+
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) return;
+    if (!GOOGLE_CLIENT_ID || initializedRef.current) return;
     let cancelled = false;
+    let observer: MutationObserver | null = null;
 
     const handleCredential = async (response: { credential: string }) => {
       setLoading(true);
@@ -47,7 +50,9 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({ label, o
     };
 
     const init = () => {
-      if (cancelled || !window.google || !hiddenButtonRef.current) return;
+      if (cancelled || initializedRef.current || !window.google || !hiddenButtonRef.current) return;
+      initializedRef.current = true;
+
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: handleCredential,
@@ -57,7 +62,21 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({ label, o
         theme: 'outline',
         size: 'large',
       });
-      setReady(true);
+
+      // renderButton() is async under the hood — only flip to "ready" once
+      // Google has actually inserted its button into the container.
+      const container = hiddenButtonRef.current;
+      if (container.querySelector('div[role="button"]')) {
+        setReady(true);
+        return;
+      }
+      observer = new MutationObserver(() => {
+        if (container.querySelector('div[role="button"]')) {
+          setReady(true);
+          observer?.disconnect();
+        }
+      });
+      observer.observe(container, { childList: true, subtree: true });
     };
 
     if (window.google) {
@@ -70,6 +89,7 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({ label, o
 
     return () => {
       cancelled = true;
+      observer?.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
