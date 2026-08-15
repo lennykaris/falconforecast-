@@ -16,7 +16,7 @@ type AdminTab = 'predictions' | 'revenue' | 'tipsters' | 'users';
 export const AdminPage: React.FC = () => {
   const { predictions } = usePredictions();
   const { tipsters, approveTipster, suspendTipster, subscriptions } = useTipsters();
-  const { user, loginWithPreset } = useAuth();
+  const { user } = useAuth();
 
   const [activeTab, setActiveTab] = useState<AdminTab>('predictions');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -33,12 +33,9 @@ export const AdminPage: React.FC = () => {
   const totalSubscriptions = subscriptions.length;
   const platformRevenue = subscriptions.reduce((sum, s) => sum + (s.price || 0), 0);
 
-  const allUsers: User[] = [
-    { id: 'demo-1', name: 'Alex Rivera', email: 'free.user@falconforecast.com', role: 'user', plan: 'free' },
-    { id: 'demo-2', name: 'Marcus Sterling', email: 'vip.pro@falconforecast.com', role: 'user', plan: 'monthly_vip' },
-    { id: 'demo-3', name: 'Chief Tipster Admin', email: 'admin@falconforecast.com', role: 'admin', plan: 'annual_vip' },
-    ...tipsters,
-  ];
+  const allUsers: User[] = user
+    ? [user, ...tipsters.filter(t => t.id !== user.id)]
+    : tipsters;
 
   // Per-tipster revenue breakdown for admin
   const tipsterRevenues = tipsters.map(t => {
@@ -90,14 +87,6 @@ export const AdminPage: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-3">
-          {user?.role !== 'admin' && (
-            <button
-              onClick={() => loginWithPreset('admin')}
-              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl border border-slate-200 transition-colors"
-            >
-              Switch to Admin
-            </button>
-          )}
           {activeTab === 'predictions' && (
             <button
               onClick={() => setIsAddModalOpen(true)}

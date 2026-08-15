@@ -307,6 +307,22 @@ html.dark .odds-btn:hover {
   animation-play-state: paused;
 }
 
+.animate-ticker-fast {
+  display: flex;
+  width: max-content;
+  animation: ticker 18s linear infinite;
+}
+
+/* ─── LANDING PAGE MOTION ─── */
+@keyframes floor-drift {
+  from { background-position: 0 0; }
+  to { background-position: 0 56px; }
+}
+
+.animate-floor-drift {
+  animation: floor-drift 14s linear infinite;
+}
+
 /* ─── SCROLLBAR ─── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg-base); }

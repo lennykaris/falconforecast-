@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { usePredictions } from '../context/PredictionsContext';
 import { PredictionCard } from '../components/PredictionCard';
@@ -10,7 +11,7 @@ interface DashboardPageProps {
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({ onOpenCheckout }) => {
-  const { user, isLoggedIn, isVip, loginWithPreset } = useAuth();
+  const { user, isLoggedIn, isVip } = useAuth();
   const { predictions } = usePredictions();
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
@@ -33,22 +34,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onOpenCheckout }) 
             </p>
           </div>
 
-          <div className="flex flex-col gap-3">
-            <button
-              onClick={() => loginWithPreset('vip')}
-              className="w-full py-3.5 text-xs font-bold uppercase tracking-wider text-slate-950 rounded-xl transition-all hover:brightness-110"
-              style={{ backgroundColor: 'var(--brand)' }}
-            >
-              Demo VIP Login
-            </button>
-            <button
-              onClick={() => loginWithPreset('free')}
-              className="w-full py-3.5 text-xs font-semibold rounded-xl border transition-colors"
-              style={{ color: 'var(--text-secondary)', borderColor: 'var(--border)', backgroundColor: 'var(--bg-elevated)' }}
-            >
-              Demo Free Login
-            </button>
-          </div>
+          <Link
+            to="/login"
+            className="block w-full py-3.5 text-xs font-bold uppercase tracking-wider text-center text-slate-950 rounded-xl transition-all hover:brightness-110"
+            style={{ backgroundColor: 'var(--brand)' }}
+          >
+            Log In
+          </Link>
         </div>
       </div>
     );

@@ -7,9 +7,9 @@ interface AuthContextType {
   isLoggedIn: boolean;
   isVip: boolean;
   isAdmin: boolean;
-  login: (email: string, name?: string, role?: 'user' | 'tipster' | 'admin', plan?: 'free' | 'monthly_vip' | 'annual_vip') => void;
   loginWithGoogle: () => Promise<{ error: Error | null }>;
-  loginWithPreset: (preset: 'free' | 'vip' | 'admin' | 'tipster') => void;
+  loginWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signupWithEmail: (email: string, password: string, name?: string) => Promise<{ error: Error | null }>;
   logout: () => Promise<void>;
   subscribeToPlan: (planId: string) => void;
 }
@@ -74,24 +74,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
-  const login = (
-    email: string,
-    name: string = 'Demo User',
-    role: 'user' | 'tipster' | 'admin' = 'user',
-    plan: 'free' | 'monthly_vip' | 'annual_vip' = 'free'
-  ) => {
-    const newUser: User = {
-      id: `user-${Date.now()}`,
-      name: name || email.split('@')[0],
-      email,
-      role,
-      plan,
-      subscribedAt: new Date().toISOString(),
-      vipExpiresAt: plan !== 'free' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : undefined,
-    };
-    setUser(newUser);
-  };
-
   const loginWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -105,16 +87,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error: null };
   };
 
-  const loginWithPreset = (preset: 'free' | 'vip' | 'admin' | 'tipster') => {
-    if (preset === 'free') {
-      login('free.user@falconforecast.com', 'Alex Rivera', 'user', 'free');
-    } else if (preset === 'vip') {
-      login('vip.pro@falconforecast.com', 'Marcus Sterling', 'user', 'monthly_vip');
-    } else if (preset === 'admin') {
-      login('admin@falconforecast.com', 'Chief Tipster Admin', 'admin', 'annual_vip');
-    } else if (preset === 'tipster') {
-      login('tipster.demo@falconforecast.com', 'Jordan Tipmaster', 'tipster', 'monthly_vip');
-    }
+  const loginWithEmail = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error };
+  };
+
+  const signupWithEmail = async (email: string, password: string, name?: string) => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name, role: 'user', plan: 'free' },
+      },
+    });
+    return { error };
   };
 
   const logout = async () => {
@@ -127,17 +113,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const subscribeToPlan = (planId: string) => {
+    if (!user) return;
     const planType = planId.includes('annual') ? 'annual_vip' : 'monthly_vip';
-    if (user) {
-      setUser({
-        ...user,
-        plan: planType,
-        subscribedAt: new Date().toISOString(),
-        vipExpiresAt: new Date(Date.now() + (planType === 'annual_vip' ? 365 : 30) * 24 * 60 * 60 * 1000).toISOString(),
-      });
-    } else {
-      login('new.subscriber@falconforecast.com', 'New VIP Member', 'user', planType);
-    }
+    setUser({
+      ...user,
+      plan: planType,
+      subscribedAt: new Date().toISOString(),
+      vipExpiresAt: new Date(Date.now() + (planType === 'annual_vip' ? 365 : 30) * 24 * 60 * 60 * 1000).toISOString(),
+    });
   };
 
   const isLoggedIn = !!user;
@@ -151,9 +134,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoggedIn,
         isVip,
         isAdmin,
-        login,
         loginWithGoogle,
-        loginWithPreset,
+        loginWithEmail,
+        signupWithEmail,
         logout,
         subscribeToPlan,
       }}
