@@ -40,7 +40,7 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
             
             {/* Logo & Main Nav */}
             <div className="flex items-center gap-4 xl:gap-8 min-w-0">
-              <Link to="/matches" className="flex items-center gap-1 group select-none flex-shrink-0">
+              <Link to="/" className="flex items-center gap-1 group select-none flex-shrink-0">
                 <span className="font-black italic text-xl tracking-wider uppercase font-sans whitespace-nowrap">
                   <span className="text-[#00a8ff]">FALCON</span>
                   <span className="text-slate-900 dark:text-white ml-1.5">FORECAST</span>
