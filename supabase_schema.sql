@@ -155,6 +155,41 @@ CREATE TABLE IF NOT EXISTS public.predictions (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- =====================================================================================
+-- 4b. SCHEMA REPAIR — if your tables already existed from an earlier version of this
+-- file, the `CREATE TABLE IF NOT EXISTS` statements above are no-ops against them, so
+-- newer columns (like predictions.tipster_id) never actually get added, and every
+-- policy below that references them — including this table's OWN policies just a few
+-- lines down — fails with "column ... does not exist". This block runs before any of
+-- that, right after all three tables are guaranteed to exist, so it's safe. These
+-- ADD COLUMN IF NOT EXISTS lines are safe to re-run any number of times.
+-- =====================================================================================
+ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS tipster_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS tipster_name TEXT;
+ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS home_flag TEXT;
+ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS away_flag TEXT;
+ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS rationale TEXT;
+ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL;
+
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'free';
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS tipster_status TEXT NOT NULL DEFAULT 'none';
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS bio TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS weekly_price NUMERIC(10,2) DEFAULT 9.99;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS monthly_price NUMERIC(10,2) DEFAULT 29.99;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS win_rate NUMERIC(5,2) DEFAULT 75.0;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS total_tips INTEGER DEFAULT 0;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT false;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS subscribed_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now());
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS vip_expires_at TIMESTAMP WITH TIME ZONE;
+
+ALTER TABLE public.tipster_subscriptions ADD COLUMN IF NOT EXISTS user_name TEXT;
+ALTER TABLE public.tipster_subscriptions ADD COLUMN IF NOT EXISTS platform_cut NUMERIC(10,2) NOT NULL DEFAULT 0;
+ALTER TABLE public.tipster_subscriptions ADD COLUMN IF NOT EXISTS tipster_net NUMERIC(10,2) NOT NULL DEFAULT 0;
+
 ALTER TABLE public.predictions ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Free predictions viewable by anyone" ON public.predictions;
@@ -210,41 +245,6 @@ CREATE POLICY "Tipsters delete own predictions, admins delete any"
     tipster_id = auth.uid() OR
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
   );
-
--- =====================================================================================
--- 4b. SCHEMA REPAIR — if your tables already existed from an earlier version of this
--- file, the `CREATE TABLE IF NOT EXISTS` statements above are no-ops against them, so
--- newer columns (like predictions.tipster_id) never actually get added and every
--- statement below that references them will fail with "column ... does not exist".
--- These ADD COLUMN IF NOT EXISTS lines are safe to run any number of times and backfill
--- whatever is missing. Run this block (and everything after it) FIRST if you're only
--- re-running part of this file after hitting that error.
--- =====================================================================================
-ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS tipster_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
-ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS tipster_name TEXT;
-ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS home_flag TEXT;
-ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS away_flag TEXT;
-ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS rationale TEXT;
-ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL;
-
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'free';
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS tipster_status TEXT NOT NULL DEFAULT 'none';
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS bio TEXT;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS weekly_price NUMERIC(10,2) DEFAULT 9.99;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS monthly_price NUMERIC(10,2) DEFAULT 29.99;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS win_rate NUMERIC(5,2) DEFAULT 75.0;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS total_tips INTEGER DEFAULT 0;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT false;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS subscribed_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now());
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS vip_expires_at TIMESTAMP WITH TIME ZONE;
-
-ALTER TABLE public.tipster_subscriptions ADD COLUMN IF NOT EXISTS user_name TEXT;
-ALTER TABLE public.tipster_subscriptions ADD COLUMN IF NOT EXISTS platform_cut NUMERIC(10,2) NOT NULL DEFAULT 0;
-ALTER TABLE public.tipster_subscriptions ADD COLUMN IF NOT EXISTS tipster_net NUMERIC(10,2) NOT NULL DEFAULT 0;
 
 -- 5. PERFORMANCE INDEXES
 CREATE INDEX IF NOT EXISTS idx_predictions_tipster ON public.predictions(tipster_id);
