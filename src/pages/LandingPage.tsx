@@ -40,13 +40,13 @@ const TICKER_SCORES = [
   { time: "34'", match: 'MCI 3-1 LIV' },
 ];
 
-const PHONE_ODDS: { home: string; away: string; time: string; odds: [string, string, string] }[] = [
-  { home: 'Arsenal', away: 'Tottenham', time: "67'", odds: ['1.45', '4.20', '6.50'] },
-  { home: 'Man City', away: 'Liverpool', time: '20:00', odds: ['1.95', '3.60', '3.80'] },
-  { home: 'Real Madrid', away: 'Barcelona', time: "23'", odds: ['2.60', '3.20', '2.75'] },
-  { home: 'Bayern Munich', away: 'PSG', time: 'Tomorrow', odds: ['2.05', '3.50', '3.40'] },
-  { home: 'Inter Milan', away: 'Juventus', time: 'HT', odds: ['2.10', '3.30', '3.20'] },
-];
+/* Scroll-scrubbed frame sequence: every 3rd frame of a 300-frame source clip, for a lighter payload */
+const HERO_FRAME_COUNT = 100;
+const HERO_FRAME_URLS = Array.from({ length: HERO_FRAME_COUNT }, (_, i) => {
+  const frameNumber = i * 3 + 1;
+  return `/ezgif-273a42396ea5dadb-jpg/ezgif-frame-${String(frameNumber).padStart(3, '0')}.jpg`;
+});
+const HERO_SCROLL_RANGE = 900;
 
 /* ─── Scroll-triggered visibility hook ─── */
 function useInView<T extends Element>(threshold = 0.3) {
@@ -144,21 +144,78 @@ const RadialGauge: React.FC<{ value: number; size?: number; strokeWidth?: number
   );
 };
 
-/* ─── iPhone mockup with Dynamic Island; the odds feed drifts as the page scrolls ─── */
-const PhoneOddsMockup: React.FC = () => {
-  const listRef = useRef<HTMLDivElement>(null);
-  const [offset, setOffset] = useState(0);
+/* ─── Scroll-scrubbed image sequence used as the hero's background ─── */
+const HeroFrameSequence: React.FC = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imagesRef = useRef<HTMLImageElement[]>([]);
+  const frameIndexRef = useRef(0);
+  const [loadedCount, setLoadedCount] = useState(0);
 
+  const draw = (index: number) => {
+    const canvas = canvasRef.current;
+    const img = imagesRef.current[index];
+    if (!canvas || !img || !img.complete || img.naturalWidth === 0) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const { width, height } = canvas;
+    const scale = Math.max(width / img.naturalWidth, height / img.naturalHeight);
+    const drawW = img.naturalWidth * scale;
+    const drawH = img.naturalHeight * scale;
+    ctx.clearRect(0, 0, width, height);
+    ctx.drawImage(img, (width - drawW) / 2, (height - drawH) / 2, drawW, drawH);
+  };
+
+  // Preload every sampled frame
+  useEffect(() => {
+    let cancelled = false;
+    const images = HERO_FRAME_URLS.map(src => {
+      const img = new Image();
+      img.onload = () => {
+        if (!cancelled) setLoadedCount(c => c + 1);
+      };
+      img.src = src;
+      return img;
+    });
+    imagesRef.current = images;
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Draw the current frame as soon as it becomes available (covers first paint)
+  useEffect(() => {
+    draw(frameIndexRef.current);
+  }, [loadedCount]);
+
+  // Keep the canvas sized to its container
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const parent = canvas?.parentElement;
+    if (!canvas || !parent) return;
+    const resize = () => {
+      const rect = parent.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      draw(frameIndexRef.current);
+    };
+    resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(parent);
+    return () => ro.disconnect();
+  }, []);
+
+  // Map page scroll position to a frame index
   useEffect(() => {
     let raf = 0;
     const onScroll = () => {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
-        const el = listRef.current;
-        if (!el) return;
-        const loopHeight = el.scrollHeight / 2;
-        if (loopHeight <= 0) return;
-        setOffset((window.scrollY * 0.45) % loopHeight);
+        const progress = Math.min(Math.max(window.scrollY / HERO_SCROLL_RANGE, 0), 1);
+        const index = Math.min(HERO_FRAME_COUNT - 1, Math.floor(progress * HERO_FRAME_COUNT));
+        if (index !== frameIndexRef.current) {
+          frameIndexRef.current = index;
+          draw(index);
+        }
       });
     };
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -169,78 +226,7 @@ const PhoneOddsMockup: React.FC = () => {
     };
   }, []);
 
-  return (
-  <div className="relative mx-auto" style={{ width: '292px' }}>
-    <div
-      className="relative rounded-[2.75rem] p-2.5 shadow-2xl"
-      style={{ backgroundColor: '#111318', border: '1px solid rgba(255,255,255,0.08)' }}
-    >
-      {/* Side buttons */}
-      <span className="absolute -left-[2px] top-24 w-[2px] h-8 rounded-l" style={{ backgroundColor: 'rgba(255,255,255,0.18)' }} />
-      <span className="absolute -left-[2px] top-36 w-[2px] h-12 rounded-l" style={{ backgroundColor: 'rgba(255,255,255,0.18)' }} />
-      <span className="absolute -right-[2px] top-32 w-[2px] h-16 rounded-r" style={{ backgroundColor: 'rgba(255,255,255,0.18)' }} />
-
-      {/* Screen */}
-      <div className="relative rounded-[2.15rem] overflow-hidden" style={{ backgroundColor: 'var(--bg-base)', height: '540px' }}>
-        {/* Dynamic Island */}
-        <div
-          className="absolute top-2.5 left-1/2 -translate-x-1/2 z-20 rounded-full flex items-center justify-center gap-1.5"
-          style={{ backgroundColor: '#000', height: '30px', width: '104px' }}
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-[9px] font-mono font-bold text-white/80 tracking-wide">LIVE ODDS</span>
-        </div>
-
-        {/* App header */}
-        <div
-          className="flex items-center justify-between px-4"
-          style={{ paddingTop: '54px', paddingBottom: '12px', borderBottom: '1px solid var(--border)' }}
-        >
-          <div className="flex items-center gap-1.5">
-            <Radar className="w-3.5 h-3.5" style={{ color: 'var(--brand)' }} />
-            <span className="text-xs font-black font-display" style={{ color: 'var(--text-primary)' }}>Falcon Forecast</span>
-          </div>
-          <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-500">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> 12 Live
-          </span>
-        </div>
-
-        {/* Scrolling odds feed */}
-        <div className="relative overflow-hidden" style={{ height: '450px' }}>
-          <div className="pointer-events-none absolute top-0 left-0 right-0 h-6 z-10" style={{ background: 'linear-gradient(var(--bg-base), transparent)' }} />
-          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-6 z-10" style={{ background: 'linear-gradient(transparent, var(--bg-base))' }} />
-          <div ref={listRef} className="px-3 pt-3 space-y-2.5" style={{ transform: `translateY(-${offset}px)` }}>
-            {[...PHONE_ODDS, ...PHONE_ODDS].map((m, i) => (
-              <div
-                key={i}
-                className="rounded-xl p-3 flex items-center justify-between gap-2"
-                style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
-              >
-                <div className="min-w-0">
-                  <div className="text-[11px] font-bold truncate" style={{ color: 'var(--text-primary)' }}>
-                    {m.home} <span style={{ color: 'var(--text-muted)' }}>vs</span> {m.away}
-                  </div>
-                  <div className="text-[9px] font-mono font-bold text-emerald-500 mt-0.5">{m.time}</div>
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  {m.odds.map((o, j) => (
-                    <span
-                      key={j}
-                      className="text-[10px] font-bold font-mono rounded px-1 py-1 w-9 text-center"
-                      style={{ backgroundColor: 'var(--bg-muted)', color: 'var(--text-primary)' }}
-                    >
-                      {o}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  );
+  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" style={{ filter: 'blur(1px) saturate(1.1)' }} />;
 };
 
 export const LandingPage: React.FC = () => {
@@ -379,43 +365,33 @@ export const LandingPage: React.FC = () => {
 
         {/* ─── HERO ─── */}
         <section className="relative overflow-hidden">
+          {/* Ambient background: scroll-scrubbed frame sequence, full-bleed behind the whole hero */}
+          <div className="hidden lg:block absolute inset-0 overflow-hidden pointer-events-none">
+            <HeroFrameSequence />
+            <div className="absolute inset-0" style={{ backgroundColor: 'var(--bg-base)', opacity: 0.4 }} />
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundColor: 'var(--bg-base)',
+                maskImage: 'radial-gradient(ellipse 50% 75% at 50% 40%, black 30%, transparent 85%)',
+                WebkitMaskImage: 'radial-gradient(ellipse 50% 75% at 50% 40%, black 30%, transparent 85%)',
+              }}
+            />
+          </div>
+
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
             <div
-              className="absolute -top-32 -right-32 w-[32rem] h-[32rem] rounded-full blur-3xl opacity-25"
+              className="absolute -top-32 -right-32 w-[32rem] h-[32rem] rounded-full blur-3xl opacity-[0.14]"
               style={{ background: 'radial-gradient(circle, var(--brand) 0%, transparent 70%)' }}
             />
             <div
-              className="absolute top-52 -left-32 w-96 h-96 rounded-full blur-3xl opacity-[0.14]"
+              className="absolute top-52 -left-32 w-96 h-96 rounded-full blur-3xl opacity-[0.1]"
               style={{ background: 'radial-gradient(circle, #10b981 0%, transparent 70%)' }}
-            />
-            <div
-              className="absolute left-0 right-0 bottom-[-10%] h-[55%] animate-floor-drift opacity-[0.35]"
-              style={{
-                backgroundImage: 'linear-gradient(to right, var(--border-strong) 1px, transparent 1px), linear-gradient(to bottom, var(--border-strong) 1px, transparent 1px)',
-                backgroundSize: '56px 56px',
-                transform: 'perspective(500px) rotateX(62deg)',
-                transformOrigin: 'bottom',
-                maskImage: 'linear-gradient(to top, black, transparent 90%)',
-                WebkitMaskImage: 'linear-gradient(to top, black, transparent 90%)',
-              }}
             />
           </div>
 
           <div className="relative max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 pt-16 pb-16 lg:pt-20 lg:pb-20">
             <div className="relative">
-
-              {/* Ambient background: iPhone with live-scrolling odds, sits behind the copy and drifts with page scroll */}
-              <div
-                className="hidden lg:flex absolute inset-0 items-start justify-center pointer-events-none"
-                style={{
-                  opacity: 0.16,
-                  filter: 'blur(3px)',
-                  maskImage: 'radial-gradient(ellipse 50% 60% at 50% 30%, black 25%, transparent 80%)',
-                  WebkitMaskImage: 'radial-gradient(ellipse 50% 60% at 50% 30%, black 25%, transparent 80%)',
-                }}
-              >
-                <PhoneOddsMockup />
-              </div>
 
               <div className="relative z-10 max-w-2xl mx-auto text-center space-y-7">
                 <Reveal delay={80}>
@@ -464,21 +440,19 @@ export const LandingPage: React.FC = () => {
               </div>
             </div>
           </div>
-        </section>
 
-        {/* ─── LEAGUE MARQUEE ─── */}
-        <div className="relative border-y overflow-hidden" style={{ borderColor: 'var(--border)' }}>
-          <div className="pointer-events-none absolute inset-y-0 left-0 w-20 z-10" style={{ background: 'linear-gradient(90deg, var(--bg-base), transparent)' }} />
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-20 z-10" style={{ background: 'linear-gradient(270deg, var(--bg-base), transparent)' }} />
-          <div className="py-5 animate-ticker">
-            {[...LEAGUES, ...LEAGUES].map((l, i) => (
-              <span key={i} className="flex items-center gap-2 flex-shrink-0 px-7 text-sm font-bold whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
-                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--brand)' }} />
-                {l}
-              </span>
-            ))}
+          {/* League strip — static row, shares the hero's background so there's no hard cutoff */}
+          <div className="relative border-t" style={{ borderColor: 'var(--border)' }}>
+            <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 py-5 px-5">
+              {LEAGUES.map(l => (
+                <span key={l} className="flex items-center gap-2 flex-shrink-0 text-sm font-bold whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
+                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--brand)' }} />
+                  {l}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
+        </section>
 
         {/* ─── FEATURES (bento) ─── */}
         <section id="features" className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 py-20">
