@@ -7,6 +7,7 @@ interface AuthContextType {
   isLoggedIn: boolean;
   isVip: boolean;
   isAdmin: boolean;
+  isTipster: boolean;
   signInWithGoogleIdToken: (idToken: string) => Promise<{ error: Error | null }>;
   loginWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
   signupWithEmail: (email: string, password: string, name?: string) => Promise<{ error: Error | null }>;
@@ -16,7 +17,45 @@ interface AuthContextType {
 
 const STORAGE_KEY = 'falconforecast_user_session';
 
+// Client-side safety net only — the real, enforced grant is the `profiles.role`
+// column in Supabase (RLS policies check that, not this list). See supabase_schema.sql.
+const ADMIN_EMAILS = ['falconforecasts@gmail.com'];
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+type SupabaseAuthUser = NonNullable<Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']>['user'];
+
+/** `profiles` is the source of truth for role/plan/tipster status; auth metadata is only a fallback
+ * for the brief window before that row exists (or if the fetch fails). */
+const buildUser = (sbUser: SupabaseAuthUser, profile: Record<string, any> | null): User => {
+  const isHardcodedAdmin = ADMIN_EMAILS.includes(sbUser.email || '');
+  return {
+    id: sbUser.id,
+    name: profile?.name || sbUser.user_metadata?.name || sbUser.email?.split('@')[0] || 'User',
+    email: sbUser.email || '',
+    role: isHardcodedAdmin ? 'admin' : (profile?.role || sbUser.user_metadata?.role || 'user'),
+    plan: profile?.plan || sbUser.user_metadata?.plan || 'free',
+    tipsterStatus: profile?.tipster_status,
+    bio: profile?.bio,
+    avatarUrl: profile?.avatar_url,
+    weeklyPrice: profile?.weekly_price != null ? Number(profile.weekly_price) : undefined,
+    monthlyPrice: profile?.monthly_price != null ? Number(profile.monthly_price) : undefined,
+    winRate: profile?.win_rate != null ? Number(profile.win_rate) : undefined,
+    totalTips: profile?.total_tips,
+    verified: profile?.verified,
+    subscribedAt: profile?.subscribed_at || sbUser.created_at,
+    vipExpiresAt: profile?.vip_expires_at,
+  };
+};
+
+const loadUser = async (sbUser: SupabaseAuthUser): Promise<User> => {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', sbUser.id)
+    .maybeSingle();
+  return buildUser(sbUser, profile);
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
@@ -32,32 +71,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   useEffect(() => {
-    // Check initial Supabase auth session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        const sbUser = session.user;
-        setUser({
-          id: sbUser.id,
-          name: sbUser.user_metadata?.name || sbUser.email?.split('@')[0] || 'User',
-          email: sbUser.email || '',
-          role: sbUser.user_metadata?.role || 'user',
-          plan: sbUser.user_metadata?.plan || 'free',
-          subscribedAt: sbUser.created_at,
-        });
+        setUser(await loadUser(session.user));
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        const sbUser = session.user;
-        setUser({
-          id: sbUser.id,
-          name: sbUser.user_metadata?.name || sbUser.email?.split('@')[0] || 'User',
-          email: sbUser.email || '',
-          role: sbUser.user_metadata?.role || 'user',
-          plan: sbUser.user_metadata?.plan || 'free',
-          subscribedAt: sbUser.created_at,
-        });
+        setUser(await loadUser(session.user));
+      } else {
+        setUser(null);
       }
     });
 
@@ -119,8 +143,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const isLoggedIn = !!user;
-  const isVip = user?.plan === 'monthly_vip' || user?.plan === 'annual_vip' || user?.role === 'admin';
   const isAdmin = user?.role === 'admin';
+  const isTipster = user?.role === 'tipster';
+  const isVip = user?.plan === 'monthly_vip' || user?.plan === 'annual_vip' || isAdmin;
 
   return (
     <AuthContext.Provider
@@ -129,6 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoggedIn,
         isVip,
         isAdmin,
+        isTipster,
         signInWithGoogleIdToken,
         loginWithEmail,
         signupWithEmail,
@@ -148,4 +174,3 @@ export const useAuth = () => {
   }
   return context;
 };
-

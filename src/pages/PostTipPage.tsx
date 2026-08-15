@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Search, Eye, CheckCircle2, Lock } from 'lucide-react';
-
+import { useAuth } from '../context/AuthContext';
 
 export const PostTipPage: React.FC = () => {
+  const { isLoggedIn, isTipster, isAdmin } = useAuth();
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [searchMatch, setSearchMatch] = useState('');
   const [selectedMatch, setSelectedMatch] = useState({
@@ -50,6 +52,49 @@ export const PostTipPage: React.FC = () => {
   const handlePublish = () => {
     setPublished(true);
   };
+
+  if (!isLoggedIn || !(isTipster || isAdmin)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-5" style={{ backgroundColor: 'var(--bg-base)' }}>
+        <div className="max-w-sm w-full text-center space-y-5">
+          <div
+            className="w-14 h-14 rounded-full flex items-center justify-center mx-auto"
+            style={{ backgroundColor: 'var(--brand-light)' }}
+          >
+            <Lock className="w-6 h-6" style={{ color: 'var(--brand)' }} />
+          </div>
+          <div>
+            <h1 className="text-xl font-black font-display" style={{ color: 'var(--text-primary)' }}>
+              Tipsters only
+            </h1>
+            <p className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>
+              {isLoggedIn
+                ? 'Posting tips is available to approved tipsters. Browse the tipster marketplace to see how it works.'
+                : 'Log in as a tipster to post predictions.'}
+            </p>
+          </div>
+          <div className="flex flex-col gap-3">
+            <Link
+              to="/tipsters"
+              className="w-full py-3.5 text-xs font-bold uppercase tracking-wider text-center text-slate-950 rounded-xl transition-all hover:brightness-110"
+              style={{ backgroundColor: 'var(--brand)' }}
+            >
+              Browse Tipsters
+            </Link>
+            {!isLoggedIn && (
+              <Link
+                to="/login"
+                className="w-full py-3.5 text-xs font-semibold text-center rounded-xl border transition-colors"
+                style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+              >
+                Log In
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0b1320] py-6 px-4 sm:px-6 lg:px-8 transition-colors">

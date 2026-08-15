@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Search, PlusCircle, User, Sun, Moon, Home, Trophy, TrendingUp, Star, Users, ShieldCheck, LayoutDashboard, Newspaper } from 'lucide-react';
+import { Search, PlusCircle, User, Sun, Moon, Home, Trophy, TrendingUp, Star, ShieldCheck, LayoutDashboard, Newspaper } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -123,13 +123,15 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                 />
               </div>
 
-              <Link
-                to="/post-tip"
-                className="hidden sm:flex px-3.5 py-2 bg-[#00a8ff] hover:bg-[#0090e0] text-white text-xs font-bold rounded-lg transition-colors items-center gap-1.5 shadow-sm whitespace-nowrap"
-              >
-                <PlusCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>Post Tips</span>
-              </Link>
+              {isLoggedIn && (user?.role === 'tipster' || user?.role === 'admin') && (
+                <Link
+                  to="/post-tip"
+                  className="hidden sm:flex px-3.5 py-2 bg-[#00a8ff] hover:bg-[#0090e0] text-white text-xs font-bold rounded-lg transition-colors items-center gap-1.5 shadow-sm whitespace-nowrap"
+                >
+                  <PlusCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>Post Tips</span>
+                </Link>
+              )}
 
               {isLoggedIn ? (
                 <div className="flex items-center gap-2 flex-shrink-0">
@@ -144,7 +146,7 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                     </Link>
                   )}
                   <Link
-                    to="/dashboard"
+                    to="/profile"
                     className="px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:border-[#00a8ff] text-xs font-bold rounded-lg transition-colors flex items-center gap-1 whitespace-nowrap"
                   >
                     <User className="w-3.5 h-3.5" />

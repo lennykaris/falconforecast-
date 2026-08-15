@@ -15,6 +15,7 @@ import { PostTipPage } from './pages/PostTipPage';
 import { PremiumTipsPage } from './pages/PremiumTipsPage';
 import { OddsComparisonPage } from './pages/OddsComparisonPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { AdminPage } from './pages/AdminPage';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
@@ -83,6 +84,7 @@ export const AppContent: React.FC = () => {
             <Route path="/news" element={<NewsPage />} />
             
             <Route path="/dashboard" element={<DashboardPage onOpenCheckout={handleOpenCheckout} />} />
+            <Route path="/profile" element={<ProfilePage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/tipsters" element={<TipstersPage />} />
             <Route path="/tipster-dashboard" element={<TipsterDashboardPage />} />
