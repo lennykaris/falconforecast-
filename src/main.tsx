@@ -2,6 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { ErrorBoundary } from './components/ErrorBoundary.tsx'
+import { initAnalytics } from './lib/analytics.ts'
+
+initAnalytics();
 
 // Register PWA Service Worker for mobile caching & push alerts
 if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
@@ -18,7 +22,9 @@ if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 )
 

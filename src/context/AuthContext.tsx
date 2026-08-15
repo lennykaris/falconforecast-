@@ -10,7 +10,9 @@ interface AuthContextType {
   isTipster: boolean;
   signInWithGoogleIdToken: (idToken: string) => Promise<{ error: Error | null }>;
   loginWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signupWithEmail: (email: string, password: string, name?: string) => Promise<{ error: Error | null }>;
+  signupWithEmail: (email: string, password: string, name?: string) => Promise<{ error: Error | null; needsEmailConfirmation: boolean }>;
+  sendPasswordReset: (email: string) => Promise<{ error: Error | null }>;
+  updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
   logout: () => Promise<void>;
   subscribeToPlan: (planId: string) => void;
 }
@@ -112,13 +114,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signupWithEmail = async (email: string, password: string, name?: string) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { name, role: 'user', plan: 'free' },
       },
     });
+    // Supabase returns a user with no active session when email confirmation is required —
+    // the caller needs to know this so it can show a "check your email" state instead of
+    // treating the signup as an immediate, logged-in success.
+    const needsEmailConfirmation = !error && !!data.user && !data.session;
+    return { error, needsEmailConfirmation };
+  };
+
+  const sendPasswordReset = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    return { error };
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
     return { error };
   };
 
@@ -158,6 +176,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signInWithGoogleIdToken,
         loginWithEmail,
         signupWithEmail,
+        sendPasswordReset,
+        updatePassword,
         logout,
         subscribeToPlan,
       }}

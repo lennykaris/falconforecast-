@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Crown, CheckCircle2, Star, UserCheck, Lock,
-  Filter, Trophy, Zap, X, TrendingUp
+  Filter, Trophy, Zap, X, TrendingUp, ArrowRight
 } from 'lucide-react';
 import { useTipsters } from '../context/TipstersContext';
 import { useAuth } from '../context/AuthContext';
@@ -10,7 +11,7 @@ import type { User } from '../types/prediction';
 
 export const TipstersPage: React.FC = () => {
   const { tipsters, subscribeToTipster, isSubscribedToTipster } = useTipsters();
-  const { user } = useAuth();
+  const { user, isTipster, isAdmin } = useAuth();
 
   const [selectedTipster, setSelectedTipster] = useState<User | null>(null);
   const [subscriptionCycle, setSubscriptionCycle] = useState<'weekly' | 'monthly'>('monthly');
@@ -58,6 +59,14 @@ export const TipstersPage: React.FC = () => {
           <p className="text-sm text-slate-500 dark:text-slate-400">
             Browse verified football analysts by league and market type. Subscribe directly to unlock their VIP predictions.
           </p>
+          {!isTipster && !isAdmin && (
+            <Link
+              to="/apply-tipster"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0EA5E9] hover:underline underline-offset-2"
+            >
+              Are you a tipster? Apply to publish your own tips <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          )}
         </div>
 
         {/* ── Success Toast ── */}

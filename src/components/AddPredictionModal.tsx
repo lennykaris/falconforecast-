@@ -21,14 +21,19 @@ export const AddPredictionModal: React.FC<AddPredictionModalProps> = ({ isOpen, 
   const [confidence, setConfidence] = useState<number>(85);
   const [tier, setTier] = useState<'free' | 'vip'>('free');
   const [analysis, setAnalysis] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!homeTeam || !awayTeam || !tip) return;
 
-    addPrediction({
+    setSubmitting(true);
+    setSubmitError(null);
+
+    const { error } = await addPrediction({
       league,
       homeTeam,
       awayTeam,
@@ -41,6 +46,12 @@ export const AddPredictionModal: React.FC<AddPredictionModalProps> = ({ isOpen, 
       analysis: analysis || 'Expert breakdown provided by Falcon Forecast team.',
       status: 'pending',
     });
+
+    setSubmitting(false);
+    if (error) {
+      setSubmitError(error.message);
+      return;
+    }
 
     // Reset form
     setHomeTeam('');
@@ -206,13 +217,18 @@ export const AddPredictionModal: React.FC<AddPredictionModalProps> = ({ isOpen, 
             />
           </div>
 
+          {submitError && (
+            <p className="text-xs font-semibold text-rose-500">{submitError}</p>
+          )}
+
           <div className="pt-3">
             <button
               type="submit"
-              className="w-full py-3 bg-[#0EA5E9] hover:bg-sky-600 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center space-x-1.5"
+              disabled={submitting}
+              className="w-full py-3 bg-[#0EA5E9] hover:bg-sky-600 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center space-x-1.5 disabled:opacity-50"
             >
               <Plus className="w-4 h-4" />
-              <span>Publish Prediction to Live State</span>
+              <span>{submitting ? 'Publishing...' : 'Publish Prediction to Live State'}</span>
             </button>
           </div>
 

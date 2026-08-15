@@ -19,6 +19,8 @@ import { ProfilePage } from './pages/ProfilePage';
 import { AdminPage } from './pages/AdminPage';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { NewsPage } from './pages/NewsPage';
 import { AboutPage } from './pages/AboutPage';
 import { TermsPage } from './pages/TermsPage';
@@ -28,14 +30,17 @@ import { CopyrightPage } from './pages/CopyrightPage';
 import { PrivacyPage } from './pages/PrivacyPage';
 import { TipstersPage } from './pages/TipstersPage';
 import { TipsterDashboardPage } from './pages/TipsterDashboardPage';
+import { TipsterApplyPage } from './pages/TipsterApplyPage';
 
 import type { SubscriptionPlan } from './types/prediction';
 import { SUBSCRIPTION_PLANS } from './data/predictions';
+import { trackPageView } from './lib/analytics';
 
 const ScrollToTop: React.FC = () => {
   const { pathname } = useLocation();
   useEffect(() => {
     window.scrollTo(0, 0);
+    trackPageView(pathname);
   }, [pathname]);
   return null;
 };
@@ -88,8 +93,11 @@ export const AppContent: React.FC = () => {
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/tipsters" element={<TipstersPage />} />
             <Route path="/tipster-dashboard" element={<TipsterDashboardPage />} />
+            <Route path="/apply-tipster" element={<TipsterApplyPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/about" element={<AboutPage />} />
 
             <Route path="/terms" element={<TermsPage />} />

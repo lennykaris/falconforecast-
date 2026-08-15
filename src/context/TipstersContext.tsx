@@ -13,7 +13,7 @@ interface TipstersContextType {
   suspendTipster: (tipsterId: string) => void;
   /** Called by the tipster themselves — admins cannot change another tipster's prices */
   updateOwnPricing: (tipsterId: string, weeklyPrice: number, monthlyPrice: number) => void;
-  applyForTipster: (user: User, bio: string, weeklyPrice: number, monthlyPrice: number) => void;
+  applyForTipster: (user: User, bio: string, weeklyPrice: number, monthlyPrice: number) => Promise<void>;
   subscribeToTipster: (userId: string, userName: string, tipsterId: string, cycle: 'weekly' | 'monthly', price: number) => void;
   isSubscribedToTipster: (userId: string, tipsterId: string) => boolean;
   getMySubscriptions: (tipsterId: string) => TipsterSubscription[];

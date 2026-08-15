@@ -5,9 +5,9 @@ import { supabase } from '../lib/supabase';
 
 interface PredictionsContextType {
   predictions: Prediction[];
-  addPrediction: (newPred: Omit<Prediction, 'id'>) => void;
-  updatePrediction: (id: string, updated: Partial<Prediction>) => void;
-  deletePrediction: (id: string) => void;
+  addPrediction: (newPred: Omit<Prediction, 'id'>) => Promise<{ error: Error | null }>;
+  updatePrediction: (id: string, updated: Partial<Prediction>) => Promise<{ error: Error | null }>;
+  deletePrediction: (id: string) => Promise<{ error: Error | null }>;
   toggleTier: (id: string) => void;
   resetPredictions: () => void;
   refetchPredictions: () => Promise<void>;
@@ -18,6 +18,45 @@ const CACHE_TIME_KEY = 'falconforecast_predictions_cache_time';
 const CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes cache TTL to prevent egress spam
 
 const PredictionsContext = createContext<PredictionsContextType | undefined>(undefined);
+
+/** The `predictions` table uses snake_case columns; the app's Prediction type is camelCase. */
+const fromRow = (row: any): Prediction => ({
+  id: row.id,
+  league: row.league,
+  homeTeam: row.home_team,
+  awayTeam: row.away_team,
+  kickoff: row.match_time,
+  tip: row.tip,
+  odds: Number(row.odds),
+  confidence: row.confidence,
+  tier: row.tier,
+  isPlatformTip: row.tipster_id == null,
+  homeLogo: row.home_flag || undefined,
+  awayLogo: row.away_flag || undefined,
+  analysis: row.rationale || undefined,
+  status: row.status,
+  tipsterId: row.tipster_id || undefined,
+  tipsterName: row.tipster_name || undefined,
+});
+
+const toRow = (p: Partial<Prediction>) => {
+  const row: Record<string, any> = {};
+  if (p.league !== undefined) row.league = p.league;
+  if (p.homeTeam !== undefined) row.home_team = p.homeTeam;
+  if (p.awayTeam !== undefined) row.away_team = p.awayTeam;
+  if (p.kickoff !== undefined) row.match_time = p.kickoff;
+  if (p.homeLogo !== undefined) row.home_flag = p.homeLogo || null;
+  if (p.awayLogo !== undefined) row.away_flag = p.awayLogo || null;
+  if (p.tip !== undefined) row.tip = p.tip;
+  if (p.odds !== undefined) row.odds = p.odds;
+  if (p.confidence !== undefined) row.confidence = p.confidence;
+  if (p.tier !== undefined) row.tier = p.tier;
+  if (p.status !== undefined) row.status = p.status;
+  if (p.analysis !== undefined) row.rationale = p.analysis || null;
+  if (p.tipsterId !== undefined) row.tipster_id = p.tipsterId || null;
+  if (p.tipsterName !== undefined) row.tipster_name = p.tipsterName || null;
+  return row;
+};
 
 export const PredictionsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [predictions, setPredictions] = useState<Prediction[]>(() => {
@@ -40,8 +79,9 @@ export const PredictionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
         .order('created_at', { ascending: false });
 
       if (!error && data && data.length > 0) {
-        setPredictions(data as Prediction[]);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        const mapped = data.map(fromRow);
+        setPredictions(mapped);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
         sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
       }
     } catch (e) {
@@ -64,17 +104,23 @@ export const PredictionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, [predictions]);
 
   const addPrediction = async (newPred: Omit<Prediction, 'id'>) => {
-    const created: Prediction = {
-      ...newPred,
-      id: `pred-${Date.now()}`,
-    };
-    setPredictions(prev => [created, ...prev]);
-
     try {
-      await supabase.from('predictions').insert([created]);
+      const { data, error } = await supabase
+        .from('predictions')
+        .insert([toRow(newPred)])
+        .select()
+        .single();
+
+      if (error || !data) {
+        return { error: error ? new Error(error.message) : new Error('Failed to publish prediction.') };
+      }
+
+      const created = fromRow(data);
+      setPredictions(prev => [created, ...prev]);
       sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+      return { error: null };
     } catch (e) {
-      console.warn('Failed to insert prediction into Supabase:', e);
+      return { error: e instanceof Error ? e : new Error('Failed to publish prediction.') };
     }
   };
 
@@ -84,10 +130,12 @@ export const PredictionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
     );
 
     try {
-      await supabase.from('predictions').update(updatedFields).eq('id', id);
+      const { error } = await supabase.from('predictions').update(toRow(updatedFields)).eq('id', id);
       sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+      return { error: error ? new Error(error.message) : null };
     } catch (e) {
       console.warn('Failed to update prediction in Supabase:', e);
+      return { error: e instanceof Error ? e : new Error('Failed to update prediction.') };
     }
   };
 
@@ -95,10 +143,12 @@ export const PredictionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setPredictions(prev => prev.filter(p => p.id !== id));
 
     try {
-      await supabase.from('predictions').delete().eq('id', id);
+      const { error } = await supabase.from('predictions').delete().eq('id', id);
       sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+      return { error: error ? new Error(error.message) : null };
     } catch (e) {
       console.warn('Failed to delete prediction from Supabase:', e);
+      return { error: e instanceof Error ? e : new Error('Failed to delete prediction.') };
     }
   };
 
@@ -139,5 +189,3 @@ export const usePredictions = () => {
   }
   return context;
 };
-
-

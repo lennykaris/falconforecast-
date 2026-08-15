@@ -81,13 +81,13 @@ export const LoginPage: React.FC = () => {
                     >
                       Password
                     </label>
-                    <a
-                      href="#forgot"
+                    <Link
+                      to="/forgot-password"
                       className="text-[10px] font-medium underline underline-offset-2"
                       style={{ color: 'var(--brand)' }}
                     >
                       Forgot?
-                    </a>
+                    </Link>
                   </div>
                   <input
                     type="password"

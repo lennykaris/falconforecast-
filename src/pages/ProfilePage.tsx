@@ -45,6 +45,7 @@ export const ProfilePage: React.FC = () => {
   const quickLinks = [
     { to: '/dashboard', label: 'My Picks & Subscription', description: 'VIP predictions and billing', icon: LayoutDashboard, show: true },
     { to: '/tipster-dashboard', label: 'Tipster Panel', description: 'Manage your published tips', icon: Star, show: isTipster },
+    { to: '/apply-tipster', label: 'Become a Tipster', description: 'Apply to publish your own tips', icon: Star, show: !isTipster && !isAdmin },
     { to: '/admin', label: 'Admin Panel', description: 'Platform management', icon: ShieldCheck, show: isAdmin },
     { to: '/tipsters', label: 'Browse Tipsters', description: 'Follow verified experts', icon: Users, show: true },
   ].filter(l => l.show);

@@ -211,6 +211,41 @@ CREATE POLICY "Tipsters delete own predictions, admins delete any"
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
   );
 
+-- =====================================================================================
+-- 4b. SCHEMA REPAIR — if your tables already existed from an earlier version of this
+-- file, the `CREATE TABLE IF NOT EXISTS` statements above are no-ops against them, so
+-- newer columns (like predictions.tipster_id) never actually get added and every
+-- statement below that references them will fail with "column ... does not exist".
+-- These ADD COLUMN IF NOT EXISTS lines are safe to run any number of times and backfill
+-- whatever is missing. Run this block (and everything after it) FIRST if you're only
+-- re-running part of this file after hitting that error.
+-- =====================================================================================
+ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS tipster_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS tipster_name TEXT;
+ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS home_flag TEXT;
+ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS away_flag TEXT;
+ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS rationale TEXT;
+ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL;
+
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'free';
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS tipster_status TEXT NOT NULL DEFAULT 'none';
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS bio TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS weekly_price NUMERIC(10,2) DEFAULT 9.99;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS monthly_price NUMERIC(10,2) DEFAULT 29.99;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS win_rate NUMERIC(5,2) DEFAULT 75.0;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS total_tips INTEGER DEFAULT 0;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT false;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS subscribed_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now());
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS vip_expires_at TIMESTAMP WITH TIME ZONE;
+
+ALTER TABLE public.tipster_subscriptions ADD COLUMN IF NOT EXISTS user_name TEXT;
+ALTER TABLE public.tipster_subscriptions ADD COLUMN IF NOT EXISTS platform_cut NUMERIC(10,2) NOT NULL DEFAULT 0;
+ALTER TABLE public.tipster_subscriptions ADD COLUMN IF NOT EXISTS tipster_net NUMERIC(10,2) NOT NULL DEFAULT 0;
+
 -- 5. PERFORMANCE INDEXES
 CREATE INDEX IF NOT EXISTS idx_predictions_tipster ON public.predictions(tipster_id);
 CREATE INDEX IF NOT EXISTS idx_predictions_tier_created ON public.predictions(tier, created_at DESC);
@@ -218,3 +253,44 @@ CREATE INDEX IF NOT EXISTS idx_profiles_role ON public.profiles(role);
 CREATE INDEX IF NOT EXISTS idx_profiles_tipster_status ON public.profiles(tipster_status);
 CREATE INDEX IF NOT EXISTS idx_tipster_subs_user ON public.tipster_subscriptions(user_id);
 CREATE INDEX IF NOT EXISTS idx_tipster_subs_tipster ON public.tipster_subscriptions(tipster_id);
+
+-- =====================================================================================
+-- 6. MIGRATION — RLS hardening (re-run this whole file any time; every statement below
+--    is idempotent via DROP POLICY IF EXISTS + CREATE POLICY, same as the rest of the file)
+-- =====================================================================================
+
+-- 6a. Predictions INSERT previously let any tipster/admin attribute a tip to ANY
+-- tipster_id (not just their own). Tighten so tipsters can only publish under their own id;
+-- admins keep full power (including posting platform tips with tipster_id = NULL).
+DROP POLICY IF EXISTS "Tipsters and admins insert predictions" ON public.predictions;
+CREATE POLICY "Tipsters and admins insert predictions"
+  ON public.predictions FOR INSERT
+  WITH CHECK (
+    (
+      tipster_id = auth.uid() AND
+      EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'tipster')
+    )
+    OR
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  );
+
+-- 6b. The self-update policy on profiles blocked users from tampering with their own
+-- `role`, but not `tipster_status` or `verified` — meaning a user could self-grant
+-- active/verified tipster status via a raw client call, bypassing admin approval entirely.
+-- Now: a user's own update may only leave tipster_status unchanged, or move it to
+-- 'pending' (the apply-to-become-a-tipster action) — never straight to 'active', and
+-- `verified` can never be self-set. Admins are unaffected (they use the separate
+-- "Admins can update any profile" policy, which has no such restriction).
+DROP POLICY IF EXISTS "Users can update own basic profile" ON public.profiles;
+CREATE POLICY "Users can update own basic profile"
+  ON public.profiles FOR UPDATE
+  USING (auth.uid() = id)
+  WITH CHECK (
+    auth.uid() = id AND
+    role = (SELECT role FROM public.profiles WHERE id = auth.uid()) AND
+    verified = (SELECT verified FROM public.profiles WHERE id = auth.uid()) AND
+    (
+      tipster_status = (SELECT tipster_status FROM public.profiles WHERE id = auth.uid())
+      OR tipster_status = 'pending'
+    )
+  );

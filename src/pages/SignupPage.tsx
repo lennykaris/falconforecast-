@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Activity, Crown, Percent, Target } from 'lucide-react';
+import { Activity, Crown, Mail, Percent, Target } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { AuthSidePanel } from '../components/AuthSidePanel';
 import { GoogleSignInButton } from '../components/GoogleSignInButton';
@@ -13,15 +13,20 @@ export const SignupPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const { error } = await signupWithEmail(email, password, name || 'New Member');
+    const { error, needsEmailConfirmation } = await signupWithEmail(email, password, name || 'New Member');
     setLoading(false);
     if (error) {
       setError(error.message || 'Could not create your account.');
+      return;
+    }
+    if (needsEmailConfirmation) {
+      setAwaitingConfirmation(true);
       return;
     }
     navigate('/dashboard');
@@ -69,6 +74,25 @@ export const SignupPage: React.FC = () => {
 
             {/* Form */}
             <div className="rounded-2xl p-6 bet-card space-y-4">
+              {awaitingConfirmation ? (
+                <div className="text-center space-y-3 py-2">
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto" style={{ backgroundColor: 'var(--brand-light)' }}>
+                    <Mail className="w-5 h-5" style={{ color: 'var(--brand)' }} />
+                  </div>
+                  <h2 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Confirm your email</h2>
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                    We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account, then log in.
+                  </p>
+                  <Link
+                    to="/login"
+                    className="inline-block text-xs font-semibold underline underline-offset-2"
+                    style={{ color: 'var(--brand)' }}
+                  >
+                    Back to Log In
+                  </Link>
+                </div>
+              ) : (
+                <>
               <GoogleSignInButton
                 label="Continue with Google"
                 onSuccess={() => navigate('/dashboard')}
@@ -144,6 +168,8 @@ export const SignupPage: React.FC = () => {
                   Log in
                 </Link>
               </p>
+                </>
+              )}
             </div>
           </div>
         </div>

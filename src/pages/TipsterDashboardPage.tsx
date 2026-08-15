@@ -49,13 +49,13 @@ export const TipsterDashboardPage: React.FC = () => {
         <h2 className="text-2xl font-black text-slate-800 mb-2">Tipster Access Only</h2>
         <p className="text-sm text-slate-500 mb-6">
           This dashboard is only accessible to verified tipsters.
-          Apply to become a tipster from the Tipsters marketplace page.
+          Apply to become a tipster to publish your own tips.
         </p>
         <Link
-          to="/tipsters"
+          to="/apply-tipster"
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0EA5E9] text-white font-bold rounded-xl text-sm shadow-md hover:bg-sky-600 transition-colors"
         >
-          View Tipsters Marketplace <ArrowRight className="w-4 h-4" />
+          Apply to Become a Tipster <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
     );

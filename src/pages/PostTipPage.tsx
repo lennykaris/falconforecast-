@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Eye, CheckCircle2, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { usePredictions } from '../context/PredictionsContext';
 
 export const PostTipPage: React.FC = () => {
-  const { isLoggedIn, isTipster, isAdmin } = useAuth();
+  const { user, isLoggedIn, isTipster, isAdmin } = useAuth();
+  const { addPrediction } = usePredictions();
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [searchMatch, setSearchMatch] = useState('');
   const [selectedMatch, setSelectedMatch] = useState({
@@ -16,11 +18,14 @@ export const PostTipPage: React.FC = () => {
 
   const [market, setMarket] = useState('Over 2.5 Goals');
   const [odds, setOdds] = useState<string>('1.85');
+  const [confidence, setConfidence] = useState(80);
   const [isFree, setIsFree] = useState(true);
   const [rationale, setRationale] = useState(
     'Selecting a high-scoring market based on recent offensive form and key defensive injuries...'
   );
   const [published, setPublished] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
 
   const matchesOptions = [
     {
@@ -49,7 +54,32 @@ export const PostTipPage: React.FC = () => {
       m.league.toLowerCase().includes(searchMatch.toLowerCase())
   );
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
+    setPublishing(true);
+    setPublishError(null);
+
+    const [homeTeam, awayTeam] = selectedMatch.teams.split(' vs ').map(s => s.trim());
+    const { error } = await addPrediction({
+      league: selectedMatch.league,
+      homeTeam: homeTeam || selectedMatch.teams,
+      awayTeam: awayTeam || '',
+      kickoff: selectedMatch.time,
+      tip: market,
+      odds: parseFloat(odds) || 0,
+      confidence,
+      tier: isFree ? 'free' : 'vip',
+      analysis: rationale,
+      tipsterId: user?.id,
+      tipsterName: isAdmin ? 'Falcon Forecast Platform' : user?.name,
+      isPlatformTip: isAdmin,
+      status: 'pending',
+    });
+
+    setPublishing(false);
+    if (error) {
+      setPublishError(error.message);
+      return;
+    }
     setPublished(true);
   };
 
@@ -338,7 +368,26 @@ export const PostTipPage: React.FC = () => {
                         className="w-full input-field text-xs"
                       />
                     </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center justify-between mb-1">
+                        <span>Confidence Score</span>
+                        <span className="font-mono font-bold text-[#00a8ff]">{confidence}/100</span>
+                      </label>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={confidence}
+                        onChange={e => setConfidence(Number(e.target.value))}
+                        className="w-full accent-[#00a8ff]"
+                      />
+                    </div>
                   </div>
+
+                  {publishError && (
+                    <p className="text-xs font-semibold text-rose-500">{publishError}</p>
+                  )}
 
                   <div className="pt-4 flex justify-between">
                     <button
@@ -349,9 +398,10 @@ export const PostTipPage: React.FC = () => {
                     </button>
                     <button
                       onClick={handlePublish}
-                      className="px-6 py-2 bg-[#00a8ff] hover:bg-[#0090e0] text-white text-xs font-bold rounded-lg transition-colors"
+                      disabled={publishing}
+                      className="px-6 py-2 bg-[#00a8ff] hover:bg-[#0090e0] text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50"
                     >
-                      Publish Tip
+                      {publishing ? 'Publishing...' : 'Publish Tip'}
                     </button>
                   </div>
                 </div>
