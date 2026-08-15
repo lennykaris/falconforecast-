@@ -7,7 +7,7 @@ interface AuthContextType {
   isLoggedIn: boolean;
   isVip: boolean;
   isAdmin: boolean;
-  loginWithGoogle: () => Promise<{ error: Error | null }>;
+  signInWithGoogleIdToken: (idToken: string) => Promise<{ error: Error | null }>;
   loginWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
   signupWithEmail: (email: string, password: string, name?: string) => Promise<{ error: Error | null }>;
   logout: () => Promise<void>;
@@ -74,17 +74,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
-  const loginWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
+  const signInWithGoogleIdToken = async (idToken: string) => {
+    const { error } = await supabase.auth.signInWithIdToken({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/dashboard`,
-      },
+      token: idToken,
     });
-    if (error) {
-      return { error };
-    }
-    return { error: null };
+    return { error };
   };
 
   const loginWithEmail = async (email: string, password: string) => {
@@ -134,7 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoggedIn,
         isVip,
         isAdmin,
-        loginWithGoogle,
+        signInWithGoogleIdToken,
         loginWithEmail,
         signupWithEmail,
         logout,
