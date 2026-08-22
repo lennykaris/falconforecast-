@@ -1,20 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Eye, CheckCircle2, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePredictions } from '../context/PredictionsContext';
+import { fetchUpcomingMatches } from '../lib/matches';
+import type { Match } from '../types/prediction';
 
 export const PostTipPage: React.FC = () => {
   const { user, isLoggedIn, isTipster, isAdmin } = useAuth();
   const { addPrediction } = usePredictions();
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [searchMatch, setSearchMatch] = useState('');
-  const [selectedMatch, setSelectedMatch] = useState({
-    id: 'm1',
-    league: 'Premier League',
-    teams: 'Arsenal vs Liverpool',
-    time: 'Today, 20:00',
-  });
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [matchesLoading, setMatchesLoading] = useState(true);
+  const [matchesError, setMatchesError] = useState<string | null>(null);
+  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
 
   const [market, setMarket] = useState('Over 2.5 Goals');
   const [odds, setOdds] = useState<string>('1.85');
@@ -27,43 +27,44 @@ export const PostTipPage: React.FC = () => {
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
 
-  const matchesOptions = [
-    {
-      id: 'm1',
-      league: 'Premier League',
-      teams: 'Arsenal vs Liverpool',
-      time: 'Today, 20:00',
-    },
-    {
-      id: 'm2',
-      league: 'La Liga',
-      teams: 'Real Madrid vs Barcelona',
-      time: 'Tomorrow, 21:00',
-    },
-    {
-      id: 'm3',
-      league: 'Serie A',
-      teams: 'Inter Milan vs Juventus',
-      time: 'Sun, 18:00',
-    },
-  ];
+  useEffect(() => {
+    if (!isLoggedIn || !(isTipster || isAdmin)) return;
+    fetchUpcomingMatches()
+      .then(list => {
+        setMatches(list);
+        setSelectedMatch(prev => prev || list[0] || null);
+      })
+      .catch(e => setMatchesError(e instanceof Error ? e.message : 'Failed to load matches'))
+      .finally(() => setMatchesLoading(false));
+  }, [isLoggedIn, isTipster, isAdmin]);
 
-  const filteredMatches = matchesOptions.filter(
+  const formatKickoff = (iso: string) => {
+    try {
+      return new Intl.DateTimeFormat('en-GB', {
+        weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+      }).format(new Date(iso));
+    } catch { return iso; }
+  };
+
+  const filteredMatches = matches.filter(
     m =>
-      m.teams.toLowerCase().includes(searchMatch.toLowerCase()) ||
+      m.homeTeam.toLowerCase().includes(searchMatch.toLowerCase()) ||
+      m.awayTeam.toLowerCase().includes(searchMatch.toLowerCase()) ||
       m.league.toLowerCase().includes(searchMatch.toLowerCase())
   );
 
   const handlePublish = async () => {
+    if (!selectedMatch) return;
     setPublishing(true);
     setPublishError(null);
 
-    const [homeTeam, awayTeam] = selectedMatch.teams.split(' vs ').map(s => s.trim());
     const { error } = await addPrediction({
       league: selectedMatch.league,
-      homeTeam: homeTeam || selectedMatch.teams,
-      awayTeam: awayTeam || '',
-      kickoff: selectedMatch.time,
+      homeTeam: selectedMatch.homeTeam,
+      awayTeam: selectedMatch.awayTeam,
+      kickoff: selectedMatch.kickoff,
+      homeLogo: selectedMatch.homeLogo,
+      awayLogo: selectedMatch.awayLogo,
       tip: market,
       odds: parseFloat(odds) || 0,
       confidence,
@@ -199,7 +200,7 @@ export const PostTipPage: React.FC = () => {
               <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">Tip Published Successfully!</h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                Your prediction for {selectedMatch.teams} has been submitted and is now live on Falcon Forecast.
+                Your prediction for {selectedMatch ? `${selectedMatch.homeTeam} vs ${selectedMatch.awayTeam}` : 'this match'} has been submitted and is now live on Falcon Forecast.
               </p>
               <button
                 onClick={() => {
@@ -232,38 +233,49 @@ export const PostTipPage: React.FC = () => {
 
                   <div className="space-y-2 pt-2">
                     <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      Popular Upcoming
+                      Upcoming Fixtures
                     </p>
-                    {filteredMatches.map(m => (
-                      <label
-                        key={m.id}
-                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                          selectedMatch.id === m.id
-                            ? 'border-[#00a8ff] bg-blue-50/50 dark:bg-sky-950/40'
-                            : 'border-slate-200 dark:border-slate-800 hover:border-slate-300'
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="matchSelect"
-                          checked={selectedMatch.id === m.id}
-                          onChange={() => setSelectedMatch(m)}
-                          className="accent-[#00a8ff]"
-                        />
-                        <div>
-                          <p className="text-[10px] text-slate-400 font-semibold">
-                            {m.league} • {m.time}
-                          </p>
-                          <p className="text-xs font-bold text-slate-900 dark:text-white">{m.teams}</p>
-                        </div>
-                      </label>
-                    ))}
+                    {matchesLoading ? (
+                      <p className="text-xs text-slate-400 py-4 text-center">Loading fixtures...</p>
+                    ) : matchesError ? (
+                      <p className="text-xs text-rose-500 py-4 text-center">{matchesError}</p>
+                    ) : filteredMatches.length === 0 ? (
+                      <p className="text-xs text-slate-400 py-4 text-center">No matches found.</p>
+                    ) : (
+                      <div className="max-h-80 overflow-y-auto space-y-2">
+                        {filteredMatches.map(m => (
+                          <label
+                            key={m.id}
+                            className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                              selectedMatch?.id === m.id
+                                ? 'border-[#00a8ff] bg-blue-50/50 dark:bg-sky-950/40'
+                                : 'border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="matchSelect"
+                              checked={selectedMatch?.id === m.id}
+                              onChange={() => setSelectedMatch(m)}
+                              className="accent-[#00a8ff]"
+                            />
+                            <div>
+                              <p className="text-[10px] text-slate-400 font-semibold">
+                                {m.league} • {formatKickoff(m.kickoff)}
+                              </p>
+                              <p className="text-xs font-bold text-slate-900 dark:text-white">{m.homeTeam} vs {m.awayTeam}</p>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="pt-4 flex justify-end">
                     <button
                       onClick={() => setCurrentStep(2)}
-                      className="px-6 py-2 bg-[#00a8ff] hover:bg-[#0090e0] text-white text-xs font-bold rounded-lg transition-colors"
+                      disabled={!selectedMatch}
+                      className="px-6 py-2 bg-[#00a8ff] hover:bg-[#0090e0] text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50"
                     >
                       Next Step
                     </button>
@@ -446,9 +458,9 @@ export const PostTipPage: React.FC = () => {
 
               {/* Match Header */}
               <div>
-                <p className="text-[10px] text-slate-400 font-semibold">{selectedMatch.league}</p>
+                <p className="text-[10px] text-slate-400 font-semibold">{selectedMatch?.league || 'No match selected'}</p>
                 <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                  {selectedMatch.teams}
+                  {selectedMatch ? `${selectedMatch.homeTeam} vs ${selectedMatch.awayTeam}` : '—'}
                 </h4>
               </div>
 

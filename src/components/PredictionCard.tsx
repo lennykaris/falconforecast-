@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { Prediction } from '../types/prediction';
 import { useAuth } from '../context/AuthContext';
+import { useTipsters } from '../context/TipstersContext';
 import { MessageSquare, Share2, ShieldCheck, Sparkles } from 'lucide-react';
 import { MatchCommentsModal } from './MatchCommentsModal';
 import { ShareTipModal } from './ShareTipModal';
@@ -11,13 +13,22 @@ interface PredictionCardProps {
 }
 
 export const PredictionCard: React.FC<PredictionCardProps> = ({ prediction, onUnlockClick }) => {
-  const { isVip } = useAuth();
+  const { user, isVip, isAdmin } = useAuth();
+  const { isSubscribedToTipster } = useTipsters();
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
 
-  const isLocked = prediction.tier === 'vip' && !isVip;
-  const isPlatformTip = prediction.tier === 'vip' || prediction.isPlatformTip || prediction.tipsterName === 'Falcon Forecast Platform';
+  const isPlatformTip = !prediction.tipsterId || prediction.isPlatformTip || prediction.tipsterName === 'Falcon Forecast Platform';
+  const isOwnTip = !!user && user.id === prediction.tipsterId;
+
+  // Platform picks stay gated by the site-wide VIP subscription. A tipster's own premium tip is
+  // gated per-tipster: locked unless this user has paid that specific tipster (or it's their own tip).
+  const isLocked = prediction.tier !== 'vip'
+    ? false
+    : isPlatformTip
+      ? !isVip
+      : !isAdmin && !isOwnTip && !(user && isSubscribedToTipster(user.id, prediction.tipsterId!));
 
   const formatKickoff = (dateString: string) => {
     try {
@@ -222,7 +233,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({ prediction, onUn
 
             <div className="space-y-1">
               <p className="text-sm font-bold font-display" style={{ color: 'var(--text-primary)' }}>
-                VIP Selection
+                {isPlatformTip ? 'VIP Selection' : `${prediction.tipsterName || 'Tipster'}'s Premium Pick`}
               </p>
               <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                 Estimated{' '}
@@ -233,13 +244,23 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({ prediction, onUn
               </p>
             </div>
 
-            <button
-              onClick={onUnlockClick}
-              className="px-5 py-2.5 text-xs font-bold text-slate-950 rounded-lg transition-all hover:brightness-110"
-              style={{ backgroundColor: 'var(--brand)' }}
-            >
-              Unlock VIP
-            </button>
+            {isPlatformTip ? (
+              <button
+                onClick={onUnlockClick}
+                className="px-5 py-2.5 text-xs font-bold text-slate-950 rounded-lg transition-all hover:brightness-110"
+                style={{ backgroundColor: 'var(--brand)' }}
+              >
+                Unlock VIP
+              </button>
+            ) : (
+              <Link
+                to={`/tipsters?subscribe=${prediction.tipsterId}`}
+                className="px-5 py-2.5 text-xs font-bold text-slate-950 rounded-lg transition-all hover:brightness-110"
+                style={{ backgroundColor: 'var(--brand)' }}
+              >
+                Subscribe to Unlock
+              </Link>
+            )}
           </div>
         )}
       </div>

@@ -59,6 +59,16 @@ export interface TipsterSubscription {
   createdAt: string;
 }
 
+export interface Match {
+  id: string;
+  league: string;
+  homeTeam: string;
+  awayTeam: string;
+  kickoff: string; // ISO string
+  homeLogo?: string;
+  awayLogo?: string;
+}
+
 export interface SubscriptionPlan {
   id: string;
   name: string;

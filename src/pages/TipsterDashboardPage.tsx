@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Star, DollarSign, Users, TrendingUp, Settings,
   ArrowRight, CheckCircle, Clock, Lock, Edit3,
-  Check, X, ShieldCheck, BarChart3, Zap
+  Check, X, ShieldCheck, BarChart3, Zap, Calendar
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTipsters } from '../context/TipstersContext';
 import { PLATFORM_CUT_PCT } from '../context/TipstersContext';
+import { fetchUpcomingMatches } from '../lib/matches';
+import type { Match } from '../types/prediction';
+import { PostOddsModal } from '../components/PostOddsModal';
 
 export const TipsterDashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -16,6 +19,19 @@ export const TipsterDashboardPage: React.FC = () => {
   const [editingPrices, setEditingPrices] = useState(false);
   const [newWeekly, setNewWeekly] = useState<number>(0);
   const [newMonthly, setNewMonthly] = useState<number>(0);
+
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [matchesLoading, setMatchesLoading] = useState(true);
+  const [matchesError, setMatchesError] = useState<string | null>(null);
+  const [oddsMatch, setOddsMatch] = useState<Match | null>(null);
+
+  useEffect(() => {
+    if (!user || (user.role !== 'tipster' && user.role !== 'admin')) return;
+    fetchUpcomingMatches()
+      .then(setMatches)
+      .catch(e => setMatchesError(e instanceof Error ? e.message : 'Failed to load matches'))
+      .finally(() => setMatchesLoading(false));
+  }, [user]);
 
   // Find the logged-in tipster's profile in context
   const myProfile = tipsters.find(t => t.id === user?.id) ?? user;
@@ -140,6 +156,48 @@ export const TipsterDashboardPage: React.FC = () => {
           <p className="text-[10px] text-slate-400">{expiredSubscribers.length} expired / cancelled</p>
         </div>
       </div>
+
+      {/* Upcoming Games — post odds directly on real fixtures */}
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-[#0EA5E9]" />
+            <div>
+              <h2 className="text-base font-black text-slate-900">Upcoming Games</h2>
+              <p className="text-[10px] text-slate-400">Real fixtures — post your odds on any of them</p>
+            </div>
+          </div>
+        </div>
+
+        {matchesLoading ? (
+          <div className="py-12 text-center text-xs text-slate-400">Loading fixtures...</div>
+        ) : matchesError ? (
+          <div className="py-12 text-center text-xs text-rose-500">{matchesError}</div>
+        ) : matches.length === 0 ? (
+          <div className="py-12 text-center text-xs text-slate-400">No upcoming fixtures in the next 10 days.</div>
+        ) : (
+          <div className="divide-y divide-slate-50 max-h-96 overflow-y-auto">
+            {matches.map(m => (
+              <div key={m.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors">
+                <div>
+                  <p className="text-[10px] text-slate-400 font-semibold">
+                    {m.league} · {new Date(m.kickoff).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                  <p className="text-xs font-bold text-slate-800">{m.homeTeam} vs {m.awayTeam}</p>
+                </div>
+                <button
+                  onClick={() => setOddsMatch(m)}
+                  className="px-3 py-1.5 bg-[#0EA5E9] hover:bg-sky-600 text-white text-[11px] font-bold rounded-lg transition-colors flex-shrink-0"
+                >
+                  Post Odds
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <PostOddsModal match={oddsMatch} onClose={() => setOddsMatch(null)} />
 
       {/* Two columns: Pricing + Subscribers */}
       <div className="grid md:grid-cols-3 gap-6">

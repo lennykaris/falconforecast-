@@ -78,7 +78,7 @@ export const PredictionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         const mapped = data.map(fromRow);
         setPredictions(mapped);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));

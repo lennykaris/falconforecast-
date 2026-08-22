@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Crown, CheckCircle2, Star, UserCheck, Lock,
   Filter, Trophy, Zap, X, TrendingUp, ArrowRight
@@ -12,6 +12,7 @@ import type { User } from '../types/prediction';
 export const TipstersPage: React.FC = () => {
   const { tipsters, subscribeToTipster, isSubscribedToTipster } = useTipsters();
   const { user, isTipster, isAdmin } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [selectedTipster, setSelectedTipster] = useState<User | null>(null);
   const [subscriptionCycle, setSubscriptionCycle] = useState<'weekly' | 'monthly'>('monthly');
@@ -20,6 +21,18 @@ export const TipstersPage: React.FC = () => {
   // Filters
   const [activeLeague, setActiveLeague] = useState<string>('All');
   const [activeMarket, setActiveMarket] = useState<string>('All');
+
+  // Deep link from a locked prediction card: /tipsters?subscribe=<tipsterId> auto-opens that tipster's modal.
+  useEffect(() => {
+    const subscribeId = searchParams.get('subscribe');
+    if (subscribeId && tipsters.length > 0) {
+      const target = tipsters.find(t => t.id === subscribeId);
+      if (target) setSelectedTipster(target);
+      searchParams.delete('subscribe');
+      setSearchParams(searchParams, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipsters]);
 
   const activeTipsters = tipsters.filter(t => t.tipsterStatus === 'active' || t.verified);
 

@@ -30,6 +30,34 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 -- Enable Row Level Security (RLS) on Profiles
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
+-- =====================================================================================
+-- 2a. RLS HELPER FUNCTIONS — any policy on `profiles` that queries `profiles` from inside
+-- itself re-triggers that same policy under RLS, causing "infinite recursion detected in
+-- policy for relation profiles" (Postgres error 42P17). Every other table's policies that
+-- check role/plan by querying profiles hit the same wall, since that query also goes
+-- through profiles' RLS. SECURITY DEFINER functions run as their owner and bypass RLS on
+-- the tables they touch, breaking the cycle. This is the standard Supabase-recommended fix.
+-- =====================================================================================
+CREATE OR REPLACE FUNCTION public.is_admin(uid UUID DEFAULT auth.uid())
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+STABLE
+AS $$
+  SELECT COALESCE((SELECT role = 'admin' FROM public.profiles WHERE id = uid), false);
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_profile(uid UUID DEFAULT auth.uid())
+RETURNS public.profiles
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+STABLE
+AS $$
+  SELECT * FROM public.profiles WHERE id = uid;
+$$;
+
 -- Hardened Profiles Policies
 DROP POLICY IF EXISTS "Public profiles viewable" ON public.profiles;
 DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
@@ -38,12 +66,12 @@ DROP POLICY IF EXISTS "Users can update own basic profile" ON public.profiles;
 DROP POLICY IF EXISTS "Admins can update any profile" ON public.profiles;
 
 -- Anyone can view Active Tipster profiles; users can view their own profile; admins view all
-CREATE POLICY "Public tipsters and own profile viewable" 
-  ON public.profiles FOR SELECT 
+CREATE POLICY "Public tipsters and own profile viewable"
+  ON public.profiles FOR SELECT
   USING (
-    role = 'tipster' OR 
-    auth.uid() = id OR 
-    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+    role = 'tipster' OR
+    auth.uid() = id OR
+    public.is_admin()
   );
 
 CREATE POLICY "Users can insert their own profile" 
@@ -51,19 +79,21 @@ CREATE POLICY "Users can insert their own profile"
   WITH CHECK (auth.uid() = id);
 
 -- Users can update bio/name/prices, but CANNOT self-grant role = 'admin'
-CREATE POLICY "Users can update own basic profile" 
-  ON public.profiles FOR UPDATE 
+-- (superseded by the hardened version in section 6b below, which also runs on every
+-- re-run of this file — kept here so the table has a valid policy even if 6b is trimmed off)
+CREATE POLICY "Users can update own basic profile"
+  ON public.profiles FOR UPDATE
   USING (auth.uid() = id)
   WITH CHECK (
     auth.uid() = id AND
-    role = (SELECT role FROM public.profiles WHERE id = auth.uid()) -- prevents role tampering
+    role = (public.get_profile()).role -- prevents role tampering
   );
 
 -- Admins have full update rights over any profile (approve tipsters, ban users, change roles)
-CREATE POLICY "Admins can update any profile" 
-  ON public.profiles FOR UPDATE 
+CREATE POLICY "Admins can update any profile"
+  ON public.profiles FOR UPDATE
   USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    public.is_admin()
   );
 
 -- Secure trigger function: Default to 'user' for public signups
@@ -117,9 +147,9 @@ CREATE POLICY "Tipsters view subscribers"
   ON public.tipster_subscriptions FOR SELECT 
   USING (auth.uid() = tipster_id);
 
-CREATE POLICY "Admins view all subscriptions" 
-  ON public.tipster_subscriptions FOR SELECT 
-  USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+CREATE POLICY "Admins view all subscriptions"
+  ON public.tipster_subscriptions FOR SELECT
+  USING (public.is_admin());
 
 -- Allow authenticated users to create subscriptions (INSERT)
 DROP POLICY IF EXISTS "Users insert own subscriptions" ON public.tipster_subscriptions;
@@ -131,8 +161,7 @@ CREATE POLICY "Users insert own subscriptions"
 DROP POLICY IF EXISTS "Cancel subscription" ON public.tipster_subscriptions;
 CREATE POLICY "Cancel subscription"
   ON public.tipster_subscriptions FOR UPDATE
-  USING (auth.uid() = user_id OR auth.uid() = tipster_id
-         OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+  USING (auth.uid() = user_id OR auth.uid() = tipster_id OR public.is_admin());
 
 -- 4. CREATE PREDICTIONS TABLE (Linked to Tipster Author)
 CREATE TABLE IF NOT EXISTS public.predictions (
@@ -203,47 +232,40 @@ CREATE POLICY "Free predictions viewable by anyone"
   USING (tier = 'free');
 
 -- VIP predictions viewable by subscribers of that tipster or global VIP / Admin users
-CREATE POLICY "VIP predictions viewable by subscribers or admins" 
-  ON public.predictions FOR SELECT 
+CREATE POLICY "VIP predictions viewable by subscribers or admins"
+  ON public.predictions FOR SELECT
   USING (
     tier = 'free' OR
     EXISTS (
       SELECT 1 FROM public.tipster_subscriptions ts
-      WHERE ts.user_id = auth.uid() 
+      WHERE ts.user_id = auth.uid()
       AND ts.tipster_id = predictions.tipster_id
       AND ts.status = 'active'
       AND ts.expires_at > now()
     ) OR
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid() AND (p.role = 'admin' OR p.plan IN ('monthly_vip', 'annual_vip'))
-    )
+    public.is_admin() OR
+    (public.get_profile()).plan IN ('monthly_vip', 'annual_vip')
   );
 
 -- Active tipsters and admins can publish predictions
-CREATE POLICY "Tipsters and admins insert predictions" 
-  ON public.predictions FOR INSERT 
+CREATE POLICY "Tipsters and admins insert predictions"
+  ON public.predictions FOR INSERT
   WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE profiles.id = auth.uid() AND (profiles.role IN ('tipster', 'admin'))
-    )
+    (public.get_profile()).role IN ('tipster', 'admin')
   );
 
 -- Tipsters can update own predictions; Admins can update any prediction
-CREATE POLICY "Tipsters update own predictions, admins update any" 
-  ON public.predictions FOR UPDATE 
+CREATE POLICY "Tipsters update own predictions, admins update any"
+  ON public.predictions FOR UPDATE
   USING (
-    tipster_id = auth.uid() OR
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    tipster_id = auth.uid() OR public.is_admin()
   );
 
 -- Tipsters can delete own predictions; Admins can delete any prediction
-CREATE POLICY "Tipsters delete own predictions, admins delete any" 
-  ON public.predictions FOR DELETE 
+CREATE POLICY "Tipsters delete own predictions, admins delete any"
+  ON public.predictions FOR DELETE
   USING (
-    tipster_id = auth.uid() OR
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    tipster_id = auth.uid() OR public.is_admin()
   );
 
 -- 5. PERFORMANCE INDEXES
@@ -268,10 +290,10 @@ CREATE POLICY "Tipsters and admins insert predictions"
   WITH CHECK (
     (
       tipster_id = auth.uid() AND
-      EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'tipster')
+      (public.get_profile()).role = 'tipster'
     )
     OR
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    public.is_admin()
   );
 
 -- 6b. The self-update policy on profiles blocked users from tampering with their own
@@ -287,10 +309,10 @@ CREATE POLICY "Users can update own basic profile"
   USING (auth.uid() = id)
   WITH CHECK (
     auth.uid() = id AND
-    role = (SELECT role FROM public.profiles WHERE id = auth.uid()) AND
-    verified = (SELECT verified FROM public.profiles WHERE id = auth.uid()) AND
+    role = (public.get_profile()).role AND
+    verified = (public.get_profile()).verified AND
     (
-      tipster_status = (SELECT tipster_status FROM public.profiles WHERE id = auth.uid())
+      tipster_status = (public.get_profile()).tipster_status
       OR tipster_status = 'pending'
     )
   );

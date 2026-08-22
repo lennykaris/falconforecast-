@@ -67,7 +67,7 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           .select('*')
           .or('role.eq.tipster,tipster_status.neq.none');
 
-        if (!error && data && data.length > 0) {
+        if (!error && data) {
           const mapped: User[] = data.map((p: any) => ({
             id: p.id,
             name: p.name || p.email.split('@')[0],
