@@ -95,7 +95,6 @@ export const SignupPage: React.FC = () => {
                 <>
               <GoogleSignInButton
                 label="Continue with Google"
-                onSuccess={() => navigate('/dashboard')}
                 onError={setError}
               />
 

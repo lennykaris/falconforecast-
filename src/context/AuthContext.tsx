@@ -8,7 +8,7 @@ interface AuthContextType {
   isVip: boolean;
   isAdmin: boolean;
   isTipster: boolean;
-  signInWithGoogleIdToken: (idToken: string) => Promise<{ error: Error | null }>;
+  signInWithGoogle: () => Promise<{ error: Error | null }>;
   loginWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
   signupWithEmail: (email: string, password: string, name?: string) => Promise<{ error: Error | null; needsEmailConfirmation: boolean }>;
   sendPasswordReset: (email: string) => Promise<{ error: Error | null }>;
@@ -100,10 +100,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
-  const signInWithGoogleIdToken = async (idToken: string) => {
-    const { error } = await supabase.auth.signInWithIdToken({
+  /** Supabase's hosted Google OAuth flow — redirects through Google, then Supabase's fixed
+   * callback URL, then back here. More reliable than a client-side token flow because the
+   * only redirect URI that ever needs registering in Google Console is Supabase's own
+   * (https://<project-ref>.supabase.co/auth/v1/callback), which never changes with the app's
+   * port or domain. */
+  const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      token: idToken,
+      options: { redirectTo: `${window.location.origin}/dashboard` },
     });
     return { error };
   };
@@ -173,7 +178,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isVip,
         isAdmin,
         isTipster,
-        signInWithGoogleIdToken,
+        signInWithGoogle,
         loginWithEmail,
         signupWithEmail,
         sendPasswordReset,

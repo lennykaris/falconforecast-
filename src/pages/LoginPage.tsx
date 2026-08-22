@@ -45,7 +45,6 @@ export const LoginPage: React.FC = () => {
             <div className="rounded-2xl p-6 border space-y-5 bet-card">
               <GoogleSignInButton
                 label="Continue with Google"
-                onSuccess={() => navigate('/dashboard')}
                 onError={setError}
               />
 
