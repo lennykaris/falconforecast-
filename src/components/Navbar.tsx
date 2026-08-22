@@ -1,8 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Search, PlusCircle, User, Sun, Moon, Home, Trophy, TrendingUp, Star, ShieldCheck, LayoutDashboard, Newspaper } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { fetchMatches } from '../lib/matches';
+import type { Match } from '../types/prediction';
+
+const tickerTimeLabel = (m: Match) => {
+  switch (m.status) {
+    case 'IN_PLAY': return 'Live';
+    case 'PAUSED': return 'HT';
+    case 'FINISHED': return 'FT';
+    default: return '';
+  }
+};
 
 export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
 
@@ -10,18 +21,25 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
   const { theme, toggleTheme } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const location = useLocation();
+  const [tickerMatches, setTickerMatches] = useState<{ time: string; teams: string; live: boolean }[]>([]);
 
   const isActive = (path: string) => location.pathname === path;
 
-  const tickerMatches = [
-    { time: "67'", teams: "ARS 2 - 1 TOT", live: true },
-    { time: "23'", teams: "RMA 0 - 0 FCB", live: true },
-    { time: "HT", teams: "MUN 1 - 0 CHE", live: false },
-    { time: "89'", teams: "MCI 3 - 1 LIV", live: true },
-    { time: "45'", teams: "ATM 1 - 1 BAR", live: true },
-    { time: "FT", teams: "INT 2 - 0 JUV", live: false },
-    { time: "12'", teams: "BVB 1 - 0 BAY", live: true },
-  ];
+  useEffect(() => {
+    fetchMatches()
+      .then(matches => {
+        const withScores = matches
+          .filter(m => (m.status === 'FINISHED' || m.status === 'IN_PLAY' || m.status === 'PAUSED') && m.homeScore != null && m.awayScore != null)
+          .slice(0, 10)
+          .map(m => ({
+            time: tickerTimeLabel(m),
+            teams: `${m.homeTla || m.homeTeam.slice(0, 3).toUpperCase()} ${m.homeScore} - ${m.awayScore} ${m.awayTla || m.awayTeam.slice(0, 3).toUpperCase()}`,
+            live: m.status === 'IN_PLAY' || m.status === 'PAUSED',
+          }));
+        setTickerMatches(withScores);
+      })
+      .catch(() => setTickerMatches([]));
+  }, []);
 
   const mobileTabs = [
     { to: '/matches', label: 'Home', icon: Home },
@@ -193,18 +211,20 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
         </div>
 
         {/* ─── LIVE SCORES TICKER SUB-BAR (Auto-scrolling marquee) ─── */}
-        <div className="bg-[#0f172a] text-slate-300 py-1.5 overflow-hidden border-t border-slate-800 text-xs font-mono select-none">
-          <div className="animate-ticker">
-            {tickerMatches.concat(tickerMatches).map((match, i) => (
-              <div key={i} className="flex items-center gap-2 flex-shrink-0 px-4 hover:text-white transition-colors cursor-pointer">
-                {match.live && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
-                <span className="text-emerald-400 font-bold">{match.time}</span>
-                <span className="font-semibold">{match.teams}</span>
-                <span className="text-slate-600 px-2">|</span>
-              </div>
-            ))}
+        {tickerMatches.length > 0 && (
+          <div className="bg-[#0f172a] text-slate-300 py-1.5 overflow-hidden border-t border-slate-800 text-xs font-mono select-none">
+            <div className="animate-ticker">
+              {tickerMatches.concat(tickerMatches).map((match, i) => (
+                <div key={i} className="flex items-center gap-2 flex-shrink-0 px-4 hover:text-white transition-colors cursor-pointer">
+                  {match.live && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
+                  <span className="text-emerald-400 font-bold">{match.time}</span>
+                  <span className="font-semibold">{match.teams}</span>
+                  <span className="text-slate-600 px-2">|</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </header>
 
       {/* ─── MOBILE DYNAMIC ISLAND BOTTOM NAVBAR (< md) ─── */}

@@ -1,9 +1,10 @@
-import { fetchUpcomingMatches } from './_lib/footballData.js';
+import { fetchMatches } from './_lib/footballData.js';
 
 export default async function handler(req, res) {
   try {
-    const matches = await fetchUpcomingMatches({ days: 10 });
-    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
+    const { dateFrom, dateTo } = req.query || {};
+    const matches = await fetchMatches({ dateFrom, dateTo });
+    res.setHeader('Cache-Control', 's-maxage=120, stale-while-revalidate=300');
     res.status(200).json({ matches });
   } catch (err) {
     console.error('GET /api/matches failed:', err);

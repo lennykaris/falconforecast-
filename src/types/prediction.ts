@@ -62,11 +62,29 @@ export interface TipsterSubscription {
 export interface Match {
   id: string;
   league: string;
+  leagueCode?: string;
   homeTeam: string;
   awayTeam: string;
+  homeTla?: string;
+  awayTla?: string;
   kickoff: string; // ISO string
+  status?: string; // SCHEDULED | TIMED | IN_PLAY | PAUSED | FINISHED | POSTPONED | ...
+  homeScore?: number | null;
+  awayScore?: number | null;
   homeLogo?: string;
   awayLogo?: string;
+}
+
+export interface StandingRow {
+  position: number;
+  team: string;
+  crest?: string;
+  played: number;
+  won: number;
+  draw: number;
+  lost: number;
+  points: number;
+  form: string[];
 }
 
 export interface SubscriptionPlan {

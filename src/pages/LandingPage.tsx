@@ -15,8 +15,10 @@ import {
   X,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-import { INITIAL_TIPSTERS } from '../data/tipsters';
+import { useTipsters } from '../context/TipstersContext';
 import { SUBSCRIPTION_PLANS } from '../data/predictions';
+import { fetchMatches } from '../lib/matches';
+import type { Match } from '../types/prediction';
 
 const NAV_LINKS = [
   { label: 'Features', href: '#features' },
@@ -33,12 +35,14 @@ const STEPS = [
   { step: '03', title: 'Upgrade for VIP accuracy', description: 'Unlock 85%+ confidence picks and premium tipsters whenever you’re ready.' },
 ];
 
-const TICKER_SCORES = [
-  { time: 'FT', match: 'MUN 2-1 ARS' },
-  { time: "63'", match: 'RMA 0-0 BAY' },
-  { time: "78'", match: 'INT 1-1 JUV' },
-  { time: "34'", match: 'MCI 3-1 LIV' },
-];
+const tickerTimeLabel = (m: Match) => {
+  switch (m.status) {
+    case 'IN_PLAY': return 'Live';
+    case 'PAUSED': return 'HT';
+    case 'FINISHED': return 'FT';
+    default: return '';
+  }
+};
 
 /* Scroll-scrubbed frame sequence: every 3rd frame of a 300-frame source clip, for a lighter payload */
 const HERO_FRAME_COUNT = 100;
@@ -251,9 +255,27 @@ export const LandingPage: React.FC = () => {
     };
   }, []);
 
-  const topTipsters = [...INITIAL_TIPSTERS]
+  const { tipsters } = useTipsters();
+  const topTipsters = [...tipsters]
+    .filter(t => t.tipsterStatus === 'active' || t.verified)
     .sort((a, b) => (b.winRate || 0) - (a.winRate || 0))
     .slice(0, 3);
+
+  const [tickerScores, setTickerScores] = useState<{ time: string; match: string }[]>([]);
+  useEffect(() => {
+    fetchMatches()
+      .then(matches => {
+        const withScores = matches
+          .filter((m: Match) => (m.status === 'FINISHED' || m.status === 'IN_PLAY' || m.status === 'PAUSED') && m.homeScore != null && m.awayScore != null)
+          .slice(0, 8)
+          .map((m: Match) => ({
+            time: tickerTimeLabel(m),
+            match: `${m.homeTla || m.homeTeam.slice(0, 3).toUpperCase()} ${m.homeScore}-${m.awayScore} ${m.awayTla || m.awayTeam.slice(0, 3).toUpperCase()}`,
+          }));
+        setTickerScores(withScores);
+      })
+      .catch(() => setTickerScores([]));
+  }, []);
 
   const previewPlans = SUBSCRIPTION_PLANS.slice(0, 3);
 
@@ -528,13 +550,17 @@ export const LandingPage: React.FC = () => {
                   Live scores, half-time updates and full-time results streamed straight into your dashboard.
                 </p>
                 <div className="border-t pt-3 overflow-hidden" style={{ borderColor: 'var(--border)' }}>
-                  <div className="animate-ticker-fast">
-                    {[...TICKER_SCORES, ...TICKER_SCORES].map((t, i) => (
-                      <span key={i} className="flex items-center gap-1.5 flex-shrink-0 px-3 text-[11px] font-mono whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
-                        {t.match} <em className="not-italic font-bold text-emerald-500">{t.time}</em>
-                      </span>
-                    ))}
-                  </div>
+                  {tickerScores.length > 0 ? (
+                    <div className="animate-ticker-fast">
+                      {[...tickerScores, ...tickerScores].map((t, i) => (
+                        <span key={i} className="flex items-center gap-1.5 flex-shrink-0 px-3 text-[11px] font-mono whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
+                          {t.match} <em className="not-italic font-bold text-emerald-500">{t.time}</em>
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] pt-1" style={{ color: 'var(--text-muted)' }}>No live results right now — check back during matchday.</p>
+                  )}
                 </div>
               </div>
             </Reveal>
@@ -587,6 +613,20 @@ export const LandingPage: React.FC = () => {
             </Link>
           </Reveal>
 
+          {topTipsters.length === 0 ? (
+            <div className="rounded-2xl p-10 text-center bet-card" style={{ backgroundColor: 'var(--bg-surface)' }}>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                We're onboarding our first verified tipsters right now.
+              </p>
+              <Link
+                to="/apply-tipster"
+                className="inline-flex items-center gap-1.5 text-xs font-bold mt-3"
+                style={{ color: 'var(--brand)' }}
+              >
+                Be one of the first to apply <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          ) : (
           <div className="grid sm:grid-cols-3 gap-5">
             {topTipsters.map((tipster, i) => (
               <Reveal key={tipster.id} delay={i * 90}>
@@ -627,6 +667,7 @@ export const LandingPage: React.FC = () => {
               </Reveal>
             ))}
           </div>
+          )}
         </section>
 
         {/* ─── PRICING ─── */}
