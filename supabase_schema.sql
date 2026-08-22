@@ -66,6 +66,7 @@ DROP POLICY IF EXISTS "Users can update own basic profile" ON public.profiles;
 DROP POLICY IF EXISTS "Admins can update any profile" ON public.profiles;
 
 -- Anyone can view Active Tipster profiles; users can view their own profile; admins view all
+DROP POLICY IF EXISTS "Public tipsters and own profile viewable" ON public.profiles;
 CREATE POLICY "Public tipsters and own profile viewable"
   ON public.profiles FOR SELECT
   USING (
@@ -262,6 +263,7 @@ CREATE POLICY "Tipsters update own predictions, admins update any"
   );
 
 -- Tipsters can delete own predictions; Admins can delete any prediction
+DROP POLICY IF EXISTS "Tipsters delete own predictions, admins delete any" ON public.predictions;
 CREATE POLICY "Tipsters delete own predictions, admins delete any"
   ON public.predictions FOR DELETE
   USING (
