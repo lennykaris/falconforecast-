@@ -9,7 +9,6 @@ interface PredictionsContextType {
   updatePrediction: (id: string, updated: Partial<Prediction>) => Promise<{ error: Error | null }>;
   deletePrediction: (id: string) => Promise<{ error: Error | null }>;
   toggleTier: (id: string) => void;
-  resetPredictions: () => void;
   refetchPredictions: () => Promise<void>;
 }
 
@@ -159,12 +158,6 @@ export const PredictionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
     updatePrediction(id, { tier: newTier });
   };
 
-  const resetPredictions = () => {
-    setPredictions(INITIAL_PREDICTIONS);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_PREDICTIONS));
-    sessionStorage.removeItem(CACHE_TIME_KEY);
-  };
-
   return (
     <PredictionsContext.Provider
       value={{
@@ -173,7 +166,6 @@ export const PredictionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
         updatePrediction,
         deletePrediction,
         toggleTier,
-        resetPredictions,
         refetchPredictions: fetchFromSupabase,
       }}
     >

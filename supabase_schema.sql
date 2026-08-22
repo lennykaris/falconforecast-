@@ -318,3 +318,83 @@ CREATE POLICY "Users can update own basic profile"
       OR tipster_status = 'pending'
     )
   );
+
+-- =====================================================================================
+-- 7. MATCH COMMENTS — previously entirely client-side/in-memory (lost on refresh, seeded
+-- with fake hardcoded comments). Real persisted comments + per-user like tracking.
+-- =====================================================================================
+CREATE TABLE IF NOT EXISTS public.comments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  prediction_id TEXT REFERENCES public.predictions(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  user_name TEXT NOT NULL,
+  user_role TEXT,
+  content TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can view comments" ON public.comments;
+CREATE POLICY "Anyone can view comments"
+  ON public.comments FOR SELECT
+  USING (true);
+
+DROP POLICY IF EXISTS "Authenticated users can post comments" ON public.comments;
+CREATE POLICY "Authenticated users can post comments"
+  ON public.comments FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users delete own comments, admins delete any" ON public.comments;
+CREATE POLICY "Users delete own comments, admins delete any"
+  ON public.comments FOR DELETE
+  USING (user_id = auth.uid() OR public.is_admin());
+
+CREATE TABLE IF NOT EXISTS public.comment_likes (
+  comment_id UUID REFERENCES public.comments(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  PRIMARY KEY (comment_id, user_id)
+);
+
+ALTER TABLE public.comment_likes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can view comment likes" ON public.comment_likes;
+CREATE POLICY "Anyone can view comment likes"
+  ON public.comment_likes FOR SELECT
+  USING (true);
+
+DROP POLICY IF EXISTS "Users add own likes" ON public.comment_likes;
+CREATE POLICY "Users add own likes"
+  ON public.comment_likes FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users remove own likes" ON public.comment_likes;
+CREATE POLICY "Users remove own likes"
+  ON public.comment_likes FOR DELETE
+  USING (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS idx_comments_prediction ON public.comments(prediction_id);
+CREATE INDEX IF NOT EXISTS idx_comment_likes_comment ON public.comment_likes(comment_id);
+
+-- =====================================================================================
+-- 8. PUBLIC PLATFORM STATS — a safe, aggregate-only RPC for the marketing landing page.
+-- Row Level Security intentionally restricts tipster_subscriptions to each user's own
+-- rows, so a logged-out visitor can never see real aggregate counts directly. This
+-- SECURITY DEFINER function returns only rounded/counted numbers, never individual rows,
+-- so it's safe to expose to anonymous visitors without leaking anyone's subscription data.
+-- =====================================================================================
+CREATE OR REPLACE FUNCTION public.platform_stats()
+RETURNS TABLE(active_subscribers BIGINT, avg_win_rate NUMERIC, active_tipsters BIGINT)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+STABLE
+AS $$
+  SELECT
+    (SELECT COUNT(DISTINCT user_id) FROM public.tipster_subscriptions WHERE status = 'active' AND expires_at > now()),
+    (SELECT COALESCE(ROUND(AVG(win_rate), 1), 0) FROM public.profiles WHERE role = 'tipster' AND tipster_status = 'active'),
+    (SELECT COUNT(*) FROM public.profiles WHERE role = 'tipster' AND tipster_status = 'active');
+$$;
+
+GRANT EXECUTE ON FUNCTION public.platform_stats() TO anon, authenticated;

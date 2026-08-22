@@ -36,11 +36,42 @@ import type { SubscriptionPlan } from './types/prediction';
 import { SUBSCRIPTION_PLANS } from './data/predictions';
 import { trackPageView } from './lib/analytics';
 
+const PAGE_TITLES: Record<string, string> = {
+  '/': 'Falcon Forecast | Football Tips, Odds & VIP Predictions',
+  '/matches': 'Live Matches & Standings | Falcon Forecast',
+  '/premier-league': 'Premier League Matches & Standings | Falcon Forecast',
+  '/la-liga': 'La Liga Matches & Standings | Falcon Forecast',
+  '/champions-league': 'Champions League Matches | Falcon Forecast',
+  '/serie-a': 'Serie A Matches & Standings | Falcon Forecast',
+  '/bundesliga': 'Bundesliga Matches | Falcon Forecast',
+  '/tips': 'Free Daily Football Tips | Falcon Forecast',
+  '/premium-tips': 'Premium VIP Football Tips | Falcon Forecast',
+  '/vip': 'VIP Membership | Falcon Forecast',
+  '/tipsters': 'Verified Tipster Marketplace | Falcon Forecast',
+  '/odds-comparison': 'Odds Comparison | Falcon Forecast',
+  '/news': 'Football News | Falcon Forecast',
+  '/about': 'About Us | Falcon Forecast',
+  '/dashboard': 'My Dashboard | Falcon Forecast',
+  '/profile': 'My Profile | Falcon Forecast',
+  '/login': 'Log In | Falcon Forecast',
+  '/signup': 'Sign Up | Falcon Forecast',
+  '/apply-tipster': 'Become a Tipster | Falcon Forecast',
+  '/post-tip': 'Post a Tip | Falcon Forecast',
+  '/tipster-dashboard': 'Tipster Dashboard | Falcon Forecast',
+  '/admin': 'Admin Panel | Falcon Forecast',
+  '/terms': 'Terms & Conditions | Falcon Forecast',
+  '/privacy': 'Privacy Policy | Falcon Forecast',
+  '/refund-policy': 'Refund Policy | Falcon Forecast',
+  '/gdpr': 'GDPR & Journalism | Falcon Forecast',
+  '/copyright': 'Copyright | Falcon Forecast',
+};
+
 const ScrollToTop: React.FC = () => {
   const { pathname } = useLocation();
   useEffect(() => {
     window.scrollTo(0, 0);
     trackPageView(pathname);
+    document.title = PAGE_TITLES[pathname] || 'Falcon Forecast | Football Scores & Odds Comparison';
   }, [pathname]);
   return null;
 };

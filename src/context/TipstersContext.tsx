@@ -2,9 +2,16 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User, TipsterSubscription } from '../types/prediction';
 import { INITIAL_TIPSTERS } from '../data/tipsters';
 import { supabase } from '../lib/supabase';
+import { useAuth } from './AuthContext';
 
 /** Platform takes 20% of every tipster subscription payment */
 export const PLATFORM_CUT_PCT = 0.20;
+
+/** A subscription counts as active only while it's both flagged active AND unexpired —
+ * checking expiry live here means gating stays correct even without a cron job flipping
+ * `status` to 'expired' the moment expires_at passes. */
+export const isSubscriptionActive = (s: TipsterSubscription) =>
+  s.status === 'active' && new Date(s.expiresAt).getTime() > Date.now();
 
 interface TipstersContextType {
   tipsters: User[];
@@ -25,7 +32,22 @@ const SUBS_STORAGE_KEY = 'falconforecast_tipster_subs_data';
 
 const TipstersContext = createContext<TipstersContextType | undefined>(undefined);
 
+const fromSubRow = (s: any): TipsterSubscription => ({
+  id: s.id,
+  userId: s.user_id,
+  userName: s.user_name,
+  tipsterId: s.tipster_id,
+  billingCycle: s.billing_cycle,
+  status: s.status,
+  price: Number(s.price),
+  platformCut: Number(s.platform_cut),
+  tipsterNet: Number(s.tipster_net),
+  expiresAt: s.expires_at,
+  createdAt: s.created_at,
+});
+
 export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
   const [tipsters, setTipsters] = useState<User[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -91,6 +113,27 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     loadTipsters();
   }, []);
+
+  // Load real subscriptions from Supabase — RLS scopes this to exactly what the current
+  // user should see: their own subscriptions, subscriptions to them (if a tipster), or
+  // everything (if admin). Re-fetches on login/logout so switching accounts stays correct.
+  useEffect(() => {
+    if (!user) {
+      setSubscriptions([]);
+      return;
+    }
+    async function loadSubscriptions() {
+      try {
+        const { data, error } = await supabase.from('tipster_subscriptions').select('*');
+        if (!error && data) {
+          setSubscriptions(data.map(fromSubRow));
+        }
+      } catch (e) {
+        console.warn('Failed to load subscriptions from Supabase', e);
+      }
+    }
+    loadSubscriptions();
+  }, [user?.id]);
 
   const approveTipster = async (tipsterId: string) => {
     setTipsters(prev =>
@@ -233,7 +276,7 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const isSubscribedToTipster = (userId: string, tipsterId: string) => {
     return subscriptions.some(
-      s => s.userId === userId && s.tipsterId === tipsterId && s.status === 'active'
+      s => s.userId === userId && s.tipsterId === tipsterId && isSubscriptionActive(s)
     );
   };
 
@@ -243,7 +286,7 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   /** Revenue breakdown with 20% platform cut for a tipster */
   const getTipsterRevenue = (tipsterId: string) => {
-    const mySubs = getMySubscriptions(tipsterId).filter(s => s.status === 'active');
+    const mySubs = getMySubscriptions(tipsterId).filter(isSubscriptionActive);
     const gross = mySubs.reduce((sum, s) => sum + (s.price || 0), 0);
     const platformCut = parseFloat((gross * PLATFORM_CUT_PCT).toFixed(2));
     const net = parseFloat((gross - platformCut).toFixed(2));

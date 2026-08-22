@@ -18,6 +18,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useTipsters } from '../context/TipstersContext';
 import { SUBSCRIPTION_PLANS } from '../data/predictions';
 import { fetchMatches } from '../lib/matches';
+import { supabase } from '../lib/supabase';
 import type { Match } from '../types/prediction';
 
 const NAV_LINKS = [
@@ -238,6 +239,20 @@ export const LandingPage: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrollPct, setScrollPct] = useState(0);
 
+  // Real platform-wide numbers via a SECURITY DEFINER RPC (see supabase_schema.sql) — an
+  // anonymous visitor can never see individual subscription rows, only this safe aggregate.
+  const [platformStats, setPlatformStats] = useState({ activeSubscribers: 0, avgWinRate: 0 });
+  useEffect(() => {
+    supabase.rpc('platform_stats').then(({ data, error }) => {
+      if (!error && data && data[0]) {
+        setPlatformStats({
+          activeSubscribers: Number(data[0].active_subscribers) || 0,
+          avgWinRate: Number(data[0].avg_win_rate) || 0,
+        });
+      }
+    });
+  }, []);
+
   useEffect(() => {
     let raf = 0;
     const onScroll = () => {
@@ -454,8 +469,8 @@ export const LandingPage: React.FC = () => {
 
                 <Reveal delay={260}>
                   <div className="flex flex-wrap gap-x-10 gap-y-4 pt-2 justify-center">
-                    <AnimatedStat target={88} suffix="%" label="Avg. VIP win rate" />
-                    <AnimatedStat target={1200} suffix="+" label="Active subscribers" />
+                    <AnimatedStat target={platformStats.avgWinRate} suffix="%" label="Avg. tipster win rate" />
+                    <AnimatedStat target={platformStats.activeSubscribers} suffix="" label="Active subscribers" />
                     <AnimatedStat target={5} suffix="" label="Leagues covered" />
                   </div>
                 </Reveal>

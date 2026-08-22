@@ -6,8 +6,9 @@ import {
   Check, X, ShieldCheck, BarChart3, Zap, Calendar
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useTipsters } from '../context/TipstersContext';
+import { useTipsters, isSubscriptionActive } from '../context/TipstersContext';
 import { PLATFORM_CUT_PCT } from '../context/TipstersContext';
+import { usePredictions } from '../context/PredictionsContext';
 import { fetchUpcomingMatches } from '../lib/matches';
 import type { Match } from '../types/prediction';
 import { PostOddsModal } from '../components/PostOddsModal';
@@ -15,6 +16,7 @@ import { PostOddsModal } from '../components/PostOddsModal';
 export const TipsterDashboardPage: React.FC = () => {
   const { user } = useAuth();
   const { tipsters, getMySubscriptions, getTipsterRevenue, updateOwnPricing } = useTipsters();
+  const { predictions, updatePrediction } = usePredictions();
 
   const [editingPrices, setEditingPrices] = useState(false);
   const [newWeekly, setNewWeekly] = useState<number>(0);
@@ -39,11 +41,12 @@ export const TipsterDashboardPage: React.FC = () => {
 
   const mySubscriptions = getMySubscriptions(myId);
   const revenue = getTipsterRevenue(myId);
+  const myPendingTips = predictions.filter(p => p.tipsterId === myId && (p.status || 'pending') === 'pending');
   const platformPct = Math.round(PLATFORM_CUT_PCT * 100);
   const tipsterPct = 100 - platformPct;
 
   // Separate active vs expired
-  const activeSubscribers = mySubscriptions.filter(s => s.status === 'active');
+  const activeSubscribers = mySubscriptions.filter(isSubscriptionActive);
   const expiredSubscribers = mySubscriptions.filter(s => s.status !== 'active');
 
   const handleStartEdit = () => {
@@ -198,6 +201,46 @@ export const TipsterDashboardPage: React.FC = () => {
       </div>
 
       <PostOddsModal match={oddsMatch} onClose={() => setOddsMatch(null)} />
+
+      {/* Settle Your Tips — mark your own pending picks won/lost/void */}
+      {myPendingTips.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100">
+            <h2 className="text-base font-black text-slate-900">Settle Your Tips</h2>
+            <p className="text-[10px] text-slate-400">Mark the outcome once the match has finished</p>
+          </div>
+          <div className="divide-y divide-slate-50">
+            {myPendingTips.map(p => (
+              <div key={p.id} className="flex items-center justify-between px-5 py-3">
+                <div>
+                  <p className="text-[10px] text-slate-400 font-semibold">{p.league}</p>
+                  <p className="text-xs font-bold text-slate-800">{p.homeTeam} vs {p.awayTeam} — <span className="text-[#0EA5E9]">{p.tip}</span></p>
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button
+                    onClick={() => updatePrediction(p.id, { status: 'won' })}
+                    className="px-2 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded border border-emerald-300 text-[10px] font-bold"
+                  >
+                    ✅ Won
+                  </button>
+                  <button
+                    onClick={() => updatePrediction(p.id, { status: 'lost' })}
+                    className="px-2 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded border border-rose-300 text-[10px] font-bold"
+                  >
+                    ❌ Lost
+                  </button>
+                  <button
+                    onClick={() => updatePrediction(p.id, { status: 'void' })}
+                    className="px-2 py-1 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded border border-slate-300 text-[10px] font-bold"
+                  >
+                    ⚪ Void
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Two columns: Pricing + Subscribers */}
       <div className="grid md:grid-cols-3 gap-6">
@@ -365,11 +408,11 @@ export const TipsterDashboardPage: React.FC = () => {
 
                       <td className="py-3 px-4 text-center">
                         <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${
-                          s.status === 'active'
+                          isSubscriptionActive(s)
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
                             : 'bg-slate-100 text-slate-500 border-slate-200'
                         }`}>
-                          {s.status}
+                          {isSubscriptionActive(s) ? 'active' : s.status === 'active' ? 'expired' : s.status}
                         </span>
                       </td>
 

@@ -16,7 +16,7 @@ export const Footer: React.FC = () => {
               </span>
             </Link>
           </div>
-          <p>© 2024 Falcon Forecast. Please gamble responsibly. 18+</p>
+          <p>© {new Date().getFullYear()} Falcon Forecast. Please gamble responsibly. 18+</p>
         </div>
 
         {/* Links */}

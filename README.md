@@ -1,52 +1,42 @@
-# Falcon Forecast (Frontend Demo)
+# Falcon Forecast
 
-**Falcon Forecast** is a modern, high-converting sports prediction subscription platform demo built with **Vite + React + TypeScript + Tailwind CSS**.
+**Falcon Forecast** (falconforecast.com) is a multi-vendor football tips marketplace: a platform-run free/VIP tip stream plus independent verified tipsters who publish their own picks and set their own subscription pricing (80/20 revenue split in the tipster's favor).
 
-This project is a pure frontend scaffolding built to validate user experience, layout, and subscription flow prior to backend integration (Stripe/PayPal + CMS API).
+Built with **Vite + React 19 + TypeScript + Tailwind CSS v4**, backed by **Supabase** (Postgres + Auth + Row Level Security) and **Vercel** (static hosting + serverless functions).
 
-## 🚀 Live Demo & Features
+## Features
 
-- **Home (`/`)**: Hero section with live stats ticker, "Today's Free Tips" carousel, locked VIP pick teasers, ROI highlights, and FAQ accordion.
-- **Free Tips (`/tips`)**: Complete list of daily free predictions with league filter tabs, search query filtering, and confidence score indicators.
-- **VIP Paywall (`/vip`)**: Billing tiers (Weekly / Pro Predictor / Champion VIP), feature comparison matrix, and interactive ROI Profit Simulator.
-- **Dashboard (`/dashboard`)**: Logged-in subscriber view displaying active plan status, unlocked VIP recommendations with xG tactical breakdowns, and payment placeholder modals.
-- **Admin Panel (`/admin`)**: Interactive CMS for predictions (add, edit inline, delete, free/VIP tier toggle) powered by local state.
-- **Auth Flow (`/login`, `/signup`)**: Authentication forms with 1-click Demo Account login presets (Free User, VIP Subscriber, Admin).
-- **Interactive Checkout Modal**: Simulated 1-click payment flow that instantly upgrades user state to VIP.
+- **Real fixtures & results** (`/matches` and league routes) — live via a football-data.org proxy, including real scores and league standings.
+- **Free & VIP tips** (`/tips`, `/premium-tips`, `/vip`) — platform picks gated by a sitewide VIP subscription; tipster picks gated per-tipster (pay that specific tipster to unlock their premium tips, or they can mark a tip free).
+- **Tipster marketplace** (`/tipsters`) — browse verified tipsters, subscribe weekly/monthly.
+- **Tipster dashboard** (`/tipster-dashboard`) — post odds on real upcoming fixtures, manage pricing, view real subscribers and revenue.
+- **Admin panel** (`/admin`, admin-only) — approve/suspend tipsters, manage predictions, view platform-wide revenue.
+- **Google sign-in** via Supabase's hosted OAuth flow, plus email/password auth with password reset.
+- **Match comments** — real, persisted discussion threads per prediction, with per-user likes.
+- **PWA** — installable, service worker, plus a Capacitor config for wrapping as a native app.
 
-## 🛠️ Tech Stack
+## Not yet built
 
-- **Framework**: Vite + React 19 + TypeScript
-- **Styling**: Tailwind CSS (v4) with custom `brand` light-blue palette (`#5EB8E8`)
-- **Icons**: Lucide React
-- **Routing**: React Router v7
-- **State Management**: React Context (`AuthContext` & `PredictionsContext`) + LocalStorage fallback
+- **Real payments.** Checkout is fully mocked (`CheckoutModal`, subscribe-to-tipster flow) pending a Pretium Africa merchant account — see `supabase_schema.sql` and the payment fields already on `profiles` for where this plugs in.
+- **Real bookmaker odds comparison** (`/odds-comparison`) — needs a paid odds data source; currently illustrative.
 
-## 📦 Project Setup & Local Development
+## Tech stack
 
-1. **Install Dependencies**:
+- **Frontend**: Vite, React 19, TypeScript, React Router v7, Tailwind CSS v4, Lucide icons
+- **Backend**: Supabase (Postgres, Auth, RLS, SECURITY DEFINER RPCs for safe public aggregates)
+- **Match/league data**: football-data.org, proxied server-side via `api/matches.js` / `api/standings.js` (Vercel serverless functions; mirrored for local dev in `vite.config.ts`)
+- **State**: React Context (`AuthContext`, `PredictionsContext`, `TipstersContext`, `BetSlipContext`) backed by Supabase, with a localStorage cache layer for fast first paint
+
+## Local development
+
+1. Copy `.env.example` to `.env` and fill in `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_GOOGLE_CLIENT_ID`, and `FOOTBALL_DATA_API_KEY` (the last one is server-side only — no `VITE_` prefix, so it's never bundled into the client).
+2. Run the schema: paste `supabase_schema.sql` into the Supabase SQL Editor. It's idempotent — safe to re-run any time you pull schema changes.
+3. Install and run:
    ```bash
    npm install
-   ```
-
-2. **Run Local Dev Server**:
-   ```bash
    npm run dev
    ```
 
-3. **Build for Production**:
-   ```bash
-   npm run build
-   ```
+## Deploying
 
-## 🌐 Deploying to Vercel
-
-This repository is ready for zero-configuration static deployment to Vercel:
-
-1. Push this project to GitHub/GitLab.
-2. Import the repository into [Vercel](https://vercel.com).
-3. Framework Preset: **Vite**
-4. Click **Deploy**.
-
----
-*Note: This is a frontend demo with static/mock data for UX validation.*
+Deploys to Vercel on push to `main`. `FOOTBALL_DATA_API_KEY` must be set in the Vercel project's Environment Variables (Production + Preview) separately from `.env` — it's intentionally not committed to the repo since this is a public GitHub repository.

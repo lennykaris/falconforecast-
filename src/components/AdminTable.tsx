@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
-import { 
-  Crown, 
-  Zap, 
-  Trash2, 
-  Edit3, 
-  Plus, 
-  Search, 
-  Filter, 
-  Check, 
-  X, 
-  RotateCcw,
+import {
+  Crown,
+  Zap,
+  Trash2,
+  Edit3,
+  Plus,
+  Search,
+  Filter,
+  Check,
+  X,
   CheckCircle,
   XCircle,
   Clock,
@@ -24,7 +23,7 @@ interface AdminTableProps {
 }
 
 export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
-  const { predictions, updatePrediction, deletePrediction, toggleTier, resetPredictions } = usePredictions();
+  const { predictions, updatePrediction, deletePrediction, toggleTier } = usePredictions();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLeague, setSelectedLeague] = useState('All Leagues');
@@ -101,15 +100,6 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
 
         {/* Action Buttons */}
         <div className="flex items-center space-x-3 justify-end">
-          <button
-            onClick={resetPredictions}
-            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 transition-colors flex items-center space-x-1.5"
-            title="Reset predictions to original default mock data"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset Demo Data</span>
-          </button>
-
           <button
             onClick={onOpenAddModal}
             className="px-4 py-2 bg-[#0EA5E9] hover:bg-sky-600 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center space-x-1.5"

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   ShieldCheck, Plus, Layers,
   Users, UserCheck, UserX, DollarSign,
-  TrendingUp, Star, AlertCircle, BarChart3, ArrowUpRight, CheckCircle2
+  TrendingUp, Star, AlertCircle, BarChart3, ArrowUpRight, CheckCircle2, Lock
 } from 'lucide-react';
 import { usePredictions } from '../context/PredictionsContext';
-import { useTipsters, PLATFORM_CUT_PCT } from '../context/TipstersContext';
+import { useTipsters, PLATFORM_CUT_PCT, isSubscriptionActive } from '../context/TipstersContext';
 import { AdminTable } from '../components/AdminTable';
 import { AddPredictionModal } from '../components/AddPredictionModal';
 import { useAuth } from '../context/AuthContext';
@@ -16,7 +17,7 @@ type AdminTab = 'predictions' | 'revenue' | 'tipsters' | 'users';
 export const AdminPage: React.FC = () => {
   const { predictions } = usePredictions();
   const { tipsters, approveTipster, suspendTipster, subscriptions } = useTipsters();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   const [activeTab, setActiveTab] = useState<AdminTab>('predictions');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -30,8 +31,9 @@ export const AdminPage: React.FC = () => {
 
   const activeTipsters = tipsters.filter(t => t.tipsterStatus === 'active');
   const pendingTipsters = tipsters.filter(t => t.tipsterStatus === 'pending');
-  const totalSubscriptions = subscriptions.length;
-  const platformRevenue = subscriptions.reduce((sum, s) => sum + (s.price || 0), 0);
+  const activeSubscriptions = subscriptions.filter(isSubscriptionActive);
+  const totalSubscriptions = activeSubscriptions.length;
+  const platformRevenue = activeSubscriptions.reduce((sum, s) => sum + (s.price || 0), 0);
 
   const allUsers: User[] = user
     ? [user, ...tipsters.filter(t => t.id !== user.id)]
@@ -39,7 +41,7 @@ export const AdminPage: React.FC = () => {
 
   // Per-tipster revenue breakdown for admin
   const tipsterRevenues = tipsters.map(t => {
-    const mySubs = subscriptions.filter(s => s.tipsterId === t.id && s.status === 'active');
+    const mySubs = subscriptions.filter(s => s.tipsterId === t.id && isSubscriptionActive(s));
     const gross = mySubs.reduce((sum, s) => sum + (s.price || 0), 0);
     const cut = parseFloat((gross * PLATFORM_CUT_PCT).toFixed(2));
     const net = parseFloat((gross - cut).toFixed(2));
@@ -69,6 +71,27 @@ export const AdminPage: React.FC = () => {
     if (role === 'tipster') return 'bg-sky-50 text-[#0EA5E9] border-sky-200';
     return 'bg-slate-100 text-slate-600 border-slate-200';
   };
+
+  // Guard: this panel exposes platform revenue and every tipster's earnings — RLS blocks
+  // the underlying mutations for non-admins, but the page itself must never even render
+  // for them in the first place.
+  if (!user || !isAdmin) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 pt-32 pb-28 text-center">
+        <Lock className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+        <h2 className="text-2xl font-black text-slate-800 mb-2">Admins Only</h2>
+        <p className="text-sm text-slate-500 mb-6">
+          This panel is restricted to Falcon Forecast administrators.
+        </p>
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0EA5E9] text-white font-bold rounded-xl text-sm shadow-md hover:bg-sky-600 transition-colors"
+        >
+          Back to Home <ArrowUpRight className="w-4 h-4" />
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 md:pt-24 pb-28 md:pb-10 space-y-8 bg-white min-h-screen">
@@ -337,12 +360,12 @@ export const AdminPage: React.FC = () => {
                         </td>
 
                         <td className="py-3.5 px-4 text-center font-mono">
-                          <span className="text-slate-500">${t.weeklyPrice || 9.99}</span>
+                          <span className="text-slate-500">KSh {t.weeklyPrice || 500}</span>
                           <span className="text-[9px] text-slate-400 block">set by tipster</span>
                         </td>
 
                         <td className="py-3.5 px-4 text-center font-mono">
-                          <span className="text-slate-500">${t.monthlyPrice || 29.99}</span>
+                          <span className="text-slate-500">KSh {t.monthlyPrice || 1500}</span>
                           <span className="text-[9px] text-slate-400 block">set by tipster</span>
                         </td>
 
