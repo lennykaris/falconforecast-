@@ -152,11 +152,12 @@ CREATE POLICY "Admins view all subscriptions"
   ON public.tipster_subscriptions FOR SELECT
   USING (public.is_admin());
 
--- Allow authenticated users to create subscriptions (INSERT)
+-- Subscriptions are created ONLY by the server after a real Pretium payment confirms (see
+-- api/pretium/webhook.js), using the service role key which bypasses RLS entirely. There is
+-- deliberately no client-facing INSERT policy: a user inserting their own row directly would
+-- grant themselves a paid subscription for free. (An earlier version of this schema allowed
+-- this before real payments existed; removing it now that money is actually involved.)
 DROP POLICY IF EXISTS "Users insert own subscriptions" ON public.tipster_subscriptions;
-CREATE POLICY "Users insert own subscriptions"
-  ON public.tipster_subscriptions FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
 
 -- Allow admins or tipsters to cancel/expire subscriptions (UPDATE)
 DROP POLICY IF EXISTS "Cancel subscription" ON public.tipster_subscriptions;
@@ -397,4 +398,76 @@ AS $$
     (SELECT COUNT(*) FROM public.profiles WHERE role = 'tipster' AND tipster_status = 'active');
 $$;
 
+-- =====================================================================================
+-- 9. PRETIUM PAYMENTS — real M-Pesa collect (user pays) and disburse (automatic tipster
+-- payout) via Pretium/Xwift Africa. All writes to this table happen server-side from the
+-- Vercel functions in api/pretium/*.js using the Supabase service role key, which bypasses
+-- RLS entirely — there is deliberately no INSERT/UPDATE policy for any client role, since a
+-- browser must never be able to fabricate or edit a money-moving record directly.
+-- =====================================================================================
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS mpesa_phone TEXT;
+
+CREATE TABLE IF NOT EXISTS public.payments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  reference TEXT UNIQUE NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('collect', 'disburse')),
+  kind TEXT NOT NULL CHECK (kind IN ('tipster_subscription', 'vip_subscription', 'tipster_payout')),
+  user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  tipster_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  subscription_id UUID REFERENCES public.tipster_subscriptions(id) ON DELETE SET NULL,
+  related_payment_id UUID REFERENCES public.payments(id) ON DELETE SET NULL,
+  billing_cycle TEXT CHECK (billing_cycle IN ('weekly', 'monthly')),
+  plan_id TEXT,
+  amount NUMERIC(10,2) NOT NULL,
+  platform_cut NUMERIC(10,2),
+  tipster_net NUMERIC(10,2),
+  phone TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'COMPLETE', 'FAILED')),
+  receipt_number TEXT,
+  failure_message TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users view own payments" ON public.payments;
+CREATE POLICY "Users view own payments"
+  ON public.payments FOR SELECT
+  USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Tipsters view own payouts" ON public.payments;
+CREATE POLICY "Tipsters view own payouts"
+  ON public.payments FOR SELECT
+  USING (tipster_id = auth.uid());
+
+DROP POLICY IF EXISTS "Admins view all payments" ON public.payments;
+CREATE POLICY "Admins view all payments"
+  ON public.payments FOR SELECT
+  USING (public.is_admin());
+
+CREATE INDEX IF NOT EXISTS idx_payments_reference ON public.payments(reference);
+CREATE INDEX IF NOT EXISTS idx_payments_user ON public.payments(user_id);
+CREATE INDEX IF NOT EXISTS idx_payments_tipster ON public.payments(tipster_id);
+CREATE INDEX IF NOT EXISTS idx_payments_subscription ON public.payments(subscription_id);
+
 GRANT EXECUTE ON FUNCTION public.platform_stats() TO anon, authenticated;
+
+-- Per-tipster subscriber counts for the public marketplace (/tipsters). RLS on
+-- tipster_subscriptions correctly limits a regular visitor to only their own rows, so this
+-- couldn't be computed client-side even for the tipster being viewed — this SECURITY DEFINER
+-- function exposes only a count per tipster, never row-level subscriber identity.
+CREATE OR REPLACE FUNCTION public.tipster_subscriber_counts()
+RETURNS TABLE(tipster_id UUID, subscriber_count BIGINT)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+STABLE
+AS $$
+  SELECT ts.tipster_id, COUNT(DISTINCT ts.user_id)
+  FROM public.tipster_subscriptions ts
+  WHERE ts.status = 'active' AND ts.expires_at > now()
+  GROUP BY ts.tipster_id;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.tipster_subscriber_counts() TO anon, authenticated;

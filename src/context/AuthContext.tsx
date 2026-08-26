@@ -14,7 +14,7 @@ interface AuthContextType {
   sendPasswordReset: (email: string) => Promise<{ error: Error | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
   logout: () => Promise<void>;
-  subscribeToPlan: (planId: string) => void;
+  refetchUser: () => Promise<void>;
 }
 
 const STORAGE_KEY = 'falconforecast_user_session';
@@ -42,6 +42,7 @@ const buildUser = (sbUser: SupabaseAuthUser, profile: Record<string, any> | null
     avatarUrl: profile?.avatar_url,
     weeklyPrice: profile?.weekly_price != null ? Number(profile.weekly_price) : undefined,
     monthlyPrice: profile?.monthly_price != null ? Number(profile.monthly_price) : undefined,
+    mpesaPhone: profile?.mpesa_phone || undefined,
     winRate: profile?.win_rate != null ? Number(profile.win_rate) : undefined,
     totalTips: profile?.total_tips,
     verified: profile?.verified,
@@ -154,15 +155,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
-  const subscribeToPlan = (planId: string) => {
-    if (!user) return;
-    const planType = planId.includes('annual') ? 'annual_vip' : 'monthly_vip';
-    setUser({
-      ...user,
-      plan: planType,
-      subscribedAt: new Date().toISOString(),
-      vipExpiresAt: new Date(Date.now() + (planType === 'annual_vip' ? 365 : 30) * 24 * 60 * 60 * 1000).toISOString(),
-    });
+  /** Re-fetches the profile row from Supabase — used after a real payment completes, since
+   * the webhook updates `profiles.plan`/`vip_expires_at` server-side and the client's local
+   * user state has no other way to learn about that. */
+  const refetchUser = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      setUser(await loadUser(session.user));
+    }
   };
 
   const isLoggedIn = !!user;
@@ -184,7 +184,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sendPasswordReset,
         updatePassword,
         logout,
-        subscribeToPlan,
+        refetchUser,
       }}
     >
       {children}

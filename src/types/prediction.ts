@@ -32,6 +32,8 @@ export interface User {
   avatarUrl?: string;
   weeklyPrice?: number;
   monthlyPrice?: number;
+  /** M-Pesa number tipsters register to receive their automatic payout share. */
+  mpesaPhone?: string;
   winRate?: number;
   totalTips?: number;
   subscribersCount?: number;

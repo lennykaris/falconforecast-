@@ -20,11 +20,12 @@ interface TipstersContextType {
   suspendTipster: (tipsterId: string) => void;
   /** Called by the tipster themselves — admins cannot change another tipster's prices */
   updateOwnPricing: (tipsterId: string, weeklyPrice: number, monthlyPrice: number) => void;
+  updateMpesaPhone: (tipsterId: string, mpesaPhone: string) => void;
   applyForTipster: (user: User, bio: string, weeklyPrice: number, monthlyPrice: number) => Promise<void>;
-  subscribeToTipster: (userId: string, userName: string, tipsterId: string, cycle: 'weekly' | 'monthly', price: number) => void;
   isSubscribedToTipster: (userId: string, tipsterId: string) => boolean;
   getMySubscriptions: (tipsterId: string) => TipsterSubscription[];
   getTipsterRevenue: (tipsterId: string) => { gross: number; platformCut: number; net: number };
+  refetchSubscriptions: () => Promise<void>;
 }
 
 const STORAGE_KEY = 'falconforecast_tipsters_data';
@@ -101,11 +102,21 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             avatarUrl: p.avatar_url,
             weeklyPrice: Number(p.weekly_price || 500),
             monthlyPrice: Number(p.monthly_price || 1500),
+            mpesaPhone: p.mpesa_phone || undefined,
             winRate: Number(p.win_rate || 75.0),
             totalTips: p.total_tips || 0,
             verified: p.verified || false,
           }));
-          setTipsters(mapped);
+
+          // Real per-tipster subscriber counts via a safe aggregate RPC — RLS means the
+          // regular tipster_subscriptions fetch above only ever contains rows the current
+          // user is allowed to see, which isn't enough to show subscriber counts for the
+          // other tipsters listed on the public marketplace.
+          const { data: counts } = await supabase.rpc('tipster_subscriber_counts');
+          const countMap = new Map<string, number>(
+            (counts || []).map((c: any) => [c.tipster_id, Number(c.subscriber_count)])
+          );
+          setTipsters(mapped.map(t => ({ ...t, subscribersCount: countMap.get(t.id) || 0 })));
         }
       } catch (e) {
         console.warn('Failed to load tipsters from Supabase', e);
@@ -114,6 +125,17 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     loadTipsters();
   }, []);
 
+  const loadSubscriptions = async () => {
+    try {
+      const { data, error } = await supabase.from('tipster_subscriptions').select('*');
+      if (!error && data) {
+        setSubscriptions(data.map(fromSubRow));
+      }
+    } catch (e) {
+      console.warn('Failed to load subscriptions from Supabase', e);
+    }
+  };
+
   // Load real subscriptions from Supabase — RLS scopes this to exactly what the current
   // user should see: their own subscriptions, subscriptions to them (if a tipster), or
   // everything (if admin). Re-fetches on login/logout so switching accounts stays correct.
@@ -121,16 +143,6 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!user) {
       setSubscriptions([]);
       return;
-    }
-    async function loadSubscriptions() {
-      try {
-        const { data, error } = await supabase.from('tipster_subscriptions').select('*');
-        if (!error && data) {
-          setSubscriptions(data.map(fromSubRow));
-        }
-      } catch (e) {
-        console.warn('Failed to load subscriptions from Supabase', e);
-      }
     }
     loadSubscriptions();
   }, [user?.id]);
@@ -193,6 +205,22 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  /** The M-Pesa number that receives this tipster's automatic payout share. */
+  const updateMpesaPhone = async (tipsterId: string, mpesaPhone: string) => {
+    setTipsters(prev =>
+      prev.map(t => (t.id === tipsterId ? { ...t, mpesaPhone } : t))
+    );
+
+    try {
+      await supabase
+        .from('profiles')
+        .update({ mpesa_phone: mpesaPhone })
+        .eq('id', tipsterId);
+    } catch (e) {
+      console.warn('Supabase update mpesa phone error', e);
+    }
+  };
+
   const applyForTipster = async (user: User, bio: string, weeklyPrice: number, monthlyPrice: number) => {
     const newTipster: User = {
       ...user,
@@ -225,55 +253,6 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  const subscribeToTipster = async (
-    userId: string,
-    userName: string,
-    tipsterId: string,
-    cycle: 'weekly' | 'monthly',
-    price: number
-  ) => {
-    const days = cycle === 'weekly' ? 7 : 30;
-    const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
-    const platformCut = parseFloat((price * PLATFORM_CUT_PCT).toFixed(2));
-    const tipsterNet  = parseFloat((price - platformCut).toFixed(2));
-
-    const newSub: TipsterSubscription = {
-      id: `sub-${Date.now()}`,
-      userId,
-      userName,
-      tipsterId,
-      billingCycle: cycle,
-      status: 'active',
-      price,
-      platformCut,
-      tipsterNet,
-      expiresAt,
-      createdAt: new Date().toISOString(),
-    };
-
-    setSubscriptions(prev => [newSub, ...prev]);
-
-    // Increment tipster's subscriber count locally
-    setTipsters(prev =>
-      prev.map(t => (t.id === tipsterId ? { ...t, subscribersCount: (t.subscribersCount || 0) + 1 } : t))
-    );
-
-    try {
-      await supabase.from('tipster_subscriptions').insert([{
-        user_id: userId,
-        tipster_id: tipsterId,
-        billing_cycle: cycle,
-        status: 'active',
-        price,
-        platform_cut: platformCut,
-        tipster_net: tipsterNet,
-        expires_at: expiresAt,
-      }]);
-    } catch (e) {
-      console.warn('Supabase subscribeToTipster error', e);
-    }
-  };
-
   const isSubscribedToTipster = (userId: string, tipsterId: string) => {
     return subscriptions.some(
       s => s.userId === userId && s.tipsterId === tipsterId && isSubscriptionActive(s)
@@ -301,11 +280,12 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         approveTipster,
         suspendTipster,
         updateOwnPricing,
+        updateMpesaPhone,
         applyForTipster,
-        subscribeToTipster,
         isSubscribedToTipster,
         getMySubscriptions,
         getTipsterRevenue,
+        refetchSubscriptions: loadSubscriptions,
       }}
     >
       {children}

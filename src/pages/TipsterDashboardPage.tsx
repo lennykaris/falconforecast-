@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Star, DollarSign, Users, TrendingUp, Settings,
   ArrowRight, CheckCircle, Clock, Lock, Edit3,
-  Check, X, ShieldCheck, BarChart3, Zap, Calendar
+  Check, X, ShieldCheck, BarChart3, Zap, Calendar, Smartphone
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTipsters, isSubscriptionActive } from '../context/TipstersContext';
@@ -15,12 +15,16 @@ import { PostOddsModal } from '../components/PostOddsModal';
 
 export const TipsterDashboardPage: React.FC = () => {
   const { user } = useAuth();
-  const { tipsters, getMySubscriptions, getTipsterRevenue, updateOwnPricing } = useTipsters();
+  const { tipsters, getMySubscriptions, getTipsterRevenue, updateOwnPricing, updateMpesaPhone } = useTipsters();
   const { predictions, updatePrediction } = usePredictions();
 
   const [editingPrices, setEditingPrices] = useState(false);
   const [newWeekly, setNewWeekly] = useState<number>(0);
   const [newMonthly, setNewMonthly] = useState<number>(0);
+
+  const [editingPhone, setEditingPhone] = useState(false);
+  const [newPhone, setNewPhone] = useState('');
+  const [phoneSaved, setPhoneSaved] = useState(false);
 
   const [matches, setMatches] = useState<Match[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(true);
@@ -58,6 +62,18 @@ export const TipsterDashboardPage: React.FC = () => {
   const handleSavePrices = (updateOwnPricingFn: (id: string, w: number, m: number) => void) => {
     updateOwnPricingFn(myId, newWeekly, newMonthly);
     setEditingPrices(false);
+  };
+
+  const handleStartEditPhone = () => {
+    setNewPhone(myProfile?.mpesaPhone || '');
+    setEditingPhone(true);
+  };
+
+  const handleSavePhone = () => {
+    updateMpesaPhone(myId, newPhone.trim());
+    setEditingPhone(false);
+    setPhoneSaved(true);
+    setTimeout(() => setPhoneSaved(false), 3000);
   };
 
   // Guard: must be logged in and be a tipster
@@ -328,6 +344,49 @@ export const TipsterDashboardPage: React.FC = () => {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* M-Pesa Payout Number — where automatic subscriber payouts land */}
+          <div className="border-t border-slate-100 pt-4 space-y-1.5">
+            <label className="text-[10px] font-bold uppercase text-slate-500 flex items-center gap-1.5">
+              <Smartphone className="w-3 h-3" /> M-Pesa Payout Number
+            </label>
+            {editingPhone ? (
+              <div className="flex gap-1.5">
+                <input
+                  type="tel"
+                  value={newPhone}
+                  onChange={e => setNewPhone(e.target.value)}
+                  placeholder="0712345678"
+                  className="flex-1 px-3 py-2.5 border border-sky-300 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/30"
+                />
+                <button
+                  onClick={handleSavePhone}
+                  className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-300 hover:bg-emerald-100 transition-colors"
+                >
+                  <Check className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setEditingPhone(false)}
+                  className="p-2.5 bg-slate-100 text-slate-500 rounded-xl border border-slate-200 hover:bg-slate-200 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleStartEditPhone}
+                className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 hover:border-sky-300 transition-colors text-left"
+              >
+                <span className="text-sm font-bold text-slate-900 font-mono">
+                  {myProfile?.mpesaPhone || 'Not set — add to receive automatic payouts'}
+                </span>
+                <Edit3 className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+            )}
+            {phoneSaved && (
+              <p className="text-[10px] text-emerald-600 font-bold">Saved — future subscriber payments will pay out here automatically.</p>
+            )}
           </div>
 
           {/* Performance stats */}
