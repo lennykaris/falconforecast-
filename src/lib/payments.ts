@@ -8,22 +8,15 @@ interface CollectParams {
   phone: string;
 }
 
-/** Kicks off a real M-Pesa STK push via our Pretium proxy. The response only means the
- * request was accepted and the prompt is (probably) on its way to the phone — never treat
- * this as payment confirmation. Poll or listen for the webhook-driven DB update instead. */
+/** Kicks off a real M-Pesa STK push via our payment provider proxy. The response only means
+ * the request was accepted and the prompt is (probably) on its way to the phone — never treat
+ * this as payment confirmation. Poll or listen for the webhook-driven DB update instead.
+ *
+ * TEMPORARY: mid-migration from Pretium to PayHero — api/payhero/collect.js doesn't exist
+ * yet, so this fails fast with an honest message instead of hitting a deleted endpoint. */
 export async function startPretiumCollect(params: CollectParams): Promise<{ reference: string; amount: number }> {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  if (!token) throw new Error('You must be logged in to pay.');
-
-  const res = await fetch('/api/pretium/collect', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify(params),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data?.error || 'Failed to start payment');
-  return data;
+  void params;
+  throw new Error('Payments are being upgraded to a new provider — check back shortly.');
 }
 
 export type PaymentPollResult = 'COMPLETE' | 'FAILED' | 'TIMEOUT';
