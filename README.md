@@ -17,7 +17,7 @@ Built with **Vite + React 19 + TypeScript + Tailwind CSS v4**, backed by **Supab
 
 ## Not yet built
 
-- **Real payments.** Checkout is fully mocked (`CheckoutModal`, subscribe-to-tipster flow) pending a Pretium Africa merchant account — see `supabase_schema.sql` and the payment fields already on `profiles` for where this plugs in.
+- **Real payments** are wired up via Kentapay (M-Pesa STK push collect + automatic tipster payout) — see `api/kentapay/*.js`, `src/lib/payments.ts`, and the `payments` table in `supabase_schema.sql`. Needs sandbox/production credentials from developer.kentapay.com set as Vercel env vars (see `.env.example`) before it's live.
 - **Real bookmaker odds comparison** (`/odds-comparison`) — needs a paid odds data source; currently illustrative.
 
 ## Tech stack

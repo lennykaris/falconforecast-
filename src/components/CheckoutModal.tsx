@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import type { SubscriptionPlan } from '../types/prediction';
 import { useAuth } from '../context/AuthContext';
-import { startPretiumCollect, pollPaymentStatus } from '../lib/payments';
+import { startKentapayCollect, pollPaymentStatus } from '../lib/payments';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -49,7 +49,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setPayError('');
 
     try {
-      const { reference } = await startPretiumCollect({
+      const { reference } = await startKentapayCollect({
         kind: 'vip_subscription',
         planId: selectedPlan.id,
         phone: phoneNumber,

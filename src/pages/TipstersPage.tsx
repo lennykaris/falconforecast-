@@ -7,7 +7,7 @@ import {
 import { useTipsters } from '../context/TipstersContext';
 import { useAuth } from '../context/AuthContext';
 import { ALL_LEAGUES, ALL_MARKETS } from '../data/tipsters';
-import { startPretiumCollect, pollPaymentStatus } from '../lib/payments';
+import { startKentapayCollect, pollPaymentStatus } from '../lib/payments';
 import type { User } from '../types/prediction';
 
 export const TipstersPage: React.FC = () => {
@@ -51,7 +51,7 @@ export const TipstersPage: React.FC = () => {
     setPayState('pending');
     setPayError('');
     try {
-      const { reference } = await startPretiumCollect({
+      const { reference } = await startKentapayCollect({
         kind: 'tipster_subscription',
         tipsterId: tipster.id,
         billingCycle: subscriptionCycle,

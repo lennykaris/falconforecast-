@@ -8,21 +8,28 @@ interface CollectParams {
   phone: string;
 }
 
-/** Kicks off a real M-Pesa STK push via our payment provider proxy. The response only means
- * the request was accepted and the prompt is (probably) on its way to the phone — never treat
- * this as payment confirmation. Poll or listen for the webhook-driven DB update instead.
- *
- * TEMPORARY: mid-migration from Pretium to PayHero — api/payhero/collect.js doesn't exist
- * yet, so this fails fast with an honest message instead of hitting a deleted endpoint. */
-export async function startPretiumCollect(params: CollectParams): Promise<{ reference: string; amount: number }> {
-  void params;
-  throw new Error('Payments are being upgraded to a new provider — check back shortly.');
+/** Kicks off a real M-Pesa STK push via our Kentapay proxy. The response only means the
+ * request was accepted and the prompt is (probably) on its way to the phone — never treat
+ * this as payment confirmation. Poll or listen for the callback-driven DB update instead. */
+export async function startKentapayCollect(params: CollectParams): Promise<{ reference: string; amount: number }> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error('You must be logged in to pay.');
+
+  const res = await fetch('/api/kentapay/collect', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(params),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || 'Failed to start payment');
+  return data;
 }
 
 export type PaymentPollResult = 'COMPLETE' | 'FAILED' | 'TIMEOUT';
 
-/** Polls our own `payments` row (RLS-scoped to the current user) for the outcome the Pretium
- * webhook writes once the user has approved or declined the M-Pesa prompt on their phone. */
+/** Polls our own `payments` row (RLS-scoped to the current user) for the outcome Kentapay's
+ * callback writes once the user has approved or declined the M-Pesa prompt on their phone. */
 export async function pollPaymentStatus(
   reference: string,
   { intervalMs = 3000, timeoutMs = 90000 }: { intervalMs?: number; timeoutMs?: number } = {}

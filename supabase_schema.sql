@@ -152,8 +152,8 @@ CREATE POLICY "Admins view all subscriptions"
   ON public.tipster_subscriptions FOR SELECT
   USING (public.is_admin());
 
--- Subscriptions are created ONLY by the server after a real Pretium payment confirms (see
--- api/pretium/webhook.js), using the service role key which bypasses RLS entirely. There is
+-- Subscriptions are created ONLY by the server after a real Kentapay payment confirms (see
+-- api/kentapay/callback.js), using the service role key which bypasses RLS entirely. There is
 -- deliberately no client-facing INSERT policy: a user inserting their own row directly would
 -- grant themselves a paid subscription for free. (An earlier version of this schema allowed
 -- this before real payments existed; removing it now that money is actually involved.)
@@ -399,11 +399,12 @@ AS $$
 $$;
 
 -- =====================================================================================
--- 9. PRETIUM PAYMENTS — real M-Pesa collect (user pays) and disburse (automatic tipster
--- payout) via Pretium/Xwift Africa. All writes to this table happen server-side from the
--- Vercel functions in api/pretium/*.js using the Supabase service role key, which bypasses
--- RLS entirely — there is deliberately no INSERT/UPDATE policy for any client role, since a
--- browser must never be able to fabricate or edit a money-moving record directly.
+-- 9. KENTAPAY PAYMENTS — real M-Pesa collect (user pays) and disburse (automatic tipster
+-- payout) via Kentapay (Eclectics International's "Swivel" gateway). All writes to this
+-- table happen server-side from the Vercel functions in api/kentapay/*.js using the
+-- Supabase service role key, which bypasses RLS entirely — there is deliberately no
+-- INSERT/UPDATE policy for any client role, since a browser must never be able to
+-- fabricate or edit a money-moving record directly.
 -- =====================================================================================
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS mpesa_phone TEXT;
 
@@ -425,9 +426,15 @@ CREATE TABLE IF NOT EXISTS public.payments (
   status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'COMPLETE', 'FAILED')),
   receipt_number TEXT,
   failure_message TEXT,
+  -- Kentapay's own request identifier from the initial acknowledgement (NOT included in the
+  -- final callback) — required to verify that callback's HASH. See api/kentapay/_lib/kentapay.js.
+  cloud_packet_id TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Idempotent for anyone who already ran this file back when the table had no cloud_packet_id.
+ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS cloud_packet_id TEXT;
 
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 
