@@ -41,6 +41,9 @@ export interface User {
   subscribedTipsterIds?: string[];
   subscribedAt?: string;
   vipExpiresAt?: string;
+  /** When this profile row was created — i.e. when the user actually signed up, distinct from
+   * subscribedAt (which is specifically when they bought VIP). */
+  createdAt?: string;
   /** Leagues this tipster specialises in, e.g. ['Premier League', 'Champions League'] */
   leagues?: string[];
   /** Primary market types, e.g. ['BTTS', 'Over 2.5', 'Accumulators'] */

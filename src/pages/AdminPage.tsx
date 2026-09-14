@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ShieldCheck, Plus, Layers,
@@ -10,7 +10,28 @@ import { useTipsters, PLATFORM_CUT_PCT, isSubscriptionActive } from '../context/
 import { AdminTable } from '../components/AdminTable';
 import { AddPredictionModal } from '../components/AddPredictionModal';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 import type { User } from '../types/prediction';
+
+const mapProfileRow = (p: any): User => ({
+  id: p.id,
+  name: p.name || p.email?.split('@')[0] || 'User',
+  email: p.email,
+  role: p.role,
+  plan: p.plan,
+  tipsterStatus: p.tipster_status,
+  bio: p.bio,
+  avatarUrl: p.avatar_url,
+  weeklyPrice: p.weekly_price != null ? Number(p.weekly_price) : undefined,
+  monthlyPrice: p.monthly_price != null ? Number(p.monthly_price) : undefined,
+  mpesaPhone: p.mpesa_phone || undefined,
+  winRate: p.win_rate != null ? Number(p.win_rate) : undefined,
+  totalTips: p.total_tips,
+  verified: p.verified,
+  subscribedAt: p.subscribed_at,
+  vipExpiresAt: p.vip_expires_at,
+  createdAt: p.created_at,
+});
 
 type AdminTab = 'predictions' | 'revenue' | 'tipsters' | 'users';
 
@@ -21,6 +42,25 @@ export const AdminPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<AdminTab>('predictions');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // Every registered user — the tipsters list from TipstersContext deliberately excludes
+  // regular (non-tipster, non-pending) users, so this panel needs its own real fetch of
+  // every `profiles` row. RLS only returns the full table once the querying user's own
+  // profiles.role is genuinely 'admin' (not just recognized as admin client-side) — see
+  // "Public tipsters and own profile viewable" in supabase_schema.sql.
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [usersError, setUsersError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    supabase.from('profiles').select('*').then(({ data, error }) => {
+      if (error) {
+        setUsersError(error.message);
+        return;
+      }
+      setAllUsers((data || []).map(mapProfileRow));
+    });
+  }, [isAdmin]);
 
   // Platform Metrics
   const totalPredictions = predictions.length;
@@ -34,10 +74,6 @@ export const AdminPage: React.FC = () => {
   const activeSubscriptions = subscriptions.filter(isSubscriptionActive);
   const totalSubscriptions = activeSubscriptions.length;
   const platformRevenue = activeSubscriptions.reduce((sum, s) => sum + (s.price || 0), 0);
-
-  const allUsers: User[] = user
-    ? [user, ...tipsters.filter(t => t.id !== user.id)]
-    : tipsters;
 
   // Per-tipster revenue breakdown for admin
   const tipsterRevenues = tipsters.map(t => {
@@ -419,6 +455,14 @@ export const AdminPage: React.FC = () => {
             Overview of all registered users, their roles, plans, and subscription status.
           </p>
 
+          {usersError && (
+            <p className="text-xs font-semibold text-rose-500">
+              Failed to load users: {usersError}. This usually means your own profiles.role isn't
+              actually 'admin' in the database — Row Level Security blocks seeing other users'
+              rows otherwise, even if this panel let you in.
+            </p>
+          )}
+
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-slate-700">
@@ -473,7 +517,7 @@ export const AdminPage: React.FC = () => {
                       </td>
 
                       <td className="py-3.5 px-4 text-right font-mono text-slate-500 text-[10px]">
-                        {u.subscribedAt ? new Date(u.subscribedAt).toLocaleDateString() : 'Aug 2026'}
+                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
                       </td>
                     </tr>
                   ))}
