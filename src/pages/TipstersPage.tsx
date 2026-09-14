@@ -204,7 +204,9 @@ export const TipstersPage: React.FC = () => {
             {[...filtered]
               .sort((a, b) => (b.winRate || 0) - (a.winRate || 0))
               .map(tipster => {
-                const subscribed = user ? isSubscribedToTipster(user.id, tipster.id) : false;
+                // Admins get every tipster's content unlocked without an actual paid
+                // subscription — matches PredictionCard's own admin bypass.
+                const subscribed = isAdmin || (user ? isSubscribedToTipster(user.id, tipster.id) : false);
                 return (
                   <div
                     key={tipster.id}
