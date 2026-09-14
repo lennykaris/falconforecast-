@@ -60,16 +60,16 @@ export const TipstersPage: React.FC = () => {
 
       const result = await pollPaymentStatus(reference);
 
-      if (result === 'COMPLETE') {
+      if (result.status === 'COMPLETE') {
         await refetchSubscriptions();
         setSuccessMessage(`✅ Subscribed to ${tipster.name} — ${subscriptionCycle} pass activated!`);
         setTimeout(() => setSuccessMessage(''), 4000);
         setSelectedTipster(null);
         setPayState('idle');
         setPhone('');
-      } else if (result === 'FAILED') {
+      } else if (result.status === 'FAILED') {
         setPayState('error');
-        setPayError('Payment failed or was declined on your phone. You can try again.');
+        setPayError(result.failureMessage || 'Payment failed or was declined on your phone. You can try again.');
       } else {
         setPayState('error');
         setPayError('Still waiting for confirmation. Check your phone for the M-Pesa prompt, or try again.');

@@ -9,6 +9,12 @@ import {
 
 const PLATFORM_CUT_PCT = 0.20;
 
+// ⚠️ TEMPORARY TESTING OVERRIDE — forces every checkout (VIP or tipster subscription) to
+// KSh 1 regardless of the real price, so live payment-flow testing doesn't require spending
+// real money at full price. This is live on production: any real customer checking out while
+// this is `true` pays KSh 1. Flip back to `false` once STK-push testing is done.
+const TESTING_FORCE_KSH1 = true;
+
 // Server-side source of truth for VIP plan prices — matches src/data/predictions.ts.
 // Never trust a client-supplied amount for anything that moves real money.
 const VIP_PLAN_PRICES = {
@@ -83,6 +89,14 @@ export default async function handler(req, res) {
     } else {
       res.status(400).json({ error: 'Unknown payment kind' });
       return;
+    }
+
+    if (TESTING_FORCE_KSH1) {
+      amount = 1;
+      if (kind === 'tipster_subscription') {
+        platformCut = parseFloat((amount * PLATFORM_CUT_PCT).toFixed(2));
+        tipsterNet = parseFloat((amount - platformCut).toFixed(2));
+      }
     }
 
     const transactionId = generateTransactionId();

@@ -57,7 +57,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
       const result = await pollPaymentStatus(reference);
 
-      if (result === 'COMPLETE') {
+      if (result.status === 'COMPLETE') {
         await refetchUser();
         setIsSuccess(true);
         setTimeout(() => {
@@ -65,9 +65,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           handleClose();
           navigate('/dashboard');
         }, 1800);
-      } else if (result === 'FAILED') {
+      } else if (result.status === 'FAILED') {
         setPayState('error');
-        setPayError('Payment failed or was declined on your phone. You can try again.');
+        setPayError(result.failureMessage || 'Payment failed or was declined on your phone. You can try again.');
       } else {
         setPayState('error');
         setPayError('Still waiting for confirmation. Check your phone for the M-Pesa prompt, or try again.');
