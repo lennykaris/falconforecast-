@@ -3,8 +3,9 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 
-/** Serves /api/matches and /api/standings during `npm run dev` using the same logic as the
- * Vercel functions in api/matches.js and api/standings.js. */
+/** Serves /api/matches, /api/standings, and /api/match-detail during `npm run dev` using the
+ * same logic as the Vercel functions in api/matches.js, api/standings.js, and
+ * api/match-detail.js. */
 function sportsDataDevApi(): Plugin {
   return {
     name: 'sports-data-dev-api',
@@ -45,6 +46,28 @@ function sportsDataDevApi(): Plugin {
           res.statusCode = 502;
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ standings: [], error: err instanceof Error ? err.message : 'Failed to fetch standings' }));
+        }
+      });
+
+      server.middlewares.use('/api/match-detail', async (req, res) => {
+        try {
+          // @ts-expect-error - plain JS helper shared with the Vercel function in api/match-detail.js
+          const { fetchMatchDetail } = await import('./api/_lib/sportsrc.js');
+          const url = new URL(req.url || '', 'http://localhost');
+          const id = url.searchParams.get('id');
+          if (!id) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ match: null, error: 'Missing id query param' }));
+            return;
+          }
+          const match = await fetchMatchDetail(id);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ match }));
+        } catch (err) {
+          res.statusCode = 502;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ match: null, error: err instanceof Error ? err.message : 'Failed to fetch match detail' }));
         }
       });
     },

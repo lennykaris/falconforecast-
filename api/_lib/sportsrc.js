@@ -116,6 +116,104 @@ export async function fetchMatches({ dateFrom, dateTo } = {}) {
   return matches.sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime());
 }
 
+/** Best-effort live match clock, since SportSRC's `detail` endpoint gives a period start
+ * timestamp and a human status_detail ("1st half"/"Half Time"/"2nd half"/...) rather than a
+ * ready-made "current minute" field. Approximate and re-derived on every poll — good enough
+ * for a live indicator, not meant to be stoppage-time-accurate. */
+function estimateLiveMinute(statusDetail, periodStartUnixSeconds) {
+  if (!periodStartUnixSeconds) return null;
+  const detail = (statusDetail || '').toLowerCase();
+  if (detail.includes('half time')) return 45;
+  const elapsedMin = Math.floor((Date.now() / 1000 - periodStartUnixSeconds) / 60);
+  if (detail.includes('extra time') || detail.includes('penalt')) return Math.max(90, Math.min(120, 90 + elapsedMin));
+  if (detail.includes('2nd half') || detail.includes('second half')) return Math.max(45, Math.min(90, 45 + elapsedMin));
+  return Math.max(0, Math.min(45, elapsedMin));
+}
+
+// Flattens SportSRC's nested `stats` payload (grouped by category, e.g.
+// all.overview.cornerKicks) into a flat, ordered list the frontend can just map over.
+function flattenStats(statsData) {
+  const out = [];
+  for (const category of Object.values(statsData?.all || {})) {
+    for (const stat of Object.values(category || {})) {
+      if (!stat || typeof stat !== 'object') continue;
+      out.push({
+        key: stat.name,
+        label: stat.name,
+        home: stat.home_display ?? stat.home,
+        away: stat.away_display ?? stat.away,
+        homeValue: typeof stat.home === 'number' ? stat.home : null,
+        awayValue: typeof stat.away === 'number' ? stat.away : null,
+      });
+    }
+  }
+  return out;
+}
+
+// Normalizes SportSRC's incidents (goal/card/substitution/period markers) to one flat shape,
+// most recent first (matches the order SportSRC already returns them in).
+function mapIncidents(incidents) {
+  return (incidents || []).map((inc) => {
+    const team = inc.is_home === true ? 'home' : inc.is_home === false ? 'away' : null;
+    const base = { type: inc.type, minute: inc.time, minuteDisplay: inc.time_display, team };
+    switch (inc.type) {
+      case 'goal':
+        return { ...base, player: inc.detail?.player?.name, assist: inc.detail?.assist?.name || null };
+      case 'card':
+        return { ...base, cardType: inc.detail?.card_type, player: inc.detail?.player?.name };
+      case 'substitution':
+        return { ...base, playerIn: inc.detail?.player_in?.name, playerOut: inc.detail?.player_out?.name };
+      case 'period':
+        return { ...base, text: inc.detail?.text };
+      default:
+        return base;
+    }
+  });
+}
+
+/** Fetches full detail for one match — core info, live stats (possession, shots, corners,
+ * cards, fouls, ...), and the incidents timeline (goals, cards, subs) — for the match detail
+ * view. `detail`/`stats`/`incidents` are documented as Premium-only, but have worked fine on
+ * a Starter-plan key in testing; if that ever changes, each piece degrades independently
+ * (stats/incidents just come back empty) rather than failing the whole match. */
+export async function fetchMatchDetail(id) {
+  const [detailRes, statsRes, incidentsRes] = await Promise.all([
+    sportsrcGet({ type: 'detail', id }),
+    sportsrcGet({ type: 'stats', id }).catch((err) => { console.error(`SportSRC stats fetch failed for ${id}:`, err); return null; }),
+    sportsrcGet({ type: 'incidents', id }).catch((err) => { console.error(`SportSRC incidents fetch failed for ${id}:`, err); return null; }),
+  ]);
+
+  const info = detailRes?.data?.match_info;
+  if (!info) throw new Error('Match not found');
+
+  const status = mapStatus(info.status, info.status_detail);
+  const played = status === 'FINISHED' || status === 'IN_PLAY' || status === 'PAUSED';
+
+  return {
+    id: info.id,
+    league: info.league?.name || '',
+    round: info.league?.round || undefined,
+    status,
+    statusDetail: info.status_detail,
+    liveMinute: status === 'IN_PLAY' || status === 'PAUSED'
+      ? estimateLiveMinute(info.status_detail, info.time_info?.period_start)
+      : null,
+    kickoff: new Date(info.timestamp).toISOString(),
+    homeTeam: info.teams?.home?.name || 'TBD',
+    awayTeam: info.teams?.away?.name || 'TBD',
+    homeLogo: info.teams?.home?.badge || undefined,
+    awayLogo: info.teams?.away?.badge || undefined,
+    homeScore: played ? info.score?.current?.home ?? null : null,
+    awayScore: played ? info.score?.current?.away ?? null : null,
+    venue: detailRes?.data?.info?.venue || null,
+    referee: detailRes?.data?.info?.referee || null,
+    homeManager: detailRes?.data?.info?.managers?.home?.name || undefined,
+    awayManager: detailRes?.data?.info?.managers?.away?.name || undefined,
+    stats: statsRes ? flattenStats(statsRes.data) : [],
+    incidents: incidentsRes ? mapIncidents(incidentsRes.data) : [],
+  };
+}
+
 /** Fetches the current league table for one of FalconForecast's internal competition codes
  * (e.g. 'PL', 'PD', 'SA' — see COMPETITIONS above, not a SportSRC-native id). */
 export async function fetchStandings(competitionCode) {

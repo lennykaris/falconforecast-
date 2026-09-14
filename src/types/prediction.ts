@@ -89,6 +89,50 @@ export interface StandingRow {
   form: string[];
 }
 
+export interface MatchStat {
+  key: string;
+  label: string;
+  home: string | number;
+  away: string | number;
+  homeValue: number | null;
+  awayValue: number | null;
+}
+
+export interface MatchIncident {
+  type: 'goal' | 'card' | 'substitution' | 'period' | string;
+  minute: number;
+  minuteDisplay: string;
+  team: 'home' | 'away' | null;
+  player?: string;
+  assist?: string | null;
+  cardType?: 'yellow' | 'red' | string;
+  playerIn?: string;
+  playerOut?: string;
+  text?: string;
+}
+
+export interface MatchDetail {
+  id: string;
+  league: string;
+  round?: string;
+  status: string;
+  statusDetail?: string;
+  liveMinute: number | null;
+  kickoff: string;
+  homeTeam: string;
+  awayTeam: string;
+  homeLogo?: string;
+  awayLogo?: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  venue?: string | null;
+  referee?: string | null;
+  homeManager?: string;
+  awayManager?: string;
+  stats: MatchStat[];
+  incidents: MatchIncident[];
+}
+
 export interface SubscriptionPlan {
   id: string;
   name: string;

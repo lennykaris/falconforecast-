@@ -1,4 +1,4 @@
-import type { Match, StandingRow } from '../types/prediction';
+import type { Match, MatchDetail, StandingRow } from '../types/prediction';
 
 /** Fetches only genuinely upcoming fixtures — used when posting a tip, since you can't post
  * odds on a match that's already finished. */
@@ -34,4 +34,15 @@ export async function fetchStandings(competitionCode: string): Promise<StandingR
     throw new Error(data?.error || 'Failed to load standings');
   }
   return data.standings || [];
+}
+
+/** Fetches one match's full detail — live stats (possession, shots, corners, cards, fouls...)
+ * and the incidents timeline (goals, cards, subs) — for the match detail modal. */
+export async function fetchMatchDetail(id: string): Promise<MatchDetail> {
+  const res = await fetch(`/api/match-detail?id=${encodeURIComponent(id)}`);
+  const data = await res.json().catch(() => ({ match: null }));
+  if (!res.ok || !data.match) {
+    throw new Error(data?.error || 'Failed to load match detail');
+  }
+  return data.match;
 }

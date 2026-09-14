@@ -6,6 +6,7 @@ import { MySubscriptions } from '../components/MySubscriptions';
 import { TopTipsters } from '../components/TopTipsters';
 import { AdvertBanner } from '../components/AdvertBanner';
 import { Sidebar } from '../components/Sidebar';
+import { MatchDetailModal } from '../components/MatchDetailModal';
 import { fetchMatches, fetchStandings } from '../lib/matches';
 import type { Match, StandingRow } from '../types/prediction';
 
@@ -13,15 +14,16 @@ interface HomePageProps {
   onOpenCheckout?: (plan?: any) => void;
 }
 
-/** Leagues shown in this switcher. Champions League and Bundesliga are intentionally absent
- * here for now — handled as an honest "not available yet" state below — even though the
- * SportSRC backend (api/_lib/sportsrc.js) already supports both (codes 'CL' and 'BL1' aren't
- * used yet); this was a real free-tier limitation under the old football-data.org provider
- * that no longer applies, so extending this map is just a frontend decision now. */
+/** Leagues shown in this switcher, mapped to our internal competition codes (see
+ * api/_lib/sportsrc.js). Champions League and Bundesliga used to be absent here — a real
+ * football-data.org free-tier limitation — but SportSRC has no such gating, so both are
+ * live now. */
 const LEAGUE_CODE_MAP: Record<string, string> = {
   'Premier League': 'PL',
   'La Liga': 'PD',
+  'Champions League': 'CL',
   'Serie A': 'SA',
+  'Bundesliga': 'BL1',
 };
 
 const statusLabel = (m: Match) => {
@@ -54,6 +56,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
   const [standings, setStandings] = useState<StandingRow[]>([]);
   const [standingsLoading, setStandingsLoading] = useState(false);
   const [standingsError, setStandingsError] = useState<string | null>(null);
+
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
 
   // Sync selectedLeague with URL route if user came from Navbar
   useEffect(() => {
@@ -165,7 +169,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
             <AdvertBanner sticky={false} />
           </div>
 
-          {/* Unsupported league notice (Champions League / Bundesliga aren't on our current data plan) */}
+          {/* Unsupported league notice — shown if a league in the switcher has no entry in
+              LEAGUE_CODE_MAP yet */}
           {selectedLeagueUnsupported && (
             <div className="flex items-start gap-3 p-4 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/20">
               <Info className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
@@ -218,7 +223,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
                           {group.matches.map(match => (
                             <tr
                               key={match.id}
-                              className="hover:bg-sky-50 dark:hover:bg-slate-800/40 transition-colors"
+                              onClick={() => setSelectedMatchId(match.id)}
+                              className="hover:bg-sky-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
                             >
                               <td className={`py-3 px-4 font-bold font-mono ${isLiveStatus(match) ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
                                 {statusLabel(match)}
@@ -332,6 +338,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
         </aside>
 
       </div>
+
+      <MatchDetailModal matchId={selectedMatchId} onClose={() => setSelectedMatchId(null)} />
     </div>
   );
 };
