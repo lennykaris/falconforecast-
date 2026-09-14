@@ -222,9 +222,14 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const applyForTipster = async (user: User, bio: string, weeklyPrice: number, monthlyPrice: number) => {
+    // role deliberately stays 'user' here — only tipster_status moves to 'pending'. The
+    // "Users can update own basic profile" RLS policy explicitly requires role to stay
+    // unchanged on a self-update (to stop anyone self-granting tipster/admin access), so a
+    // write that also tried to flip role here would be silently rejected: no error thrown,
+    // zero rows actually changed. Only approveTipster (an admin-only write, different RLS
+    // policy) sets role: 'tipster', at actual approval time.
     const newTipster: User = {
       ...user,
-      role: 'tipster',
       tipsterStatus: 'pending',
       bio,
       weeklyPrice,
@@ -238,18 +243,18 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setTipsters(prev => [newTipster, ...prev.filter(t => t.id !== user.id)]);
 
     try {
-      await supabase
+      const { error } = await supabase
         .from('profiles')
         .update({
-          role: 'tipster',
           tipster_status: 'pending',
           bio,
           weekly_price: weeklyPrice,
           monthly_price: monthlyPrice,
         })
         .eq('id', user.id);
+      if (error) console.error('Supabase applyForTipster error', error);
     } catch (e) {
-      console.warn('Supabase applyForTipster error', e);
+      console.error('Supabase applyForTipster error', e);
     }
   };
 
