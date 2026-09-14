@@ -34,6 +34,32 @@ export function generateTransactionId() {
   return `FF${Date.now().toString(36).toUpperCase()}${rand}`;
 }
 
+// Kentapay's own status codes, transcribed from their docs (Auth, Response Structure, and
+// Query Status pages) — used to turn a bare code like "41" into something a human can act on,
+// since several of their endpoints (notably the token endpoint) return only this code with no
+// separate description field.
+const STATUS_DESCRIPTIONS = {
+  '00': 'Success',
+  '15': 'Transaction pending processing',
+  '16': 'Transaction pending on provider',
+  '18': 'Transaction does not exist in system',
+  '20': 'Duplicate transaction',
+  '40': 'Failed to authenticate client — check KENTAPAY_CLIENT_ID/USERNAME/PASSWORD',
+  '41': 'Failed to authenticate client — check KENTAPAY_CLIENT_ID/USERNAME/PASSWORD',
+  '45': 'Client not authorized for this service',
+  '48': 'Client not registered in the system',
+  '55': 'Failed in transaction processing',
+  '81': 'Service not activated',
+  '96': 'Cannot connect to database server',
+  '99': 'Internal system failure',
+};
+
+function describeStatus(code) {
+  if (!code) return null;
+  const description = STATUS_DESCRIPTIONS[String(code)];
+  return description ? `Kentapay error ${code}: ${description}` : `Kentapay error ${code}`;
+}
+
 let tokenCache = null; // { accessToken, hmacKey, expiresAt }
 
 /** Fetches (and caches in-process) the access token + HMAC key from Kentapay's token
@@ -58,7 +84,7 @@ async function getAccessToken() {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data?.access_token) {
-    throw new Error(data?.status || `Kentapay token request failed: ${res.status}`);
+    throw new Error(describeStatus(data?.status) || `Kentapay token request failed: ${res.status}`);
   }
 
   const expiresInMs = (Number(data.expires_in) || 55) * 60 * 1000;
