@@ -1,4 +1,4 @@
-import { fetchMatches } from './_lib/footballData.js';
+import { fetchMatches } from './_lib/sportsrc.js';
 
 export default async function handler(req, res) {
   try {

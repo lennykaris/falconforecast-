@@ -13,9 +13,11 @@ interface HomePageProps {
   onOpenCheckout?: (plan?: any) => void;
 }
 
-/** Leagues football-data.org's free tier actually covers. Champions League and Bundesliga
- * aren't on the free plan, so they're intentionally absent here — handled as an honest
- * "not available yet" state below rather than showing fake data for them. */
+/** Leagues shown in this switcher. Champions League and Bundesliga are intentionally absent
+ * here for now — handled as an honest "not available yet" state below — even though the
+ * SportSRC backend (api/_lib/sportsrc.js) already supports both (codes 'CL' and 'BL1' aren't
+ * used yet); this was a real free-tier limitation under the old football-data.org provider
+ * that no longer applies, so extending this map is just a frontend decision now. */
 const LEAGUE_CODE_MAP: Record<string, string> = {
   'Premier League': 'PL',
   'La Liga': 'PD',

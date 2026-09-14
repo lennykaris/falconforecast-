@@ -5,14 +5,14 @@ import path from 'path';
 
 /** Serves /api/matches and /api/standings during `npm run dev` using the same logic as the
  * Vercel functions in api/matches.js and api/standings.js. */
-function footballDataDevApi(): Plugin {
+function sportsDataDevApi(): Plugin {
   return {
-    name: 'football-data-dev-api',
+    name: 'sports-data-dev-api',
     configureServer(server) {
       server.middlewares.use('/api/matches', async (req, res) => {
         try {
           // @ts-expect-error - plain JS helper shared with the Vercel function in api/matches.js
-          const { fetchMatches } = await import('./api/_lib/footballData.js');
+          const { fetchMatches } = await import('./api/_lib/sportsrc.js');
           const url = new URL(req.url || '', 'http://localhost');
           const dateFrom = url.searchParams.get('dateFrom') || undefined;
           const dateTo = url.searchParams.get('dateTo') || undefined;
@@ -29,7 +29,7 @@ function footballDataDevApi(): Plugin {
       server.middlewares.use('/api/standings', async (req, res) => {
         try {
           // @ts-expect-error - plain JS helper shared with the Vercel function in api/standings.js
-          const { fetchStandings } = await import('./api/_lib/footballData.js');
+          const { fetchStandings } = await import('./api/_lib/sportsrc.js');
           const url = new URL(req.url || '', 'http://localhost');
           const code = url.searchParams.get('competition');
           if (!code) {
@@ -54,11 +54,11 @@ function footballDataDevApi(): Plugin {
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   // Vite only exposes VITE_-prefixed vars to import.meta.env; loadEnv here reads
-  // the raw .env file (including FOOTBALL_DATA_API_KEY) into process.env for the dev server.
+  // the raw .env file (including SPORTSRC_API_KEY) into process.env for the dev server.
   Object.assign(process.env, loadEnv(mode, process.cwd(), ''));
 
   return {
-    plugins: [react(), tailwindcss(), footballDataDevApi()],
+    plugins: [react(), tailwindcss(), sportsDataDevApi()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),

@@ -26,7 +26,7 @@ export async function fetchMatches(params?: { dateFrom?: string; dateTo?: string
   return data.matches || [];
 }
 
-/** Fetches the current league table for one football-data.org competition code (e.g. 'PL'). */
+/** Fetches the current league table for one of our internal competition codes (e.g. 'PL'). */
 export async function fetchStandings(competitionCode: string): Promise<StandingRow[]> {
   const res = await fetch(`/api/standings?competition=${encodeURIComponent(competitionCode)}`);
   const data = await res.json().catch(() => ({ standings: [] }));

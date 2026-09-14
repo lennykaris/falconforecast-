@@ -6,7 +6,7 @@ Built with **Vite + React 19 + TypeScript + Tailwind CSS v4**, backed by **Supab
 
 ## Features
 
-- **Real fixtures & results** (`/matches` and league routes) — live via a football-data.org proxy, including real scores and league standings.
+- **Real fixtures & results** (`/matches` and league routes) — live via a SportSRC proxy, including real scores and league standings.
 - **Free & VIP tips** (`/tips`, `/premium-tips`, `/vip`) — platform picks gated by a sitewide VIP subscription; tipster picks gated per-tipster (pay that specific tipster to unlock their premium tips, or they can mark a tip free).
 - **Tipster marketplace** (`/tipsters`) — browse verified tipsters, subscribe weekly/monthly.
 - **Tipster dashboard** (`/tipster-dashboard`) — post odds on real upcoming fixtures, manage pricing, view real subscribers and revenue.
@@ -24,12 +24,12 @@ Built with **Vite + React 19 + TypeScript + Tailwind CSS v4**, backed by **Supab
 
 - **Frontend**: Vite, React 19, TypeScript, React Router v7, Tailwind CSS v4, Lucide icons
 - **Backend**: Supabase (Postgres, Auth, RLS, SECURITY DEFINER RPCs for safe public aggregates)
-- **Match/league data**: football-data.org, proxied server-side via `api/matches.js` / `api/standings.js` (Vercel serverless functions; mirrored for local dev in `vite.config.ts`)
+- **Match/league data**: SportSRC, proxied server-side via `api/matches.js` / `api/standings.js` (Vercel serverless functions; mirrored for local dev in `vite.config.ts`)
 - **State**: React Context (`AuthContext`, `PredictionsContext`, `TipstersContext`, `BetSlipContext`) backed by Supabase, with a localStorage cache layer for fast first paint
 
 ## Local development
 
-1. Copy `.env.example` to `.env` and fill in `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_GOOGLE_CLIENT_ID`, and `FOOTBALL_DATA_API_KEY` (the last one is server-side only — no `VITE_` prefix, so it's never bundled into the client).
+1. Copy `.env.example` to `.env` and fill in `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_GOOGLE_CLIENT_ID`, and `SPORTSRC_API_KEY` (the last one is server-side only — no `VITE_` prefix, so it's never bundled into the client).
 2. Run the schema: paste `supabase_schema.sql` into the Supabase SQL Editor. It's idempotent — safe to re-run any time you pull schema changes.
 3. Install and run:
    ```bash
@@ -39,4 +39,4 @@ Built with **Vite + React 19 + TypeScript + Tailwind CSS v4**, backed by **Supab
 
 ## Deploying
 
-Deploys to Vercel on push to `main`. `FOOTBALL_DATA_API_KEY` must be set in the Vercel project's Environment Variables (Production + Preview) separately from `.env` — it's intentionally not committed to the repo since this is a public GitHub repository.
+Deploys to Vercel on push to `main`. `SPORTSRC_API_KEY` must be set in the Vercel project's Environment Variables (Production + Preview) separately from `.env` — it's intentionally not committed to the repo since this is a public GitHub repository.
