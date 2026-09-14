@@ -92,7 +92,11 @@ export default async function handler(req, res) {
     }
 
     if (TESTING_FORCE_KSH1) {
-      amount = 1;
+      // Tipster subscriptions are forced to KSh 50 instead of 1 — Safaricom's B2C payout has
+      // a documented KES 10 minimum, so the 80% net share of a KSh 1 test (KSh 0.80) would
+      // always fail that step regardless of credentials. 50 keeps the net share (KSh 40)
+      // comfortably clear of that floor while still being cheap to test with.
+      amount = kind === 'tipster_subscription' ? 50 : 1;
       if (kind === 'tipster_subscription') {
         platformCut = parseFloat((amount * PLATFORM_CUT_PCT).toFixed(2));
         tipsterNet = parseFloat((amount - platformCut).toFixed(2));
