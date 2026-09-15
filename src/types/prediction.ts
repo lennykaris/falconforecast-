@@ -48,6 +48,10 @@ export interface User {
   tipsWon?: number;
   tipsLost?: number;
   subscribersCount?: number;
+  /** Subscriber-submitted ratings — separate from winRate, which is objective/computed.
+   * Captures things a settled-tip record can't: consistency, clarity of reasoning, etc. */
+  avgRating?: number;
+  reviewCount?: number;
   verified?: boolean;
   subscribedTipsterIds?: string[];
   subscribedAt?: string;
@@ -169,3 +173,13 @@ export interface SubscriptionPlan {
   savings?: string;
 }
 
+
+export interface TipsterReview {
+  id: string;
+  tipsterId: string;
+  userId: string;
+  userName: string;
+  rating: number; // 1-5
+  comment?: string;
+  createdAt: string;
+}

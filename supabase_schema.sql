@@ -638,3 +638,74 @@ CREATE TRIGGER trg_recompute_win_rate
   AFTER INSERT OR DELETE OR UPDATE OF status ON public.predictions
   FOR EACH ROW
   EXECUTE FUNCTION public.recompute_tipster_win_rate();
+
+-- =====================================================================================
+-- 11. TIPSTER REVIEWS — win_rate is computed/objective, but doesn't capture "posts
+-- consistently," "explains reasoning well," etc. Real subscriber reviews round that out.
+-- One review per (tipster, subscriber) pair — resubmitting updates it rather than stacking
+-- duplicates. Only someone who has actually subscribed to that tipster (active or expired —
+-- an expired subscriber still has grounds to review) can post one, checked server-side via
+-- RLS, not just hidden in the UI.
+-- =====================================================================================
+CREATE TABLE IF NOT EXISTS public.tipster_reviews (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tipster_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  user_name TEXT,
+  rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  comment TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE (tipster_id, user_id)
+);
+
+ALTER TABLE public.tipster_reviews ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can view tipster reviews" ON public.tipster_reviews;
+CREATE POLICY "Anyone can view tipster reviews"
+  ON public.tipster_reviews FOR SELECT
+  USING (true);
+
+DROP POLICY IF EXISTS "Subscribers can review their tipster" ON public.tipster_reviews;
+CREATE POLICY "Subscribers can review their tipster"
+  ON public.tipster_reviews FOR INSERT
+  WITH CHECK (
+    auth.uid() = user_id AND
+    EXISTS (
+      SELECT 1 FROM public.tipster_subscriptions ts
+      WHERE ts.user_id = auth.uid() AND ts.tipster_id = tipster_reviews.tipster_id
+    )
+  );
+
+DROP POLICY IF EXISTS "Users update own review" ON public.tipster_reviews;
+CREATE POLICY "Users update own review"
+  ON public.tipster_reviews FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (
+    auth.uid() = user_id AND
+    tipster_id = (SELECT tipster_id FROM public.tipster_reviews WHERE id = tipster_reviews.id)
+  );
+
+DROP POLICY IF EXISTS "Users delete own review, admins delete any" ON public.tipster_reviews;
+CREATE POLICY "Users delete own review, admins delete any"
+  ON public.tipster_reviews FOR DELETE
+  USING (user_id = auth.uid() OR public.is_admin());
+
+CREATE INDEX IF NOT EXISTS idx_tipster_reviews_tipster ON public.tipster_reviews(tipster_id);
+
+-- Safe, aggregate-only stats for the marketplace — RLS above already lets anyone SELECT every
+-- review row directly, so this isn't hiding anything; it just saves every viewer from
+-- averaging hundreds of rows client-side themselves.
+CREATE OR REPLACE FUNCTION public.tipster_review_stats()
+RETURNS TABLE(tipster_id UUID, avg_rating NUMERIC, review_count BIGINT)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+STABLE
+AS $$
+  SELECT tr.tipster_id, ROUND(AVG(tr.rating), 1), COUNT(*)
+  FROM public.tipster_reviews tr
+  GROUP BY tr.tipster_id;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.tipster_review_stats() TO anon, authenticated;

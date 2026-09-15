@@ -8,6 +8,7 @@ import { useTipsters } from '../context/TipstersContext';
 import { useAuth } from '../context/AuthContext';
 import { ALL_LEAGUES, ALL_MARKETS } from '../data/tipsters';
 import { startKentapayCollect, pollPaymentStatus } from '../lib/payments';
+import { TipsterReviewsSection } from '../components/TipsterReviewsSection';
 import type { User } from '../types/prediction';
 
 export const TipstersPage: React.FC = () => {
@@ -248,6 +249,14 @@ export const TipstersPage: React.FC = () => {
                           <span className="text-[11px] font-semibold text-slate-400">
                             {tipster.subscribersCount?.toLocaleString() || 0} subscribers
                           </span>
+                          {tipster.reviewCount ? (
+                            <span className="flex items-center gap-1 text-[11px] font-bold text-amber-500 mt-0.5">
+                              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                              {tipster.avgRating} <span className="text-slate-400 font-semibold">({tipster.reviewCount})</span>
+                            </span>
+                          ) : (
+                            <span className="block text-[10px] text-slate-300 dark:text-slate-600 mt-0.5">No reviews yet</span>
+                          )}
                         </div>
                       </div>
 
@@ -347,7 +356,7 @@ export const TipstersPage: React.FC = () => {
         {/* ── Subscribe Modal ── */}
         {selectedTipster && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm">
-            <div className="relative w-full max-w-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-6 shadow-2xl space-y-5">
+            <div className="relative w-full max-w-md max-h-[85vh] overflow-y-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-6 shadow-2xl space-y-5">
               <button
                 onClick={() => { sessionRef.current++; setSelectedTipster(null); setPhone(''); setPayState('idle'); setPayError(''); }}
                 className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100"
@@ -473,6 +482,11 @@ export const TipstersPage: React.FC = () => {
                   Cancel
                 </button>
               </div>
+
+              <TipsterReviewsSection
+                tipsterId={selectedTipster.id}
+                canReview={!!user && isSubscribedToTipster(user.id, selectedTipster.id)}
+              />
             </div>
           </div>
         )}

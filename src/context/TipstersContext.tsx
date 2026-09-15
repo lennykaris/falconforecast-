@@ -120,11 +120,22 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           // regular tipster_subscriptions fetch above only ever contains rows the current
           // user is allowed to see, which isn't enough to show subscriber counts for the
           // other tipsters listed on the public marketplace.
-          const { data: counts } = await supabase.rpc('tipster_subscriber_counts');
+          const [{ data: counts }, { data: reviewStats }] = await Promise.all([
+            supabase.rpc('tipster_subscriber_counts'),
+            supabase.rpc('tipster_review_stats'),
+          ]);
           const countMap = new Map<string, number>(
             (counts || []).map((c: any) => [c.tipster_id, Number(c.subscriber_count)])
           );
-          setTipsters(mapped.map(t => ({ ...t, subscribersCount: countMap.get(t.id) || 0 })));
+          const reviewMap = new Map<string, { avg: number; count: number }>(
+            (reviewStats || []).map((r: any) => [r.tipster_id, { avg: Number(r.avg_rating), count: Number(r.review_count) }])
+          );
+          setTipsters(mapped.map(t => ({
+            ...t,
+            subscribersCount: countMap.get(t.id) || 0,
+            avgRating: reviewMap.get(t.id)?.avg,
+            reviewCount: reviewMap.get(t.id)?.count || 0,
+          })));
         }
       } catch (e) {
         console.warn('Failed to load tipsters from Supabase', e);
