@@ -35,7 +35,31 @@ const mapProfileRow = (p: any): User => ({
   createdAt: p.created_at,
 });
 
-type AdminTab = 'predictions' | 'revenue' | 'tipsters' | 'users';
+type AdminTab = 'predictions' | 'revenue' | 'tipsters' | 'users' | 'payments';
+
+interface PaymentRow {
+  id: string;
+  reference: string;
+  type: 'collect' | 'disburse';
+  kind: string;
+  amount: number;
+  phone: string;
+  status: 'PENDING' | 'COMPLETE' | 'FAILED';
+  failureMessage: string | null;
+  createdAt: string;
+}
+
+const mapPaymentRow = (p: any): PaymentRow => ({
+  id: p.id,
+  reference: p.reference,
+  type: p.type,
+  kind: p.kind,
+  amount: Number(p.amount),
+  phone: p.phone,
+  status: p.status,
+  failureMessage: p.failure_message,
+  createdAt: p.created_at,
+});
 
 export const AdminPage: React.FC = () => {
   const { predictions } = usePredictions();
@@ -63,6 +87,30 @@ export const AdminPage: React.FC = () => {
       setAllUsers((data || []).map(mapProfileRow));
     });
   }, [isAdmin]);
+
+  // Payments have no admin UI at all otherwise — a stuck PENDING row or a failed automatic
+  // tipster payout is currently only discoverable by querying Supabase directly. RLS's
+  // "Admins view all payments" policy already allows this; nothing new needed there.
+  const [payments, setPayments] = useState<PaymentRow[]>([]);
+  const [paymentsError, setPaymentsError] = useState<string | null>(null);
+  const [paymentsFilter, setPaymentsFilter] = useState<'problems' | 'all'>('problems');
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    supabase.from('payments').select('*').order('created_at', { ascending: false }).limit(200).then(({ data, error }) => {
+      if (error) {
+        setPaymentsError(error.message);
+        return;
+      }
+      setPayments((data || []).map(mapPaymentRow));
+    });
+  }, [isAdmin]);
+
+  const stalePendingCutoff = Date.now() - 15 * 60 * 1000; // Kentapay's own callback should land within minutes
+  const problemPayments = payments.filter(p =>
+    p.status === 'FAILED' || (p.status === 'PENDING' && new Date(p.createdAt).getTime() < stalePendingCutoff)
+  );
+  const visiblePayments = paymentsFilter === 'problems' ? problemPayments : payments;
 
   // Platform Metrics
   const totalPredictions = predictions.length;
@@ -95,6 +143,7 @@ export const AdminPage: React.FC = () => {
     { key: 'revenue', label: 'Revenue', icon: BarChart3, count: undefined },
     { key: 'tipsters', label: 'Tipsters', icon: Star, count: tipsters.length },
     { key: 'users', label: 'All Users', icon: Users, count: allUsers.length },
+    { key: 'payments', label: 'Payments', icon: AlertCircle, count: problemPayments.length },
   ];
 
   const statusBadge = (status: string) => {
@@ -528,6 +577,93 @@ export const AdminPage: React.FC = () => {
 
                       <td className="py-3.5 px-4 text-right font-mono text-slate-500 text-[10px]">
                         {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Payments — the only place a stuck PENDING row or a failed automatic tipster
+          payout is visible at all otherwise; those only ever showed up as a raw Supabase
+          query before this existed. */}
+      {activeTab === 'payments' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-slate-500">
+              "Problems" = failed, or still pending 15+ minutes after being created (Kentapay's
+              callback should normally land within minutes — a payment stuck longer than that
+              likely means a dropped callback; check /api/kentapay/query-status's reconciliation
+              or the reference directly with Kentapay support).
+            </p>
+            <div className="flex gap-1.5 flex-shrink-0">
+              {(['problems', 'all'] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setPaymentsFilter(f)}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
+                    paymentsFilter === f
+                      ? 'bg-[#0EA5E9] text-white border-[#0EA5E9]'
+                      : 'bg-white text-slate-500 border-slate-200 hover:border-[#0EA5E9]'
+                  }`}
+                >
+                  {f === 'problems' ? `Problems (${problemPayments.length})` : `All (${payments.length})`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {paymentsError && (
+            <p className="text-xs font-semibold text-rose-500">Failed to load payments: {paymentsError}</p>
+          )}
+
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-700">
+                <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
+                  <tr>
+                    <th className="py-3.5 px-4">Reference</th>
+                    <th className="py-3.5 px-4">Type / Kind</th>
+                    <th className="py-3.5 px-4 text-center">Amount</th>
+                    <th className="py-3.5 px-4">Phone</th>
+                    <th className="py-3.5 px-4">Status</th>
+                    <th className="py-3.5 px-4">Failure Reason</th>
+                    <th className="py-3.5 px-4 text-right">Created</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {visiblePayments.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-10 text-center text-slate-400">
+                        {paymentsFilter === 'problems' ? 'No payment problems right now.' : 'No payments yet.'}
+                      </td>
+                    </tr>
+                  ) : visiblePayments.map(p => (
+                    <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="py-3 px-4 font-mono text-[10px] text-slate-500">{p.reference}</td>
+                      <td className="py-3 px-4">
+                        <span className="font-semibold text-slate-800">{p.type}</span>
+                        <span className="block text-[10px] text-slate-400">{p.kind.replace(/_/g, ' ')}</span>
+                      </td>
+                      <td className="py-3 px-4 text-center font-mono font-bold text-slate-800">KSh {p.amount.toLocaleString()}</td>
+                      <td className="py-3 px-4 font-mono text-slate-600">{p.phone}</td>
+                      <td className="py-3 px-4">
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${
+                          p.status === 'COMPLETE' ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                            : p.status === 'FAILED' ? 'bg-rose-50 text-rose-700 border-rose-300'
+                            : 'bg-amber-50 text-amber-700 border-amber-300'
+                        }`}>
+                          {p.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-slate-500 max-w-[220px] truncate" title={p.failureMessage || undefined}>
+                        {p.failureMessage || '—'}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono text-slate-500 text-[10px]">
+                        {new Date(p.createdAt).toLocaleString()}
                       </td>
                     </tr>
                   ))}
