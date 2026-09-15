@@ -13,7 +13,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeLeague = 'Premier League
     { id: 'Champions League', label: 'Champions League', icon: Trophy },
     { id: 'Serie A', label: 'Serie A', icon: Trophy },
     { id: 'Bundesliga', label: 'Bundesliga', icon: Trophy },
-    { id: 'Favorites', label: 'Favorites', icon: Star },
+    { id: 'Favorites', label: 'All Leagues', icon: Star },
   ];
 
   return (
@@ -50,7 +50,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeLeague = 'Premier League
         </div>
 
         <div className="pt-6 border-t border-slate-100 dark:border-slate-800 mt-auto">
-          <button className="w-full py-2 px-3 text-xs font-bold text-[#00a8ff] dark:text-sky-400 border border-[#00a8ff]/40 dark:border-sky-500/40 rounded-lg hover:bg-blue-50 dark:hover:bg-sky-950/40 transition-colors">
+          <button
+            onClick={() => onSelectLeague && onSelectLeague('Favorites')}
+            className="w-full py-2 px-3 text-xs font-bold text-[#00a8ff] dark:text-sky-400 border border-[#00a8ff]/40 dark:border-sky-500/40 rounded-lg hover:bg-blue-50 dark:hover:bg-sky-950/40 transition-colors"
+          >
             View All Leagues
           </button>
         </div>

@@ -28,6 +28,18 @@ function findCompetition(leagueName, country) {
   return COMPETITIONS.find((c) => c.country === country && c.match(leagueName || ''));
 }
 
+// A stable-enough code for a league we don't have a curated COMPETITIONS entry for — every
+// league SportSRC returns gets a code either way, so nothing is silently dropped just for
+// being unmapped. Not guaranteed globally unique across every league on earth, but collisions
+// would need two different competitions in the same country with the exact same name, which
+// SportSRC itself already treats as distinguishable data.
+function slugifyLeague(name, country) {
+  return `${country || ''}-${name || ''}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-+|-+$)/g, '') || 'unknown';
+}
+
 function apiKey() {
   const key = process.env.SPORTSRC_API_KEY;
   if (!key) throw new Error('SPORTSRC_API_KEY is not configured on the server');
@@ -65,7 +77,13 @@ function mapStatus(status, statusDetail) {
  * to a compact shape, including real scores where available. Defaults to yesterday..+8 days
  * (a 9-day span) so a single call covers recent results, anything live right now, and upcoming
  * fixtures. Unlike football-data.org, SportSRC's `matches` endpoint takes a single `date`, not
- * a range, so the window is fetched as one call per day and merged. */
+ * a range, so the window is fetched as one call per day and merged.
+ *
+ * Returns EVERY league SportSRC has fixtures for on these dates — hundreds of them, including
+ * ones with no curated COMPETITIONS entry (see slugifyLeague) — rather than only the handful
+ * FalconForecast has bothered to hand-map. Standings still only work for the curated set
+ * (fetchStandings needs a known numeric league id), but fixtures/results do not depend on
+ * that at all. */
 export async function fetchMatches({ dateFrom, dateTo } = {}) {
   const from = dateFrom || new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const to = dateTo || new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -87,15 +105,18 @@ export async function fetchMatches({ dateFrom, dateTo } = {}) {
   const matches = [];
   for (const day of days) {
     for (const leagueBlock of day.data || []) {
-      const competition = findCompetition(leagueBlock.league?.name, leagueBlock.league?.country);
-      if (!competition) continue;
+      const leagueName = leagueBlock.league?.name;
+      const country = leagueBlock.league?.country;
+      const competition = findCompetition(leagueName, country);
+      const leagueCode = competition ? competition.code : slugifyLeague(leagueName, country);
       for (const m of leagueBlock.matches || []) {
         const status = mapStatus(m.status, m.status_detail);
         const played = status === 'FINISHED' || status === 'IN_PLAY' || status === 'PAUSED';
         matches.push({
           id: String(m.id),
-          league: leagueBlock.league?.name || competition.code,
-          leagueCode: competition.code,
+          league: leagueName || leagueCode,
+          leagueCode,
+          country: country || undefined,
           homeTeam: m.teams?.home?.name || 'TBD',
           awayTeam: m.teams?.away?.name || 'TBD',
           homeTla: m.teams?.home?.code || undefined,
@@ -248,13 +269,8 @@ export async function fetchMatchDetail(id) {
 
 /** Fetches the current league table for one of FalconForecast's internal competition codes
  * (e.g. 'PL', 'PD', 'SA' — see COMPETITIONS above, not a SportSRC-native id). */
-export async function fetchStandings(competitionCode) {
-  const competition = COMPETITIONS.find((c) => c.code === competitionCode);
-  if (!competition) throw new Error(`Unknown competition code: ${competitionCode}`);
-
-  const data = await sportsrcGet({ type: 'standing', league_id: competition.standingId });
+function mapStandingTable(data) {
   const table = data?.data?.table || [];
-
   return table.map((row) => ({
     position: row.position,
     team: row.team?.name || row.team?.short_name || 'Unknown',
@@ -268,4 +284,21 @@ export async function fetchStandings(competitionCode) {
     // already renders an empty-state when this is [].
     form: [],
   }));
+}
+
+export async function fetchStandings(competitionCode) {
+  const competition = COMPETITIONS.find((c) => c.code === competitionCode);
+  if (!competition) throw new Error(`Unknown competition code: ${competitionCode}`);
+  const data = await sportsrcGet({ type: 'standing', league_id: competition.standingId });
+  return mapStandingTable(data);
+}
+
+/** Standings for any league at all, not just the curated COMPETITIONS set — SportSRC's
+ * standing endpoint also accepts a plain match id (`id=`) instead of a numeric `league_id`,
+ * which resolves to that match's league table. Since fetchMatches now returns every league's
+ * fixtures (not just the curated handful), this is what makes a table available for the long
+ * tail too — any match id from that league works, not just today's. */
+export async function fetchStandingsByMatchId(matchId) {
+  const data = await sportsrcGet({ type: 'standing', id: matchId });
+  return mapStandingTable(data);
 }

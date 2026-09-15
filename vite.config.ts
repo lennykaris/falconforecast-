@@ -30,16 +30,17 @@ function sportsDataDevApi(): Plugin {
       server.middlewares.use('/api/standings', async (req, res) => {
         try {
           // @ts-expect-error - plain JS helper shared with the Vercel function in api/standings.js
-          const { fetchStandings } = await import('./api/_lib/sportsrc.js');
+          const { fetchStandings, fetchStandingsByMatchId } = await import('./api/_lib/sportsrc.js');
           const url = new URL(req.url || '', 'http://localhost');
           const code = url.searchParams.get('competition');
-          if (!code) {
+          const matchId = url.searchParams.get('matchId');
+          if (!code && !matchId) {
             res.statusCode = 400;
             res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ standings: [], error: 'Missing competition query param' }));
+            res.end(JSON.stringify({ standings: [], error: 'Missing competition or matchId query param' }));
             return;
           }
-          const standings = await fetchStandings(code);
+          const standings = matchId ? await fetchStandingsByMatchId(matchId) : await fetchStandings(code);
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ standings }));
         } catch (err) {

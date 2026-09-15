@@ -79,6 +79,8 @@ export interface Match {
   id: string;
   league: string;
   leagueCode?: string;
+  /** The league's country — 'Europe' for continental competitions (e.g. Champions League). */
+  country?: string;
   homeTeam: string;
   awayTeam: string;
   homeTla?: string;

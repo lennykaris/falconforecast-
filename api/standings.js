@@ -1,13 +1,16 @@
-import { fetchStandings } from './_lib/sportsrc.js';
+import { fetchStandings, fetchStandingsByMatchId } from './_lib/sportsrc.js';
 
 export default async function handler(req, res) {
-  const code = (req.query || {}).competition;
-  if (!code) {
-    res.status(400).json({ standings: [], error: 'Missing competition query param' });
+  const { competition, matchId } = req.query || {};
+  if (!competition && !matchId) {
+    res.status(400).json({ standings: [], error: 'Missing competition or matchId query param' });
     return;
   }
   try {
-    const standings = await fetchStandings(code);
+    // matchId covers any league at all (see fetchStandingsByMatchId); competition is the
+    // older, curated-only path — kept since existing callers (the popular-leagues switcher)
+    // already use it and it needs no match id on hand.
+    const standings = matchId ? await fetchStandingsByMatchId(matchId) : await fetchStandings(competition);
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=900');
     res.status(200).json({ standings });
   } catch (err) {

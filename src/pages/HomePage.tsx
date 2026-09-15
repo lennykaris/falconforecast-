@@ -58,6 +58,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
   const [standingsError, setStandingsError] = useState<string | null>(null);
 
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+  const [leagueSearch, setLeagueSearch] = useState('');
 
   // Sync selectedLeague with URL route if user came from Navbar
   useEffect(() => {
@@ -96,21 +97,38 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
       .finally(() => setStandingsLoading(false));
   }, [selectedLeague]);
 
-  // Group real matches by league for the "Favorites" (all leagues) view, or filter to one league
+  // "Favorites" is really "All Leagues" here (see Sidebar's "View All Leagues" button) — every
+  // league SportSRC returns fixtures for, not just the curated popular set below. Grouped by
+  // leagueCode (not the display name) so two different leagues that happen to share a name
+  // don't get merged together.
   const leagueGroups = (() => {
-    const byLeague = new Map<string, Match[]>();
+    const byLeague = new Map<string, { label: string; matches: Match[] }>();
+    const search = leagueSearch.trim().toLowerCase();
     for (const m of matches) {
-      const label = Object.keys(LEAGUE_CODE_MAP).find(k => LEAGUE_CODE_MAP[k] === m.leagueCode);
-      if (!label) continue;
-      if (selectedLeague !== 'Favorites' && label !== selectedLeague) continue;
-      if (!byLeague.has(label)) byLeague.set(label, []);
-      byLeague.get(label)!.push(m);
+      if (selectedLeague !== 'Favorites') {
+        if (LEAGUE_CODE_MAP[selectedLeague] !== m.leagueCode) continue;
+      } else if (search) {
+        const haystack = `${m.league} ${m.country || ''} ${m.homeTeam} ${m.awayTeam}`.toLowerCase();
+        if (!haystack.includes(search)) continue;
+      }
+      const key = m.leagueCode || m.league;
+      if (!byLeague.has(key)) byLeague.set(key, { label: m.league, matches: [] });
+      byLeague.get(key)!.matches.push(m);
     }
-    return Array.from(byLeague.entries()).map(([league, leagueMatches]) => ({
-      league,
-      matches: leagueMatches.slice(0, 8),
-      hasLive: leagueMatches.some(isLiveStatus),
-    }));
+    return Array.from(byLeague.values())
+      .map(({ label, matches: leagueMatches }) => ({
+        league: label,
+        matches: leagueMatches.slice(0, 8),
+        hasLive: leagueMatches.some(isLiveStatus),
+      }))
+      // Leagues with a live match float to the top; ties broken by how many fixtures are
+      // showing, then alphabetically — keeps the "All Leagues" view navigable at real scale
+      // (SportSRC covers hundreds of leagues, not the handful the popular tabs use).
+      .sort((a, b) =>
+        Number(b.hasLive) - Number(a.hasLive) ||
+        b.matches.length - a.matches.length ||
+        a.league.localeCompare(b.league)
+      );
   })();
 
   const selectedLeagueUnsupported = selectedLeague !== 'Favorites' && !LEAGUE_CODE_MAP[selectedLeague];
@@ -135,7 +153,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
             <div>
               <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
                 <Trophy className="w-6 h-6 text-[#00a8ff]" />
-                {selectedLeague} Matches &amp; Teams
+                {selectedLeague === 'Favorites' ? 'All Leagues' : selectedLeague} Matches &amp; Teams
               </h1>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Real fixtures, results, and league standings.
@@ -149,7 +167,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
 
           {/* Mobile League Tabs (only shown on mobile, sidebar handles it on desktop) */}
           <div className="lg:hidden flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1">
-            {['Premier League', 'La Liga', 'Champions League', 'Serie A', 'Bundesliga'].map(league => (
+            {['Premier League', 'La Liga', 'Champions League', 'Serie A', 'Bundesliga', 'Favorites'].map(league => (
               <button
                 key={league}
                 onClick={() => setSelectedLeague(league)}
@@ -159,7 +177,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
                     : 'bg-white dark:bg-[#111c30] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#00a8ff] hover:text-[#00a8ff]'
                 }`}
               >
-                {league}
+                {league === 'Favorites' ? 'All Leagues' : league}
               </button>
             ))}
           </div>
@@ -168,6 +186,21 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
           <div className="lg:hidden mb-4">
             <AdvertBanner sticky={false} />
           </div>
+
+          {/* All-Leagues search — SportSRC covers hundreds of leagues here (Japanese, Kenyan,
+              anything with fixtures), not just the curated popular tabs, so this is the only
+              practical way to find one without endless scrolling. */}
+          {selectedLeague === 'Favorites' && (
+            <div className="relative">
+              <input
+                type="text"
+                value={leagueSearch}
+                onChange={e => setLeagueSearch(e.target.value)}
+                placeholder="Search any league or team — J1 League, Kenyan Premier League, Man City..."
+                className="w-full px-4 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#111c30] text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-[#00a8ff]"
+              />
+            </div>
+          )}
 
           {/* Unsupported league notice — shown if a league in the switcher has no entry in
               LEAGUE_CODE_MAP yet */}
@@ -189,7 +222,11 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
               ) : matchesError ? (
                 <div className="py-16 text-center text-xs text-rose-500">{matchesError}</div>
               ) : leagueGroups.length === 0 ? (
-                <div className="py-16 text-center text-xs text-slate-400">No matches found for this league right now.</div>
+                <div className="py-16 text-center text-xs text-slate-400">
+                  {selectedLeague === 'Favorites' && leagueSearch.trim()
+                    ? `No leagues or teams matching "${leagueSearch.trim()}" right now.`
+                    : 'No matches found for this league right now.'}
+                </div>
               ) : (
                 leagueGroups.map(group => (
                   <div
