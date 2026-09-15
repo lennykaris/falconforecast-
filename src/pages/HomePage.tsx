@@ -45,6 +45,82 @@ const statusLabel = (m: Match) => {
 
 const isLiveStatus = (m: Match) => m.status === 'IN_PLAY' || m.status === 'PAUSED';
 
+interface LeagueGroupData {
+  league: string;
+  matches: Match[];
+  hasLive: boolean;
+}
+
+/** One league's fixture table — used standalone (with its own header) for the curated
+ * popular-league tabs, and nested (header-less, the country card above it already gives
+ * context) inside each country card in the All-Leagues view. */
+const LeagueCard: React.FC<{ group: LeagueGroupData; onSelectMatch: (id: string) => void; showHeader?: boolean }> = ({ group, onSelectMatch, showHeader }) => (
+  <div>
+    {showHeader && (
+      <div className="bg-sky-50 dark:bg-slate-800/50 px-4 py-3 border-b border-sky-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-[#00a8ff]" />
+          <h2 className="font-bold text-sm text-slate-900 dark:text-white">{group.league}</h2>
+        </div>
+        {group.hasLive && (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
+          </span>
+        )}
+      </div>
+    )}
+    {!showHeader && (
+      <div className="px-4 pt-3 pb-1 flex items-center justify-between">
+        <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300">{group.league}</h3>
+        {group.hasLive && (
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" title="Live" />
+        )}
+      </div>
+    )}
+
+    <div className="overflow-x-auto">
+      <table className="w-full text-left text-xs border-collapse">
+        <thead>
+          <tr className="border-b border-sky-100 dark:border-slate-800/60 text-slate-500 dark:text-slate-400 font-semibold bg-sky-50/60 dark:bg-slate-900/30">
+            <th className="py-2.5 px-4 w-20">Status</th>
+            <th className="py-2.5 px-4">Match</th>
+            <th className="py-2.5 px-4 w-16 text-center">Score</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-sky-100 dark:divide-slate-800/40">
+          {group.matches.map(match => (
+            <tr
+              key={match.id}
+              onClick={() => onSelectMatch(match.id)}
+              className="hover:bg-sky-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
+            >
+              <td className={`py-3 px-4 font-bold font-mono ${isLiveStatus(match) ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                {statusLabel(match)}
+              </td>
+              <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
+                <div className="space-y-1">
+                  <div>{match.homeTeam}</div>
+                  <div>{match.awayTeam}</div>
+                </div>
+              </td>
+              <td className="py-3 px-4 font-extrabold text-slate-900 dark:text-white font-mono text-center">
+                {match.homeScore != null && match.awayScore != null ? (
+                  <div className="space-y-1">
+                    <div>{match.homeScore}</div>
+                    <div>{match.awayScore}</div>
+                  </div>
+                ) : (
+                  <span className="text-slate-300 dark:text-slate-600">—</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+);
+
 export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
   const location = useLocation();
   const [selectedLeague, setSelectedLeague] = useState('Premier League');
@@ -101,8 +177,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
   // league SportSRC returns fixtures for, not just the curated popular set below. Grouped by
   // leagueCode (not the display name) so two different leagues that happen to share a name
   // don't get merged together.
-  const leagueGroups = (() => {
-    const byLeague = new Map<string, { label: string; matches: Match[] }>();
+  const { leagueGroups, countryGroups } = (() => {
+    const byLeague = new Map<string, { label: string; country: string; flag?: string; matches: Match[] }>();
     const search = leagueSearch.trim().toLowerCase();
     for (const m of matches) {
       if (selectedLeague !== 'Favorites') {
@@ -112,23 +188,48 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
         if (!haystack.includes(search)) continue;
       }
       const key = m.leagueCode || m.league;
-      if (!byLeague.has(key)) byLeague.set(key, { label: m.league, matches: [] });
+      if (!byLeague.has(key)) byLeague.set(key, { label: m.league, country: m.country || 'Other', flag: m.countryFlag, matches: [] });
       byLeague.get(key)!.matches.push(m);
     }
-    return Array.from(byLeague.values())
-      .map(({ label, matches: leagueMatches }) => ({
+
+    const leagues = Array.from(byLeague.values())
+      .map(({ label, country, flag, matches: leagueMatches }) => ({
         league: label,
+        country,
+        flag,
         matches: leagueMatches.slice(0, 8),
         hasLive: leagueMatches.some(isLiveStatus),
       }))
       // Leagues with a live match float to the top; ties broken by how many fixtures are
-      // showing, then alphabetically — keeps the "All Leagues" view navigable at real scale
-      // (SportSRC covers hundreds of leagues, not the handful the popular tabs use).
+      // showing, then alphabetically.
       .sort((a, b) =>
         Number(b.hasLive) - Number(a.hasLive) ||
         b.matches.length - a.matches.length ||
         a.league.localeCompare(b.league)
       );
+
+    if (selectedLeague !== 'Favorites') {
+      return { leagueGroups: leagues, countryGroups: null };
+    }
+
+    // All-Leagues view: nested under country cards instead of one long flat scroll — keeps it
+    // navigable at real scale (SportSRC covers hundreds of leagues, not the handful the
+    // popular tabs use). Same live-first, then-size, then-alphabetical ordering at the
+    // country level too.
+    const byCountry = new Map<string, { country: string; flag?: string; leagues: typeof leagues; hasLive: boolean }>();
+    for (const lg of leagues) {
+      if (!byCountry.has(lg.country)) byCountry.set(lg.country, { country: lg.country, flag: lg.flag, leagues: [], hasLive: false });
+      const group = byCountry.get(lg.country)!;
+      group.leagues.push(lg);
+      if (lg.hasLive) group.hasLive = true;
+    }
+    const countries = Array.from(byCountry.values()).sort((a, b) =>
+      Number(b.hasLive) - Number(a.hasLive) ||
+      b.leagues.length - a.leagues.length ||
+      a.country.localeCompare(b.country)
+    );
+
+    return { leagueGroups: leagues, countryGroups: countries };
   })();
 
   const selectedLeagueUnsupported = selectedLeague !== 'Favorites' && !LEAGUE_CODE_MAP[selectedLeague];
@@ -227,66 +328,36 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
                     ? `No leagues or teams matching "${leagueSearch.trim()}" right now.`
                     : 'No matches found for this league right now.'}
                 </div>
+              ) : selectedLeague === 'Favorites' && countryGroups ? (
+                // All-Leagues view: a card per country, each containing its leagues nested
+                // inside — instead of one long flat scroll of dozens of league cards.
+                countryGroups.map(cg => (
+                  <div
+                    key={cg.country}
+                    className="bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm"
+                  >
+                    <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2.5">
+                      {cg.flag && <img src={cg.flag} alt="" className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0" />}
+                      <h2 className="font-black text-sm text-slate-900 dark:text-white flex-1">{cg.country}</h2>
+                      <span className="text-[10px] font-bold text-slate-400">{cg.leagues.length} league{cg.leagues.length !== 1 ? 's' : ''}</span>
+                      {cg.hasLive && (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
+                        </span>
+                      )}
+                    </div>
+                    <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {cg.leagues.map(group => <LeagueCard key={group.league} group={group} onSelectMatch={setSelectedMatchId} />)}
+                    </div>
+                  </div>
+                ))
               ) : (
                 leagueGroups.map(group => (
                   <div
                     key={group.league}
                     className="bg-white dark:bg-[#111c30] border border-sky-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm"
                   >
-                    {/* League Card Header */}
-                    <div className="bg-sky-50 dark:bg-slate-800/50 px-4 py-3 border-b border-sky-100 dark:border-slate-800 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-[#00a8ff]" />
-                        <h2 className="font-bold text-sm text-slate-900 dark:text-white">{group.league}</h2>
-                      </div>
-                      {group.hasLive && (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Matches Table */}
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
-                        <thead>
-                          <tr className="border-b border-sky-100 dark:border-slate-800/60 text-slate-500 dark:text-slate-400 font-semibold bg-sky-50/60 dark:bg-slate-900/30">
-                            <th className="py-2.5 px-4 w-20">Status</th>
-                            <th className="py-2.5 px-4">Match</th>
-                            <th className="py-2.5 px-4 w-16 text-center">Score</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-sky-100 dark:divide-slate-800/40">
-                          {group.matches.map(match => (
-                            <tr
-                              key={match.id}
-                              onClick={() => setSelectedMatchId(match.id)}
-                              className="hover:bg-sky-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
-                            >
-                              <td className={`py-3 px-4 font-bold font-mono ${isLiveStatus(match) ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                                {statusLabel(match)}
-                              </td>
-                              <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
-                                <div className="space-y-1">
-                                  <div>{match.homeTeam}</div>
-                                  <div>{match.awayTeam}</div>
-                                </div>
-                              </td>
-                              <td className="py-3 px-4 font-extrabold text-slate-900 dark:text-white font-mono text-center">
-                                {match.homeScore != null && match.awayScore != null ? (
-                                  <div className="space-y-1">
-                                    <div>{match.homeScore}</div>
-                                    <div>{match.awayScore}</div>
-                                  </div>
-                                ) : (
-                                  <span className="text-slate-300 dark:text-slate-600">—</span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                    <LeagueCard group={group} onSelectMatch={setSelectedMatchId} showHeader />
                   </div>
                 ))
               )}

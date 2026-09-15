@@ -107,6 +107,7 @@ export async function fetchMatches({ dateFrom, dateTo } = {}) {
     for (const leagueBlock of day.data || []) {
       const leagueName = leagueBlock.league?.name;
       const country = leagueBlock.league?.country;
+      const countryFlag = leagueBlock.league?.flag;
       const competition = findCompetition(leagueName, country);
       const leagueCode = competition ? competition.code : slugifyLeague(leagueName, country);
       for (const m of leagueBlock.matches || []) {
@@ -117,6 +118,7 @@ export async function fetchMatches({ dateFrom, dateTo } = {}) {
           league: leagueName || leagueCode,
           leagueCode,
           country: country || undefined,
+          countryFlag: countryFlag || undefined,
           homeTeam: m.teams?.home?.name || 'TBD',
           awayTeam: m.teams?.away?.name || 'TBD',
           homeTla: m.teams?.home?.code || undefined,
