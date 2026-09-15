@@ -251,17 +251,23 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS subscribed_at TIMESTAMP WIT
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS vip_expires_at TIMESTAMP WITH TIME ZONE;
 
 -- Widen the plan CHECK constraint to allow 'weekly_pass' — a real purchasable VIP tier that
--- was being mislabeled as 'monthly_vip' (see api/kentapay/_lib/resolvePayment.js). Constraint
--- name may differ if this table predates the exact CREATE TABLE statement above, so find and
--- drop it by definition pattern instead of a hardcoded name.
+-- was being mislabeled as 'monthly_vip' (see api/kentapay/_lib/resolvePayment.js). Found via
+-- the column it actually constrains (conkey/pg_attribute), not a text pattern match against
+-- pg_get_constraintdef — Postgres renders a plain `CHECK (plan IN (...))` back as
+-- `plan = ANY (ARRAY[...])`, which a naive `LIKE '%IN%'` search never matches, leaving the
+-- original constraint (auto-named profiles_plan_check by Postgres, the exact name this
+-- migration tries to (re)create) never dropped and the ADD CONSTRAINT below failing with
+-- "already exists".
 DO $$
 DECLARE
   con_name TEXT;
 BEGIN
-  SELECT conname INTO con_name
-  FROM pg_constraint
-  WHERE conrelid = 'public.profiles'::regclass
-    AND pg_get_constraintdef(oid) LIKE '%plan%IN%';
+  SELECT c.conname INTO con_name
+  FROM pg_constraint c
+  JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY(c.conkey)
+  WHERE c.conrelid = 'public.profiles'::regclass
+    AND c.contype = 'c'
+    AND a.attname = 'plan';
   IF con_name IS NOT NULL THEN
     EXECUTE format('ALTER TABLE public.profiles DROP CONSTRAINT %I', con_name);
   END IF;
