@@ -168,6 +168,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Realtime subscription on the user's own profile row — without this, an admin approving a
+  // tipster application (or suspending/reinstating one, or granting VIP) only ever reaches
+  // the affected user the next time something else happens to trigger a refetch (a login, a
+  // payment). Until then their own session keeps the `user` object loaded at login time, so
+  // TipsterApplyPage/TipsterDashboardPage kept showing "Application pending" even minutes
+  // after an admin had genuinely approved them elsewhere — the exact bug reported. Any UPDATE
+  // to this row (from anywhere — an admin's browser, an SQL edit, a webhook) now refreshes
+  // this session's user object within moments, no reload or re-login required.
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`profile-changes-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` },
+        () => { refetchUser(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id]);
+
   const isLoggedIn = !!user;
   const isAdmin = user?.role === 'admin';
   const isTipster = user?.role === 'tipster';

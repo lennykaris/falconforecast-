@@ -728,3 +728,22 @@ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.payments;
   END IF;
 END $$;
+
+-- =====================================================================================
+-- 13. REALTIME FOR PROFILES — without this, an admin approving/suspending a tipster (or any
+-- other change to someone's own row — VIP grant, role change) only reaches that person's
+-- already-open session the next time something else happens to trigger a refetch (a login, a
+-- payment). AuthContext subscribes to UPDATEs on the current user's own row and refetches
+-- immediately; this is what makes that actually deliver instead of silently never firing.
+-- RLS's existing "Public tipsters and own profile viewable" SELECT policy already scopes what
+-- a subscriber receives (their own row, or any tipster's) — no separate policy needed.
+-- =====================================================================================
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'profiles'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
+  END IF;
+END $$;
