@@ -107,15 +107,20 @@ export const SignupPage: React.FC = () => {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-widest block" style={{ color: 'var(--text-secondary)' }}>
-                    Name
+                    Display Name
                   </label>
                   <input
                     type="text"
                     value={name}
                     onChange={e => setName(e.target.value)}
-                    placeholder="Your full name"
+                    placeholder="A username or alias — this is what other users see"
                     className="input-field w-full rounded-xl px-4 py-3 text-xs"
                   />
+                  {/* Your email is never shown publicly — comments, reviews, and tips are all
+                      labeled with this name instead. Changeable anytime from your Profile page. */}
+                  <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                    Not your real name — just how you'll appear on comments, reviews, and tips. Changeable anytime.
+                  </p>
                 </div>
 
                 <div className="space-y-1.5">
