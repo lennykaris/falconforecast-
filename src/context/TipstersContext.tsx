@@ -16,8 +16,8 @@ export const isSubscriptionActive = (s: TipsterSubscription) =>
 interface TipstersContextType {
   tipsters: User[];
   subscriptions: TipsterSubscription[];
-  approveTipster: (tipsterId: string) => void;
-  suspendTipster: (tipsterId: string) => void;
+  approveTipster: (tipsterId: string) => Promise<string | null>;
+  suspendTipster: (tipsterId: string) => Promise<string | null>;
   /** Called by the tipster themselves — admins cannot change another tipster's prices */
   updateOwnPricing: (tipsterId: string, weeklyPrice: number, monthlyPrice: number) => void;
   updateMpesaPhone: (tipsterId: string, mpesaPhone: string) => void;
@@ -173,18 +173,30 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // with zero rows changed. Now writes first and only reflects the change locally once
   // Supabase actually confirms it, so a rejected write shows as a real failure (logged, and
   // the local list stays correct) instead of a false "success".
+  // Supabase/PostgREST's `.update()` returns `{ error: null }` even when RLS silently matches
+  // ZERO rows — a bare "no error" here does not mean the write happened. This was exactly why
+  // admin "Approve tipster" clicks looked like they did nothing (no error shown, so nothing
+  // logged either) and why an apparently-approved tipster would show unapproved again on the
+  // next page load: the click never actually wrote anything, so the next real fetch from
+  // Supabase just showed the true, never-changed row. Chaining `.select('id')` makes Postgres
+  // return the rows that were actually touched, so an empty array here is now treated as a
+  // real failure instead of a false success.
   const updateProfileRow = async (id: string, payload: Record<string, any>): Promise<string | null> => {
-    const { error } = await supabase.from('profiles').update(payload).eq('id', id);
+    const { data, error } = await supabase.from('profiles').update(payload).eq('id', id).select('id');
     if (error) {
       console.error('Supabase profile update failed', { id, payload, error });
       return error.message;
+    }
+    if (!data || data.length === 0) {
+      console.error('Supabase profile update matched zero rows (likely blocked by RLS)', { id, payload });
+      return "That change wasn't saved — you may not have permission, or the account no longer exists.";
     }
     return null;
   };
 
   const approveTipster = async (tipsterId: string) => {
     const error = await updateProfileRow(tipsterId, { role: 'tipster', tipster_status: 'active', verified: true });
-    if (error) return;
+    if (error) return error;
     setTipsters(prev =>
       prev.map(t =>
         t.id === tipsterId
@@ -192,6 +204,7 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           : t
       )
     );
+    return null;
   };
 
   const suspendTipster = async (tipsterId: string) => {
@@ -199,7 +212,7 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // leaving it true on a suspended tipster is what let stale, verified-only filters
     // elsewhere in the app keep listing/paying them after being cut off.
     const error = await updateProfileRow(tipsterId, { tipster_status: 'suspended', verified: false });
-    if (error) return;
+    if (error) return error;
     setTipsters(prev =>
       prev.map(t =>
         t.id === tipsterId
@@ -207,6 +220,7 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           : t
       )
     );
+    return null;
   };
 
   /** Only callable by the tipster themselves — NOT by admin */

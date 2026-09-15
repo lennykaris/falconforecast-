@@ -106,6 +106,30 @@ export const AdminPage: React.FC = () => {
     });
   }, [isAdmin]);
 
+  // approveTipster/suspendTipster used to be fired-and-forgotten from the buttons below — a
+  // write Supabase's RLS silently matched zero rows on (no thrown error, no `{error}` either,
+  // since PostgREST reports "success" either way without a `.select()` to check row count)
+  // looked identical to a real success, so the button appeared to "do nothing" and the
+  // tipster would show unapproved again on the next real fetch. Now awaited and surfaced.
+  const [tipsterActionError, setTipsterActionError] = useState<string | null>(null);
+  const [tipsterActionPendingId, setTipsterActionPendingId] = useState<string | null>(null);
+
+  const handleApproveTipster = async (tipsterId: string) => {
+    setTipsterActionError(null);
+    setTipsterActionPendingId(tipsterId);
+    const error = await approveTipster(tipsterId);
+    setTipsterActionPendingId(null);
+    if (error) setTipsterActionError(error);
+  };
+
+  const handleSuspendTipster = async (tipsterId: string) => {
+    setTipsterActionError(null);
+    setTipsterActionPendingId(tipsterId);
+    const error = await suspendTipster(tipsterId);
+    setTipsterActionPendingId(null);
+    if (error) setTipsterActionError(error);
+  };
+
   const stalePendingCutoff = Date.now() - 15 * 60 * 1000; // Kentapay's own callback should land within minutes
   const problemPayments = payments.filter(p =>
     p.status === 'FAILED' || (p.status === 'PENDING' && new Date(p.createdAt).getTime() < stalePendingCutoff)
@@ -400,6 +424,13 @@ export const AdminPage: React.FC = () => {
             Approve or suspend tipster accounts. Update their subscription pricing. Changes sync to Supabase instantly.
           </p>
 
+          {tipsterActionError && (
+            <div className="flex items-start gap-2 p-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-xs font-semibold">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{tipsterActionError}</span>
+            </div>
+          )}
+
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-slate-700">
@@ -468,31 +499,34 @@ export const AdminPage: React.FC = () => {
                           <div className="flex items-center justify-end space-x-1.5">
                             {t.tipsterStatus === 'pending' && (
                               <button
-                                onClick={() => approveTipster(t.id)}
-                                className="px-2 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded border border-emerald-300 text-[10px] font-bold flex items-center space-x-1"
+                                onClick={() => handleApproveTipster(t.id)}
+                                disabled={tipsterActionPendingId === t.id}
+                                className="px-2 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded border border-emerald-300 text-[10px] font-bold flex items-center space-x-1 disabled:opacity-50"
                                 title="Approve tipster"
                               >
                                 <UserCheck className="w-3 h-3" />
-                                <span>Approve</span>
+                                <span>{tipsterActionPendingId === t.id ? 'Approving…' : 'Approve'}</span>
                               </button>
                             )}
                             {t.tipsterStatus === 'active' && (
                               <button
-                                onClick={() => suspendTipster(t.id)}
-                                className="px-2 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded border border-rose-300 text-[10px] font-bold flex items-center space-x-1"
+                                onClick={() => handleSuspendTipster(t.id)}
+                                disabled={tipsterActionPendingId === t.id}
+                                className="px-2 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded border border-rose-300 text-[10px] font-bold flex items-center space-x-1 disabled:opacity-50"
                                 title="Suspend tipster"
                               >
                                 <UserX className="w-3 h-3" />
-                                <span>Suspend</span>
+                                <span>{tipsterActionPendingId === t.id ? 'Suspending…' : 'Suspend'}</span>
                               </button>
                             )}
                             {t.tipsterStatus === 'suspended' && (
                               <button
-                                onClick={() => approveTipster(t.id)}
-                                className="px-2 py-1 bg-sky-50 text-[#0EA5E9] hover:bg-sky-100 rounded border border-sky-200 text-[10px] font-bold"
+                                onClick={() => handleApproveTipster(t.id)}
+                                disabled={tipsterActionPendingId === t.id}
+                                className="px-2 py-1 bg-sky-50 text-[#0EA5E9] hover:bg-sky-100 rounded border border-sky-200 text-[10px] font-bold disabled:opacity-50"
                                 title="Reinstate tipster"
                               >
-                                Reinstate
+                                {tipsterActionPendingId === t.id ? 'Reinstating…' : 'Reinstate'}
                               </button>
                             )}
                           </div>
