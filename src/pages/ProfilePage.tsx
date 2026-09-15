@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
@@ -7,14 +7,17 @@ import {
   LayoutDashboard,
   LogOut,
   Mail,
+  Pencil,
   ShieldCheck,
   Star,
   Users,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { AvatarPicker } from '../components/AvatarPicker';
 
 export const ProfilePage: React.FC = () => {
   const { user, isLoggedIn, isVip, isAdmin, isTipster, logout } = useAuth();
+  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
 
   if (!isLoggedIn || !user) {
     return (
@@ -56,12 +59,25 @@ export const ProfilePage: React.FC = () => {
 
         {/* Header */}
         <div className="flex items-center gap-5 pb-8 border-b" style={{ borderColor: 'var(--border)' }}>
-          <div
-            className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-black flex-shrink-0"
-            style={{ backgroundColor: 'var(--brand-light)', color: 'var(--brand)' }}
+          <button
+            onClick={() => setAvatarPickerOpen(true)}
+            className="relative w-16 h-16 rounded-full flex-shrink-0 group"
+            title="Change avatar"
           >
-            {user.name?.charAt(0).toUpperCase() || '?'}
-          </div>
+            {user.avatarUrl ? (
+              <img src={user.avatarUrl} alt="" className="w-16 h-16 rounded-full object-cover" />
+            ) : (
+              <div
+                className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-black"
+                style={{ backgroundColor: 'var(--brand-light)', color: 'var(--brand)' }}
+              >
+                {user.name?.charAt(0).toUpperCase() || '?'}
+              </div>
+            )}
+            <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white dark:bg-slate-800 border-2 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform" style={{ borderColor: 'var(--brand)' }}>
+              <Pencil className="w-3 h-3" style={{ color: 'var(--brand)' }} />
+            </span>
+          </button>
           <div className="min-w-0 space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl sm:text-2xl font-black font-display truncate" style={{ color: 'var(--text-primary)' }}>
@@ -144,6 +160,8 @@ export const ProfilePage: React.FC = () => {
           Log out
         </button>
       </div>
+
+      <AvatarPicker isOpen={avatarPickerOpen} onClose={() => setAvatarPickerOpen(false)} />
     </div>
   );
 };

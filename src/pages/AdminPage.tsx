@@ -539,9 +539,13 @@ export const AdminPage: React.FC = () => {
                     <tr key={u.id} className="hover:bg-slate-50 transition-colors">
                       <td className="py-3.5 px-4">
                         <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0EA5E9] to-sky-700 flex items-center justify-center text-white font-extrabold text-xs">
-                            {u.name?.charAt(0) || '?'}
-                          </div>
+                          {u.avatarUrl ? (
+                            <img src={u.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0EA5E9] to-sky-700 flex items-center justify-center text-white font-extrabold text-xs">
+                              {u.name?.charAt(0) || '?'}
+                            </div>
+                          )}
                           <div>
                             <span className="font-semibold text-slate-900 block">{u.name}</span>
                             <span className="text-[10px] text-slate-400 font-mono">{u.email}</span>
