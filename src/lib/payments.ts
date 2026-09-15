@@ -51,3 +51,54 @@ export async function pollPaymentStatus(
   }
   return { status: 'TIMEOUT' };
 }
+
+/** Subscribes to Supabase Realtime for one payment row, calling `onResolved` the instant
+ * Kentapay's callback (or the reconciliation cron) writes COMPLETE/FAILED to it — near-instant
+ * vs pollPaymentStatus's up-to-3s polling interval. Requires the `payments` table to be added
+ * to the `supabase_realtime` publication (see supabase_schema.sql) — RLS's own "Users view own
+ * payments" policy already scopes this to rows the current user is allowed to see, same as
+ * the regular select. Returns an unsubscribe function. */
+function watchPaymentStatus(
+  reference: string,
+  onResolved: (outcome: { status: 'COMPLETE' | 'FAILED'; failureMessage?: string }) => void
+): () => void {
+  const channel = supabase
+    .channel(`payment-${reference}`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'payments', filter: `reference=eq.${reference}` },
+      (payload) => {
+        const row = payload.new as { status?: string; failure_message?: string };
+        if (row.status === 'COMPLETE') onResolved({ status: 'COMPLETE' });
+        else if (row.status === 'FAILED') onResolved({ status: 'FAILED', failureMessage: row.failure_message || undefined });
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+
+/** The real wait for a payment outcome — races Realtime (near-instant once it fires) against
+ * the existing poll (the guaranteed-correct fallback within the same timeout, in case Realtime
+ * isn't enabled on the table or the socket drops mid-wait). Whichever resolves first wins;
+ * the other is torn down immediately after. Never hangs past `timeoutMs` regardless of which
+ * path is working. */
+export async function awaitPaymentResolution(
+  reference: string,
+  opts: { intervalMs?: number; timeoutMs?: number } = {}
+): Promise<PaymentPollOutcome> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (outcome: PaymentPollOutcome) => {
+      if (settled) return;
+      settled = true;
+      unsubscribe();
+      resolve(outcome);
+    };
+
+    const unsubscribe = watchPaymentStatus(reference, finish);
+    pollPaymentStatus(reference, opts).then(finish);
+  });
+}

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   X,
@@ -6,12 +6,13 @@ import {
   Crown,
   ShieldCheck,
   CheckCircle2,
-  Loader2,
   Smartphone,
 } from 'lucide-react';
 import type { SubscriptionPlan } from '../types/prediction';
 import { useAuth } from '../context/AuthContext';
-import { startKentapayCollect, pollPaymentStatus } from '../lib/payments';
+import { usePaymentFlow } from '../hooks/usePaymentFlow';
+import { PaymentPendingView } from './PaymentPendingView';
+import { Confetti } from './Confetti';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -26,26 +27,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 }) => {
   const { refetchUser } = useAuth();
   const navigate = useNavigate();
+  const { payState, payError, submit, reset } = usePaymentFlow();
 
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [payState, setPayState] = useState<'idle' | 'pending' | 'error'>('idle');
-  const [payError, setPayError] = useState('');
-  const [isSuccess, setIsSuccess] = useState(false);
-
-  // CheckoutModal stays mounted for the app's entire lifetime (isOpen just toggles whether it
-  // renders), so closing it doesn't cancel an in-flight pollPaymentStatus call on its own — a
-  // late result from an abandoned payment could otherwise fire success/navigate against
-  // whatever the user has since reopened this modal for. Each close or new submit bumps this,
-  // and a poll's result is only acted on if it's still the current session when it resolves.
-  const sessionRef = useRef(0);
 
   if (!isOpen) return null;
 
   const handleClose = () => {
-    sessionRef.current++;
+    reset();
     setPhoneNumber('');
-    setPayState('idle');
-    setPayError('');
     onClose();
   };
 
@@ -53,44 +43,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     e.preventDefault();
     if (!phoneNumber.trim()) return;
 
-    const mySession = ++sessionRef.current;
-    setPayState('pending');
-    setPayError('');
-
-    try {
-      const { reference } = await startKentapayCollect({
-        kind: 'vip_subscription',
-        planId: selectedPlan.id,
-        phone: phoneNumber,
-      });
-
-      const result = await pollPaymentStatus(reference);
-      if (sessionRef.current !== mySession) return; // closed or restarted since — ignore
-
-      if (result.status === 'COMPLETE') {
-        await refetchUser();
-        setIsSuccess(true);
-        setTimeout(() => {
-          setIsSuccess(false);
-          handleClose();
-          navigate('/dashboard');
-        }, 1800);
-      } else if (result.status === 'FAILED') {
-        setPayState('error');
-        setPayError(result.failureMessage || 'Payment failed or was declined on your phone. You can try again.');
-      } else {
-        setPayState('error');
-        setPayError('Still waiting for confirmation. Check your phone for the M-Pesa prompt, or try again.');
-      }
-    } catch (err) {
-      if (sessionRef.current !== mySession) return;
-      setPayState('error');
-      setPayError(err instanceof Error ? err.message : 'Failed to start payment.');
+    const success = await submit({ kind: 'vip_subscription', planId: selectedPlan.id, phone: phoneNumber });
+    if (success) {
+      await refetchUser();
+      setTimeout(() => {
+        reset();
+        setPhoneNumber('');
+        onClose();
+        navigate('/dashboard');
+      }, 2200);
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+      {payState === 'success' && <Confetti />}
       <div className="relative w-full max-w-lg bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden">
 
         {/* Top Header */}
@@ -101,16 +68,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               Activate VIP Subscription
             </h3>
           </div>
-          <button
-            onClick={handleClose}
-            className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          {payState !== 'pending' && (
+            <button
+              onClick={handleClose}
+              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* Content Body */}
-        {isSuccess ? (
+        {payState === 'success' ? (
           <div className="p-8 text-center space-y-4">
             <div className="w-16 h-16 bg-sky-50 border-2 border-sky-300 text-[#0EA5E9] rounded-full flex items-center justify-center mx-auto shadow-md animate-bounce">
               <CheckCircle2 className="w-10 h-10" />
@@ -125,6 +94,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               Redirecting to your Subscriber Dashboard...
             </p>
           </div>
+        ) : payState === 'pending' ? (
+          <PaymentPendingView amountLabel={`${selectedPlan.price} ${selectedPlan.period}`} onCancel={handleClose} />
         ) : (
           <div className="p-6 space-y-6">
 
@@ -158,8 +129,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     value={phoneNumber}
                     onChange={e => setPhoneNumber(e.target.value)}
                     placeholder="07XX XXX XXX"
-                    disabled={payState === 'pending'}
-                    className="w-full bg-white border border-emerald-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500 disabled:opacity-60"
+                    className="w-full bg-white border border-emerald-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500"
                   />
                 </div>
                 <p className="text-[11px] text-emerald-700">
@@ -174,20 +144,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <div className="pt-2">
                 <button
                   type="submit"
-                  disabled={payState === 'pending' || !phoneNumber.trim()}
+                  disabled={!phoneNumber.trim()}
                   className="w-full py-3.5 bg-[#0EA5E9] hover:bg-sky-600 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 disabled:opacity-60"
                 >
-                  {payState === 'pending' ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin text-white" />
-                      <span>Check your phone for the M-Pesa prompt...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="w-4 h-4" />
-                      <span>Pay {selectedPlan.price} & Unlock VIP</span>
-                    </>
-                  )}
+                  <Lock className="w-4 h-4" />
+                  <span>Pay {selectedPlan.price} & Unlock VIP</span>
                 </button>
               </div>
 

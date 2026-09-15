@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   Crown, CheckCircle2, Star, UserCheck, Lock,
-  Filter, Trophy, Zap, X, TrendingUp, ArrowRight, Smartphone, Loader2
+  Filter, Trophy, Zap, X, TrendingUp, ArrowRight, Smartphone
 } from 'lucide-react';
 import { useTipsters } from '../context/TipstersContext';
 import { useAuth } from '../context/AuthContext';
 import { ALL_LEAGUES, ALL_MARKETS } from '../data/tipsters';
-import { startKentapayCollect, pollPaymentStatus } from '../lib/payments';
+import { usePaymentFlow } from '../hooks/usePaymentFlow';
+import { PaymentPendingView } from '../components/PaymentPendingView';
+import { Confetti } from '../components/Confetti';
 import { TipsterReviewsSection } from '../components/TipsterReviewsSection';
 import type { User } from '../types/prediction';
 
@@ -18,17 +20,8 @@ export const TipstersPage: React.FC = () => {
 
   const [selectedTipster, setSelectedTipster] = useState<User | null>(null);
   const [subscriptionCycle, setSubscriptionCycle] = useState<'weekly' | 'monthly'>('monthly');
-  const [successMessage, setSuccessMessage] = useState('');
   const [phone, setPhone] = useState('');
-  const [payState, setPayState] = useState<'idle' | 'pending' | 'error'>('idle');
-  const [payError, setPayError] = useState('');
-
-  // Closing this modal (the X button, unlike Cancel, wasn't disabled mid-payment) doesn't
-  // cancel an in-flight pollPaymentStatus call — without this, a late result from an
-  // abandoned subscribe attempt could pop a success toast or overwrite the error state of
-  // whatever the user has since reopened this modal for (even a different tipster). Each
-  // close or new submit bumps this; a poll's result is only acted on if it's still current.
-  const sessionRef = useRef(0);
+  const { payState, payError, submit, reset } = usePaymentFlow();
 
   // Filters
   const [activeLeague, setActiveLeague] = useState<string>('All');
@@ -62,39 +55,21 @@ export const TipstersPage: React.FC = () => {
 
   const handleSubscribe = async (tipster: User) => {
     if (!user || !phone.trim()) return;
-    const mySession = ++sessionRef.current;
-    setPayState('pending');
-    setPayError('');
-    try {
-      const { reference } = await startKentapayCollect({
-        kind: 'tipster_subscription',
-        tipsterId: tipster.id,
-        billingCycle: subscriptionCycle,
-        phone,
-      });
-
-      const result = await pollPaymentStatus(reference);
-      if (sessionRef.current !== mySession) return; // closed or restarted since — ignore
-
-      if (result.status === 'COMPLETE') {
-        await refetchSubscriptions();
-        setSuccessMessage(`✅ Subscribed to ${tipster.name} — ${subscriptionCycle} pass activated!`);
-        setTimeout(() => setSuccessMessage(''), 4000);
+    const success = await submit({ kind: 'tipster_subscription', tipsterId: tipster.id, billingCycle: subscriptionCycle, phone });
+    if (success) {
+      await refetchSubscriptions();
+      setTimeout(() => {
+        reset();
         setSelectedTipster(null);
-        setPayState('idle');
         setPhone('');
-      } else if (result.status === 'FAILED') {
-        setPayState('error');
-        setPayError(result.failureMessage || 'Payment failed or was declined on your phone. You can try again.');
-      } else {
-        setPayState('error');
-        setPayError('Still waiting for confirmation. Check your phone for the M-Pesa prompt, or try again.');
-      }
-    } catch (e) {
-      if (sessionRef.current !== mySession) return;
-      setPayState('error');
-      setPayError(e instanceof Error ? e.message : 'Failed to start payment.');
+      }, 2200);
     }
+  };
+
+  const handleCloseSubscribeModal = () => {
+    reset();
+    setSelectedTipster(null);
+    setPhone('');
   };
 
   const clearFilters = () => { setActiveLeague('All'); setActiveMarket('All'); };
@@ -125,13 +100,6 @@ export const TipstersPage: React.FC = () => {
             </Link>
           )}
         </div>
-
-        {/* ── Success Toast ── */}
-        {successMessage && (
-          <div className="p-4 bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold rounded-2xl text-center shadow-md">
-            {successMessage}
-          </div>
-        )}
 
         {/* ── Filter Bar ── */}
         <div className="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 space-y-4 shadow-xs">
@@ -356,137 +324,150 @@ export const TipstersPage: React.FC = () => {
         {/* ── Subscribe Modal ── */}
         {selectedTipster && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm">
+            {payState === 'success' && <Confetti />}
             <div className="relative w-full max-w-md max-h-[85vh] overflow-y-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-6 shadow-2xl space-y-5">
-              <button
-                onClick={() => { sessionRef.current++; setSelectedTipster(null); setPhone(''); setPayState('idle'); setPayError(''); }}
-                className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100"
-              >
-                <X className="w-4 h-4" />
-              </button>
-
-              <div className="text-center space-y-2">
-                <img
-                  src={selectedTipster.avatarUrl}
-                  alt={selectedTipster.name}
-                  className="w-16 h-16 rounded-2xl object-cover border-2 border-[#0EA5E9] mx-auto"
-                />
-                <h3 className="text-xl font-black text-slate-900 dark:text-white">
-                  Subscribe to {selectedTipster.name}
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Choose your billing cycle to unlock all of this tipster's VIP predictions.
-                </p>
-              </div>
-
-              {/* Cycle Selector */}
-              <div className="grid grid-cols-2 gap-3">
+              {payState !== 'pending' && (
                 <button
-                  onClick={() => setSubscriptionCycle('weekly')}
-                  className={`p-4 rounded-2xl border-2 text-center transition-all ${
-                    subscriptionCycle === 'weekly'
-                      ? 'border-[#0EA5E9] bg-sky-50 dark:bg-sky-950/40'
-                      : 'border-slate-200 dark:border-slate-600 hover:border-sky-300'
-                  }`}
+                  onClick={handleCloseSubscribeModal}
+                  className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100"
                 >
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Weekly</p>
-                  <p className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-                    KSh {selectedTipster.weeklyPrice}
-                  </p>
-                  <p className="text-[10px] text-slate-400 mt-1">per week</p>
+                  <X className="w-4 h-4" />
                 </button>
-                <button
-                  onClick={() => setSubscriptionCycle('monthly')}
-                  className={`p-4 rounded-2xl border-2 text-center transition-all relative overflow-hidden ${
-                    subscriptionCycle === 'monthly'
-                      ? 'border-[#0EA5E9] bg-sky-50 dark:bg-sky-950/40'
-                      : 'border-slate-200 dark:border-slate-600 hover:border-sky-300'
-                  }`}
-                >
-                  <span className="absolute top-2 right-2 text-[9px] font-black text-white bg-emerald-500 px-1.5 py-0.5 rounded-full">
-                    BEST VALUE
-                  </span>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Monthly</p>
-                  <p className="text-2xl font-black text-[#0EA5E9] font-mono">
-                    KSh {selectedTipster.monthlyPrice}
-                  </p>
-                  <p className="text-[10px] text-slate-400 mt-1">per month</p>
-                </button>
-              </div>
-
-              {/* Summary */}
-              <div className="bg-slate-50 dark:bg-slate-700/40 rounded-xl p-3 text-xs space-y-1 border border-slate-200 dark:border-slate-600">
-                <div className="flex justify-between text-slate-600 dark:text-slate-300">
-                  <span>Subtotal</span>
-                  <span className="font-mono font-bold">
-                    KSh {subscriptionCycle === 'weekly' ? selectedTipster.weeklyPrice : selectedTipster.monthlyPrice}
-                  </span>
-                </div>
-                <div className="flex justify-between text-slate-400">
-                  <span>Tipster earns</span>
-                  <span className="font-mono text-emerald-600 font-bold">
-                    KSh {((subscriptionCycle === 'weekly' ? selectedTipster.weeklyPrice! : selectedTipster.monthlyPrice!) * 0.8).toFixed(0)} (80%)
-                  </span>
-                </div>
-                <div className="flex justify-between text-slate-400">
-                  <span>Platform fee</span>
-                  <span className="font-mono">
-                    KSh {((subscriptionCycle === 'weekly' ? selectedTipster.weeklyPrice! : selectedTipster.monthlyPrice!) * 0.2).toFixed(0)} (20%)
-                  </span>
-                </div>
-              </div>
-
-              {/* M-Pesa phone number */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5">
-                  <Smartphone className="w-3 h-3" /> M-Pesa Phone Number
-                </label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={e => setPhone(e.target.value)}
-                  placeholder="0712345678"
-                  disabled={payState === 'pending'}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl text-sm font-bold text-slate-800 dark:text-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/30 disabled:opacity-60"
-                />
-              </div>
-
-              {payError && (
-                <p className="text-xs font-semibold text-rose-500">{payError}</p>
               )}
 
-              <div className="space-y-2">
-                <button
-                  onClick={() => handleSubscribe(selectedTipster)}
-                  disabled={!phone.trim() || payState === 'pending'}
-                  className="w-full py-3.5 bg-[#0EA5E9] hover:bg-sky-600 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 disabled:opacity-60"
-                >
-                  {payState === 'pending' ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Check your phone for the M-Pesa prompt...</span>
-                    </>
-                  ) : (
-                    <>
+              {payState === 'success' ? (
+                <div className="py-8 text-center space-y-4">
+                  <div className="w-16 h-16 bg-emerald-50 border-2 border-emerald-300 text-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-md animate-bounce">
+                    <CheckCircle2 className="w-10 h-10" />
+                  </div>
+                  <h4 className="text-xl font-black text-slate-900 dark:text-white">
+                    Subscribed to {selectedTipster.name}!
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
+                    Your {subscriptionCycle} pass is active — their VIP predictions are unlocked now.
+                  </p>
+                </div>
+              ) : payState === 'pending' ? (
+                <PaymentPendingView
+                  amountLabel={`KSh ${subscriptionCycle === 'weekly' ? selectedTipster.weeklyPrice : selectedTipster.monthlyPrice}`}
+                  onCancel={handleCloseSubscribeModal}
+                />
+              ) : (
+                <>
+                  <div className="text-center space-y-2">
+                    <img
+                      src={selectedTipster.avatarUrl}
+                      alt={selectedTipster.name}
+                      className="w-16 h-16 rounded-2xl object-cover border-2 border-[#0EA5E9] mx-auto"
+                    />
+                    <h3 className="text-xl font-black text-slate-900 dark:text-white">
+                      Subscribe to {selectedTipster.name}
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Choose your billing cycle to unlock all of this tipster's VIP predictions.
+                    </p>
+                  </div>
+
+                  {/* Cycle Selector */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setSubscriptionCycle('weekly')}
+                      className={`p-4 rounded-2xl border-2 text-center transition-all ${
+                        subscriptionCycle === 'weekly'
+                          ? 'border-[#0EA5E9] bg-sky-50 dark:bg-sky-950/40'
+                          : 'border-slate-200 dark:border-slate-600 hover:border-sky-300'
+                      }`}
+                    >
+                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Weekly</p>
+                      <p className="text-2xl font-black text-slate-900 dark:text-white font-mono">
+                        KSh {selectedTipster.weeklyPrice}
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-1">per week</p>
+                    </button>
+                    <button
+                      onClick={() => setSubscriptionCycle('monthly')}
+                      className={`p-4 rounded-2xl border-2 text-center transition-all relative overflow-hidden ${
+                        subscriptionCycle === 'monthly'
+                          ? 'border-[#0EA5E9] bg-sky-50 dark:bg-sky-950/40'
+                          : 'border-slate-200 dark:border-slate-600 hover:border-sky-300'
+                      }`}
+                    >
+                      <span className="absolute top-2 right-2 text-[9px] font-black text-white bg-emerald-500 px-1.5 py-0.5 rounded-full">
+                        BEST VALUE
+                      </span>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Monthly</p>
+                      <p className="text-2xl font-black text-[#0EA5E9] font-mono">
+                        KSh {selectedTipster.monthlyPrice}
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-1">per month</p>
+                    </button>
+                  </div>
+
+                  {/* Summary */}
+                  <div className="bg-slate-50 dark:bg-slate-700/40 rounded-xl p-3 text-xs space-y-1 border border-slate-200 dark:border-slate-600">
+                    <div className="flex justify-between text-slate-600 dark:text-slate-300">
+                      <span>Subtotal</span>
+                      <span className="font-mono font-bold">
+                        KSh {subscriptionCycle === 'weekly' ? selectedTipster.weeklyPrice : selectedTipster.monthlyPrice}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span>Tipster earns</span>
+                      <span className="font-mono text-emerald-600 font-bold">
+                        KSh {((subscriptionCycle === 'weekly' ? selectedTipster.weeklyPrice! : selectedTipster.monthlyPrice!) * 0.8).toFixed(0)} (80%)
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span>Platform fee</span>
+                      <span className="font-mono">
+                        KSh {((subscriptionCycle === 'weekly' ? selectedTipster.weeklyPrice! : selectedTipster.monthlyPrice!) * 0.2).toFixed(0)} (20%)
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* M-Pesa phone number */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5">
+                      <Smartphone className="w-3 h-3" /> M-Pesa Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={e => setPhone(e.target.value)}
+                      placeholder="0712345678"
+                      className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl text-sm font-bold text-slate-800 dark:text-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/30"
+                    />
+                  </div>
+
+                  {payError && (
+                    <p className="text-xs font-semibold text-rose-500">{payError}</p>
+                  )}
+
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => handleSubscribe(selectedTipster)}
+                      disabled={!phone.trim()}
+                      className="w-full py-3.5 bg-[#0EA5E9] hover:bg-sky-600 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 disabled:opacity-60"
+                    >
                       <Lock className="w-4 h-4" />
                       <span>
                         Pay — KSh {subscriptionCycle === 'weekly' ? selectedTipster.weeklyPrice : selectedTipster.monthlyPrice}/{subscriptionCycle === 'weekly' ? 'wk' : 'mo'}
                       </span>
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => { sessionRef.current++; setSelectedTipster(null); setPhone(''); setPayState('idle'); setPayError(''); }}
-                  disabled={payState === 'pending'}
-                  className="w-full py-2.5 text-xs font-semibold text-slate-400 hover:text-slate-700 disabled:opacity-60"
-                >
-                  Cancel
-                </button>
-              </div>
+                    </button>
+                    <button
+                      onClick={handleCloseSubscribeModal}
+                      className="w-full py-2.5 text-xs font-semibold text-slate-400 hover:text-slate-700"
+                    >
+                      Cancel
+                    </button>
+                  </div>
 
-              <TipsterReviewsSection
-                tipsterId={selectedTipster.id}
-                canReview={!!user && isSubscribedToTipster(user.id, selectedTipster.id)}
-              />
+                  <TipsterReviewsSection
+                    tipsterId={selectedTipster.id}
+                    canReview={!!user && isSubscribedToTipster(user.id, selectedTipster.id)}
+                  />
+                </>
+              )}
             </div>
           </div>
         )}

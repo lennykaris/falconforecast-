@@ -709,3 +709,22 @@ AS $$
 $$;
 
 GRANT EXECUTE ON FUNCTION public.tipster_review_stats() TO anon, authenticated;
+
+-- =====================================================================================
+-- 12. REALTIME FOR PAYMENTS — lets the checkout UI react the instant Kentapay's callback
+-- (or the reconciliation cron) resolves a payment, instead of waiting up to pollPaymentStatus's
+-- 3-second interval (src/lib/payments.ts's awaitPaymentResolution races both — this is what
+-- makes the Realtime side of that actually work; polling stays as the fallback either way).
+-- A plain `ALTER PUBLICATION ... ADD TABLE` errors on re-run once already added, so guarded.
+-- RLS's existing "Users view own payments" policy already scopes what a subscriber receives —
+-- no separate Realtime-specific policy needed.
+-- =====================================================================================
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'payments'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.payments;
+  END IF;
+END $$;
