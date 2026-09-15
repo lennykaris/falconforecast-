@@ -234,6 +234,15 @@ ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS home_flag TEXT;
 ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS away_flag TEXT;
 ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS rationale TEXT;
 ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL;
+-- The real SportSRC match id this tip was placed on (see api/_lib/sportsrc.js) — lets
+-- api/settle-predictions.js auto-settle the outcome against the real final score instead of
+-- trusting a tipster's own self-reported won/lost, and lets the UI open the same live
+-- match-detail view (score, stats, incidents) used on /matches for this specific tip.
+-- Predictions posted before this existed have no match_id and stay manually settled only.
+ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS match_id TEXT;
+-- The final score once auto-settled (e.g. "2-1") — was declared on the Prediction type since
+-- day one but never actually had a column to persist it.
+ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS result TEXT;
 
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'free';
@@ -558,3 +567,52 @@ AS $$
 $$;
 
 GRANT EXECUTE ON FUNCTION public.tipster_subscriber_counts() TO anon, authenticated;
+
+-- =====================================================================================
+-- 10. AUTOMATIC WIN-RATE — profiles.win_rate/total_tips used to be static (whatever was set
+-- at signup/manually), or worse, driven purely by a tipster self-reporting their own tips as
+-- won/lost via the "Settle Your Tips" buttons — no incentive alignment there at all. Now
+-- recomputed from real settled predictions every time a prediction's status actually changes,
+-- whichever process changes it: api/settle-predictions.js auto-settling against the real
+-- final score (the normal path for any prediction with a match_id — see that column's
+-- comment above), or a manual admin/tipster override for the rest.
+-- =====================================================================================
+CREATE OR REPLACE FUNCTION public.recompute_tipster_win_rate()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  tid UUID;
+  settled_count INT;
+  won_count INT;
+BEGIN
+  tid := COALESCE(NEW.tipster_id, OLD.tipster_id);
+  IF tid IS NULL THEN
+    RETURN NEW; -- platform tips (tipster_id NULL) don't feed any tipster's win rate
+  END IF;
+
+  SELECT
+    COUNT(*) FILTER (WHERE status IN ('won', 'lost')),
+    COUNT(*) FILTER (WHERE status = 'won')
+  INTO settled_count, won_count
+  FROM public.predictions
+  WHERE tipster_id = tid;
+
+  UPDATE public.profiles
+  SET
+    win_rate = CASE WHEN settled_count > 0 THEN ROUND((won_count::NUMERIC / settled_count) * 100, 1) ELSE win_rate END,
+    total_tips = settled_count
+  WHERE id = tid;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_recompute_win_rate ON public.predictions;
+CREATE TRIGGER trg_recompute_win_rate
+  AFTER UPDATE OF status ON public.predictions
+  FOR EACH ROW
+  WHEN (NEW.status IS DISTINCT FROM OLD.status)
+  EXECUTE FUNCTION public.recompute_tipster_win_rate();

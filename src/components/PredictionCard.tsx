@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom';
 import type { Prediction } from '../types/prediction';
 import { useAuth } from '../context/AuthContext';
 import { useTipsters } from '../context/TipstersContext';
-import { MessageSquare, Share2, ShieldCheck, Sparkles } from 'lucide-react';
+import { MessageSquare, Share2, ShieldCheck, Sparkles, BarChart3 } from 'lucide-react';
 import { MatchCommentsModal } from './MatchCommentsModal';
 import { ShareTipModal } from './ShareTipModal';
+import { MatchDetailModal } from './MatchDetailModal';
 
 interface PredictionCardProps {
   prediction: Prediction;
@@ -18,6 +19,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({ prediction, onUn
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [viewingMatchId, setViewingMatchId] = useState<string | null>(null);
 
   const isPlatformTip = !prediction.tipsterId || prediction.isPlatformTip || prediction.tipsterName === 'Falcon Forecast Platform';
   const isOwnTip = !!user && user.id === prediction.tipsterId;
@@ -192,6 +194,18 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({ prediction, onUn
             ) : <div />}
 
             <div className="flex items-center gap-2">
+              {prediction.matchId && (
+                <button
+                  onClick={() => setViewingMatchId(prediction.matchId!)}
+                  className="px-2.5 py-1 rounded-lg border text-[11px] font-bold transition-all flex items-center gap-1 hover:border-[#00a8ff]"
+                  style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+                  title="Game Stats & Result"
+                >
+                  <BarChart3 className="w-3.5 h-3.5 text-[#00a8ff]" />
+                  <span>Game Stats</span>
+                </button>
+              )}
+
               <button
                 onClick={() => setIsCommentsOpen(true)}
                 className="px-2.5 py-1 rounded-lg border text-[11px] font-bold transition-all flex items-center gap-1 hover:border-[#00a8ff]"
@@ -282,6 +296,8 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({ prediction, onUn
         onClose={() => setIsShareOpen(false)}
         prediction={prediction}
       />
+
+      <MatchDetailModal matchId={viewingMatchId} onClose={() => setViewingMatchId(null)} />
     </>
   );
 };

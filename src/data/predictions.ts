@@ -56,6 +56,19 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   }
 ];
 
+/** Every market a tip can be posted under — platform tips (PostTipPage) and tipster tips
+ * (PostOddsModal) both use this same fixed list now, instead of tipsters typing free text.
+ * Fixed to exactly these strings because api/_lib/settleTip.js pattern-matches on them to
+ * auto-settle a prediction against the real final score; adding a new option here means also
+ * adding a case for it there, or it'll just sit unsettled forever needing a manual override. */
+export const MARKET_OPTIONS = [
+  'Over 2.5 Goals',
+  'Home Win (1X2)',
+  'Away Win (1X2)',
+  'Both Teams to Score (BTTS)',
+  'Asian Handicap -1.0',
+];
+
 export const LEAGUE_OPTIONS = [
   'All Leagues',
   'Premier League',

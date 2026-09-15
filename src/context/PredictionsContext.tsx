@@ -34,8 +34,10 @@ const fromRow = (row: any): Prediction => ({
   awayLogo: row.away_flag || undefined,
   analysis: row.rationale || undefined,
   status: row.status,
+  result: row.result || undefined,
   tipsterId: row.tipster_id || undefined,
   tipsterName: row.tipster_name || undefined,
+  matchId: row.match_id || undefined,
 });
 
 const toRow = (p: Partial<Prediction>) => {
@@ -51,9 +53,11 @@ const toRow = (p: Partial<Prediction>) => {
   if (p.confidence !== undefined) row.confidence = p.confidence;
   if (p.tier !== undefined) row.tier = p.tier;
   if (p.status !== undefined) row.status = p.status;
+  if (p.result !== undefined) row.result = p.result || null;
   if (p.analysis !== undefined) row.rationale = p.analysis || null;
   if (p.tipsterId !== undefined) row.tipster_id = p.tipsterId || null;
   if (p.tipsterName !== undefined) row.tipster_name = p.tipsterName || null;
+  if (p.matchId !== undefined) row.match_id = p.matchId || null;
   return row;
 };
 

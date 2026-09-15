@@ -4,6 +4,7 @@ import { Search, Eye, CheckCircle2, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePredictions } from '../context/PredictionsContext';
 import { fetchUpcomingMatches } from '../lib/matches';
+import { MARKET_OPTIONS } from '../data/predictions';
 import type { Match } from '../types/prediction';
 
 export const PostTipPage: React.FC = () => {
@@ -59,6 +60,7 @@ export const PostTipPage: React.FC = () => {
     setPublishError(null);
 
     const { error } = await addPrediction({
+      matchId: selectedMatch.id,
       league: selectedMatch.league,
       homeTeam: selectedMatch.homeTeam,
       awayTeam: selectedMatch.awayTeam,
@@ -301,11 +303,9 @@ export const PostTipPage: React.FC = () => {
                         onChange={e => setMarket(e.target.value)}
                         className="w-full input-field text-xs font-semibold"
                       >
-                        <option value="Over 2.5 Goals">Over 2.5 Goals</option>
-                        <option value="Home Win (1X2)">Home Win (1X2)</option>
-                        <option value="Away Win (1X2)">Away Win (1X2)</option>
-                        <option value="Both Teams to Score (BTTS)">Both Teams to Score (BTTS)</option>
-                        <option value="Asian Handicap -1.0">Asian Handicap -1.0</option>
+                        {MARKET_OPTIONS.map(m => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
                       </select>
                     </div>
 

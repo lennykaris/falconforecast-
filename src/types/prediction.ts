@@ -18,6 +18,12 @@ export interface Prediction {
   tipsterId?: string;
   tipsterName?: string;
   tipsterAvatar?: string;
+  /** The real SportSRC match id this tip was placed on (see api/_lib/sportsrc.js) — lets the
+   * platform auto-settle the outcome against the real final score (api/settle-predictions.js)
+   * and lets the UI open the same live match-detail view (score, stats, incidents) used on
+   * /matches. Predictions posted before this existed have no match_id and stay manually
+   * settled only. */
+  matchId?: string;
 }
 
 

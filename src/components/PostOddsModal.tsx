@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePredictions } from '../context/PredictionsContext';
+import { MARKET_OPTIONS } from '../data/predictions';
 import type { Match } from '../types/prediction';
 
 interface PostOddsModalProps {
@@ -14,7 +15,7 @@ export const PostOddsModal: React.FC<PostOddsModalProps> = ({ match, onClose }) 
   const { user, isAdmin } = useAuth();
   const { addPrediction } = usePredictions();
 
-  const [tip, setTip] = useState('');
+  const [tip, setTip] = useState(MARKET_OPTIONS[0]);
   const [odds, setOdds] = useState('1.85');
   const [confidence, setConfidence] = useState(80);
   const [isFree, setIsFree] = useState(true);
@@ -32,6 +33,7 @@ export const PostOddsModal: React.FC<PostOddsModalProps> = ({ match, onClose }) 
     setSubmitError(null);
 
     const { error } = await addPrediction({
+      matchId: match.id,
       league: match.league,
       homeTeam: match.homeTeam,
       awayTeam: match.awayTeam,
@@ -75,15 +77,21 @@ export const PostOddsModal: React.FC<PostOddsModalProps> = ({ match, onClose }) 
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
           <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Your Tip / Selection</label>
-            <input
-              type="text"
+            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Market</label>
+            <select
               required
               value={tip}
               onChange={e => setTip(e.target.value)}
-              placeholder="e.g. Over 2.5 Goals"
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-[#0EA5E9]"
-            />
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#0EA5E9]"
+            >
+              {MARKET_OPTIONS.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+            <p className="text-[10px] text-slate-400">
+              Fixed markets only — this is what lets the platform automatically check the
+              result and settle your tip once the match finishes.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
