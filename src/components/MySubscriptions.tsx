@@ -109,13 +109,33 @@ export const MySubscriptions: React.FC<MySubscriptionsProps> = ({ onUpgrade }) =
           </span>
         </div>
 
-        {/* Days Remaining (for VIP users) */}
+        {/* Days Remaining (for VIP users) — flips to an urgent amber/red state (with a renew
+            CTA) once it's actually close, instead of showing the same reassuring green right
+            up until access silently lapses. */}
         {isVip && daysRemaining !== null && (
-          <div className="flex items-center gap-2 p-2.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 rounded-lg">
-            <CalendarDays className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-            <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
-              {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} remaining on your plan
-            </p>
+          <div className={`p-2.5 rounded-lg border ${
+            daysRemaining <= 1 ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800/40'
+              : daysRemaining <= 3 ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/40'
+              : 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/40'
+          }`}>
+            <div className="flex items-center gap-2">
+              <CalendarDays className={`w-3.5 h-3.5 flex-shrink-0 ${
+                daysRemaining <= 1 ? 'text-rose-500' : daysRemaining <= 3 ? 'text-amber-500' : 'text-emerald-500'
+              }`} />
+              <p className={`text-[11px] font-bold ${
+                daysRemaining <= 1 ? 'text-rose-700 dark:text-rose-400' : daysRemaining <= 3 ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'
+              }`}>
+                {daysRemaining === 0 ? 'Expires today' : `${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining`} on your plan
+              </p>
+            </div>
+            {daysRemaining <= 3 && (
+              <button
+                onClick={() => onUpgrade && onUpgrade(SUBSCRIPTION_PLANS[1])}
+                className="mt-2 w-full py-1.5 bg-[#00a8ff] hover:bg-[#0090e0] text-white font-bold text-[10px] rounded-lg transition-all"
+              >
+                Renew Now
+              </button>
+            )}
           </div>
         )}
 

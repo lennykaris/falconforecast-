@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { usePredictions } from '../context/PredictionsContext';
 import { PredictionCard } from '../components/PredictionCard';
+import { MyTipsterSubscriptions } from '../components/MyTipsterSubscriptions';
 import type { SubscriptionPlan } from '../types/prediction';
 import { SUBSCRIPTION_PLANS } from '../data/predictions';
 
@@ -151,6 +152,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onOpenCheckout }) 
             </span>
           </div>
         </div>
+
+        <MyTipsterSubscriptions />
 
         {/* VIP Predictions */}
         <div className="space-y-6">
