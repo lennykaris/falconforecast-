@@ -145,6 +145,14 @@ export interface MatchDetail {
   awayManager?: string;
   stats: MatchStat[];
   incidents: MatchIncident[];
+  /** Head-to-head record between these two teams specifically — homeWins/awayWins are from
+   * the perspective of whoever is home/away in *this* match, not necessarily every past
+   * meeting's home side. */
+  h2h: { homeWins: number; awayWins: number; draws: number; totalMeetings: number } | null;
+  /** Last 5 finished results for each team (any opponent), most recent first — 'W'/'D'/'L'
+   * from that team's own perspective regardless of which side they were on in each game. */
+  homeForm: string[];
+  awayForm: string[];
 }
 
 export interface SubscriptionPlan {

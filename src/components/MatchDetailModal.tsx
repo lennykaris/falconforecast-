@@ -24,6 +24,24 @@ function incidentLabel(inc: MatchIncident): string {
   }
 }
 
+function FormBadges({ form }: { form: string[] }) {
+  if (form.length === 0) return <span className="text-[10px] text-slate-400">No recent matches</span>;
+  return (
+    <div className="flex items-center gap-1">
+      {form.map((result, i) => (
+        <span
+          key={i}
+          className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black text-white ${
+            result === 'W' ? 'bg-emerald-500' : result === 'L' ? 'bg-rose-500' : 'bg-slate-400'
+          }`}
+        >
+          {result}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function IncidentIcon({ incident }: { incident: MatchIncident }) {
   if (incident.type === 'goal') return <span className="w-4 text-center flex-shrink-0">⚽</span>;
   if (incident.type === 'card') {
@@ -143,6 +161,45 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ matchId, onC
               )}
             </div>
 
+            {/* Head-to-head & form — matters most before a match has even kicked off (no live
+                stats exist yet), but left visible regardless of status since it's still
+                useful context. */}
+            {(match.h2h || match.homeForm.length > 0 || match.awayForm.length > 0) && (
+              <div className="space-y-3 border-t border-slate-100 dark:border-slate-800 pt-4">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Head-to-Head &amp; Form
+                </h4>
+
+                {match.h2h && match.h2h.totalMeetings > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-200">
+                      <span>{match.h2h.homeWins} wins</span>
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                        {match.h2h.totalMeetings} meetings · {match.h2h.draws} draws
+                      </span>
+                      <span>{match.h2h.awayWins} wins</span>
+                    </div>
+                    <div className="flex h-1.5 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+                      <div className="bg-[#00a8ff]" style={{ width: `${(match.h2h.homeWins / match.h2h.totalMeetings) * 100}%` }} />
+                      <div className="bg-slate-300 dark:bg-slate-600" style={{ width: `${(match.h2h.draws / match.h2h.totalMeetings) * 100}%` }} />
+                      <div className="bg-slate-500" style={{ width: `${(match.h2h.awayWins / match.h2h.totalMeetings) * 100}%` }} />
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between gap-4 pt-1">
+                  <div className="flex-1 flex flex-col items-start gap-1">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase">{match.homeTeam} — last 5</span>
+                    <FormBadges form={match.homeForm} />
+                  </div>
+                  <div className="flex-1 flex flex-col items-end gap-1">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase">{match.awayTeam} — last 5</span>
+                    <FormBadges form={match.awayForm} />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Live stats */}
             {match.stats.length > 0 && (
               <div className="space-y-3">
@@ -188,8 +245,8 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ matchId, onC
               </div>
             )}
 
-            {match.stats.length === 0 && timeline.length === 0 && (
-              <p className="text-center text-xs text-slate-400 py-6">No live stats available for this match yet.</p>
+            {match.stats.length === 0 && timeline.length === 0 && !match.h2h && match.homeForm.length === 0 && match.awayForm.length === 0 && (
+              <p className="text-center text-xs text-slate-400 py-6">No stats available for this match yet.</p>
             )}
           </div>
         ) : null}

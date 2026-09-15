@@ -171,16 +171,40 @@ function mapIncidents(incidents) {
   });
 }
 
+// Last N *finished* results for one team, most recent first, as 'W'/'D'/'L' from that team's
+// own perspective — `matches` is one side (home or away) of a `last_matches` response, which
+// lists that team's own history regardless of which side of each of THOSE games they were on,
+// so each entry's winner_code (1=that game's home team, 2=away, 3=draw) has to be reinterpreted
+// against whether `teamName` was the home or away side in that particular past game.
+function computeForm(matches, teamName, limit = 5) {
+  if (!matches) return [];
+  return matches
+    .filter((m) => m.status === 'finished')
+    .slice(-limit)
+    .reverse()
+    .map((m) => {
+      if (m.winner_code === 3) return 'D';
+      const wasHome = m.home_team?.name === teamName;
+      const teamWon = wasHome ? m.winner_code === 1 : m.winner_code === 2;
+      return teamWon ? 'W' : 'L';
+    });
+}
+
 /** Fetches full detail for one match — core info, live stats (possession, shots, corners,
- * cards, fouls, ...), and the incidents timeline (goals, cards, subs) — for the match detail
- * view. `detail`/`stats`/`incidents` are documented as Premium-only, but have worked fine on
- * a Starter-plan key in testing; if that ever changes, each piece degrades independently
- * (stats/incidents just come back empty) rather than failing the whole match. */
+ * cards, fouls, ...), the incidents timeline (goals, cards, subs), head-to-head record, and
+ * recent form for both teams — for the match detail view. Head-to-head/form matter most
+ * before a match has even kicked off (no live stats exist yet), but are left in regardless of
+ * status since they're still useful context after too. `detail`/`stats`/`incidents`/`h2h`/
+ * `last_matches` are documented as Premium-only, but have worked fine on a Starter-plan key in
+ * testing; if that ever changes, each piece degrades independently (that piece just comes back
+ * empty) rather than failing the whole match. */
 export async function fetchMatchDetail(id) {
-  const [detailRes, statsRes, incidentsRes] = await Promise.all([
+  const [detailRes, statsRes, incidentsRes, h2hRes, lastMatchesRes] = await Promise.all([
     sportsrcGet({ type: 'detail', id }),
     sportsrcGet({ type: 'stats', id }).catch((err) => { console.error(`SportSRC stats fetch failed for ${id}:`, err); return null; }),
     sportsrcGet({ type: 'incidents', id }).catch((err) => { console.error(`SportSRC incidents fetch failed for ${id}:`, err); return null; }),
+    sportsrcGet({ type: 'h2h', id }).catch((err) => { console.error(`SportSRC h2h fetch failed for ${id}:`, err); return null; }),
+    sportsrcGet({ type: 'last_matches', id }).catch((err) => { console.error(`SportSRC last_matches fetch failed for ${id}:`, err); return null; }),
   ]);
 
   const info = detailRes?.data?.match_info;
@@ -211,6 +235,14 @@ export async function fetchMatchDetail(id) {
     awayManager: detailRes?.data?.info?.managers?.away?.name || undefined,
     stats: statsRes ? flattenStats(statsRes.data) : [],
     incidents: incidentsRes ? mapIncidents(incidentsRes.data) : [],
+    h2h: h2hRes?.data?.team_duel ? {
+      homeWins: h2hRes.data.team_duel.home_wins,
+      awayWins: h2hRes.data.team_duel.away_wins,
+      draws: h2hRes.data.team_duel.draws,
+      totalMeetings: h2hRes.data.team_duel.total,
+    } : null,
+    homeForm: computeForm(lastMatchesRes?.data?.home, info.teams?.home?.name),
+    awayForm: computeForm(lastMatchesRes?.data?.away, info.teams?.away?.name),
   };
 }
 
