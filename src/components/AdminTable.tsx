@@ -91,7 +91,7 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
     <div className="space-y-6">
 
       {actionError && (
-        <p className="text-xs font-semibold text-rose-500">{actionError}</p>
+        <p className="text-xs font-semibold text-rose-500 dark:text-rose-400">{actionError}</p>
       )}
 
       {/* CMS Controls & Filters Header */}
@@ -100,22 +100,22 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
         {/* Search & Filter Inputs */}
         <div className="flex flex-col sm:flex-row items-center gap-3 flex-grow max-w-2xl">
           <div className="relative w-full sm:w-64">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+            <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-3" />
             <input
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search teams or tips..."
-              className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0EA5E9]"
+              className="w-full bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#0EA5E9]"
             />
           </div>
 
           <div className="relative w-full sm:w-48">
-            <Filter className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+            <Filter className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-3" />
             <select
               value={selectedLeague}
               onChange={e => setSelectedLeague(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 appearance-none focus:outline-none focus:border-[#0EA5E9]"
+              className="w-full bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 dark:text-white appearance-none focus:outline-none focus:border-[#0EA5E9]"
             >
               {LEAGUE_OPTIONS.map(league => (
                 <option key={league} value={league}>
@@ -130,7 +130,7 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
         <div className="flex items-center space-x-3 justify-end">
           <button
             onClick={onOpenAddModal}
-            className="px-4 py-2 bg-[#0EA5E9] hover:bg-sky-600 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center space-x-1.5"
+            className="px-4 py-2 bg-[#0EA5E9] hover:bg-sky-600 dark:hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center space-x-1.5"
           >
             <Plus className="w-4 h-4" />
             <span>Add Prediction</span>
@@ -140,12 +140,12 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
       </div>
 
       {/* Predictions Table Container */}
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+      <div className="bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700">
+          <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
             
             {/* Table Head */}
-            <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
+            <thead className="bg-slate-50 dark:bg-slate-900/40 text-slate-600 dark:text-slate-300 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200 dark:border-slate-800">
               <tr>
                 <th className="py-3.5 px-4">Match / Fixture</th>
                 <th className="py-3.5 px-4">League</th>
@@ -158,10 +158,10 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
             </thead>
 
             {/* Table Body */}
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
               {filteredPredictions.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-10 text-slate-400">
+                  <td colSpan={7} className="text-center py-10 text-slate-400 dark:text-slate-500">
                     No predictions found matching your filters.
                   </td>
                 </tr>
@@ -170,23 +170,23 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
                   const isEditing = editingId === p.id;
                   const currentStatus = p.status || 'pending';
                   return (
-                    <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                    <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                       
                       {/* Match Fixture */}
-                      <td className="py-3.5 px-4 font-semibold text-slate-900">
+                      <td className="py-3.5 px-4 font-semibold text-slate-900 dark:text-white">
                         <div className="flex items-center space-x-2">
                           <span>{p.homeTeam}</span>
-                          <span className="text-slate-400 text-[10px]">vs</span>
+                          <span className="text-slate-400 dark:text-slate-500 text-[10px]">vs</span>
                           <span>{p.awayTeam}</span>
                         </div>
-                        <span className="text-[10px] text-slate-500 block font-mono mt-0.5">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-mono mt-0.5">
                           {new Date(p.kickoff).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </td>
 
                       {/* League */}
                       <td className="py-3.5 px-4">
-                        <span className="bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded border border-slate-200 text-[10px]">
+                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800 text-[10px]">
                           {p.league}
                         </span>
                       </td>
@@ -198,7 +198,7 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
                             type="text"
                             value={editTip}
                             onChange={e => setEditTip(e.target.value)}
-                            className="bg-white border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 w-full focus:outline-none focus:border-[#0EA5E9]"
+                            className="bg-white dark:bg-[#111c30] border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-xs text-slate-900 dark:text-white w-full focus:outline-none focus:border-[#0EA5E9]"
                           />
                         ) : (
                           p.tip
@@ -213,10 +213,10 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
                             step="0.05"
                             value={editOdds}
                             onChange={e => setEditOdds(parseFloat(e.target.value) || 1.0)}
-                            className="bg-white border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 w-16 text-center focus:outline-none focus:border-[#0EA5E9]"
+                            className="bg-white dark:bg-[#111c30] border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-xs text-slate-900 dark:text-white w-16 text-center focus:outline-none focus:border-[#0EA5E9]"
                           />
                         ) : (
-                          <span className="bg-slate-50 border border-slate-200 px-2 py-0.5 rounded text-slate-900">
+                          <span className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 px-2 py-0.5 rounded text-slate-900 dark:text-white">
                             @{p.odds.toFixed(2)}
                           </span>
                         )}
@@ -229,12 +229,12 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
                           onChange={e => handleStatusChange(p.id, e.target.value as any)}
                           className={`text-[11px] font-bold rounded-lg px-2.5 py-1 border transition-colors cursor-pointer ${
                             currentStatus === 'won'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800'
                               : currentStatus === 'lost'
-                              ? 'bg-rose-50 text-rose-700 border-rose-300'
+                              ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border-rose-300 dark:border-rose-800'
                               : currentStatus === 'void'
-                              ? 'bg-slate-100 text-slate-600 border-slate-300'
-                              : 'bg-amber-50 text-amber-700 border-amber-300'
+                              ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+                              : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800'
                           }`}
                         >
                           <option value="pending">⏳ Pending</option>
@@ -250,8 +250,8 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
                           onClick={() => handleToggleTier(p.id)}
                           className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider flex items-center space-x-1 mx-auto transition-all ${
                             p.tier === 'vip'
-                              ? 'bg-sky-50 text-[#0EA5E9] border border-sky-300 hover:bg-sky-100'
-                              : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+                              ? 'bg-sky-50 dark:bg-sky-950/40 text-[#0EA5E9] border border-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900/40'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-200'
                           }`}
                         >
                           {p.tier === 'vip' ? (
@@ -274,14 +274,14 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
                           <div className="flex items-center justify-end space-x-1">
                             <button
                               onClick={() => handleSaveEdit(p.id)}
-                              className="p-1.5 bg-sky-50 text-[#0EA5E9] hover:bg-sky-100 rounded border border-sky-200"
+                              className="p-1.5 bg-sky-50 dark:bg-sky-950/40 text-[#0EA5E9] hover:bg-sky-100 dark:hover:bg-sky-900/40 rounded border border-sky-200 dark:border-sky-800"
                               title="Save changes"
                             >
                               <Check className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => setEditingId(null)}
-                              className="p-1.5 bg-slate-100 text-slate-500 hover:bg-slate-200 rounded border border-slate-200"
+                              className="p-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 rounded border border-slate-200 dark:border-slate-800"
                               title="Cancel"
                             >
                               <X className="w-4 h-4" />
@@ -291,14 +291,14 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
                           <div className="flex items-center justify-end space-x-2">
                             <button
                               onClick={() => handleStartEdit(p)}
-                              className="p-1.5 text-slate-500 hover:text-[#0EA5E9] hover:bg-slate-100 rounded transition-colors"
+                              className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-[#0EA5E9] hover:bg-slate-100 dark:bg-slate-800 rounded transition-colors"
                               title="Edit prediction"
                             >
                               <Edit3 className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleDelete(p.id)}
-                              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors"
+                              className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 rounded transition-colors"
                               title="Delete prediction"
                             >
                               <Trash2 className="w-4 h-4" />

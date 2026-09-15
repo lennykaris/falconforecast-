@@ -171,16 +171,16 @@ export const AdminPage: React.FC = () => {
   ];
 
   const statusBadge = (status: string) => {
-    if (status === 'active') return 'bg-emerald-50 text-emerald-700 border-emerald-300';
-    if (status === 'pending') return 'bg-amber-50 text-amber-700 border-amber-300';
-    if (status === 'suspended') return 'bg-rose-50 text-rose-700 border-rose-300';
-    return 'bg-slate-100 text-slate-600 border-slate-200';
+    if (status === 'active') return 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800';
+    if (status === 'pending') return 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800';
+    if (status === 'suspended') return 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border-rose-300 dark:border-rose-800';
+    return 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800';
   };
 
   const roleBadge = (role: string) => {
-    if (role === 'admin') return 'bg-purple-50 text-purple-700 border-purple-300';
-    if (role === 'tipster') return 'bg-sky-50 text-[#0EA5E9] border-sky-200';
-    return 'bg-slate-100 text-slate-600 border-slate-200';
+    if (role === 'admin') return 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 border-purple-300 dark:border-purple-800';
+    if (role === 'tipster') return 'bg-sky-50 dark:bg-sky-950/40 text-[#0EA5E9] border-sky-200 dark:border-sky-800';
+    return 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800';
   };
 
   // Guard: this panel exposes platform revenue and every tipster's earnings — RLS blocks
@@ -189,14 +189,14 @@ export const AdminPage: React.FC = () => {
   if (!user || !isAdmin) {
     return (
       <div className="max-w-2xl mx-auto px-4 pt-32 pb-28 text-center">
-        <Lock className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-        <h2 className="text-2xl font-black text-slate-800 mb-2">Admins Only</h2>
-        <p className="text-sm text-slate-500 mb-6">
+        <Lock className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+        <h2 className="text-2xl font-black text-slate-800 dark:text-slate-200 mb-2">Admins Only</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
           This panel is restricted to Falcon Forecast administrators.
         </p>
         <Link
           to="/"
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0EA5E9] text-white font-bold rounded-xl text-sm shadow-md hover:bg-sky-600 transition-colors"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0EA5E9] text-white font-bold rounded-xl text-sm shadow-md hover:bg-sky-600 dark:hover:bg-sky-500 transition-colors"
         >
           Back to Home <ArrowUpRight className="w-4 h-4" />
         </Link>
@@ -205,17 +205,17 @@ export const AdminPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 md:pt-24 pb-28 md:pb-10 space-y-8 bg-white min-h-screen">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 md:pt-24 pb-28 md:pb-10 space-y-8 bg-white dark:bg-[#111c30] min-h-screen">
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
         <div>
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-sky-50 border border-sky-200 text-[#0EA5E9] text-xs font-bold uppercase tracking-wider mb-2">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-[#0EA5E9] text-xs font-bold uppercase tracking-wider mb-2">
             <ShieldCheck className="w-4 h-4" />
             <span>Super Admin Control Panel</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-slate-900">Platform Management</h1>
-          <p className="text-xs text-slate-500 mt-1">
+          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">Platform Management</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Full CRUD over predictions, tipsters, users. Approve tipsters, set pricing, view revenue.
           </p>
         </div>
@@ -224,7 +224,7 @@ export const AdminPage: React.FC = () => {
           {activeTab === 'predictions' && (
             <button
               onClick={() => setIsAddModalOpen(true)}
-              className="px-5 py-2.5 bg-[#0EA5E9] hover:bg-sky-600 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center space-x-1.5"
+              className="px-5 py-2.5 bg-[#0EA5E9] hover:bg-sky-600 dark:hover:bg-sky-500 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center space-x-1.5"
             >
               <Plus className="w-4 h-4" />
               <span>New Prediction</span>
@@ -235,49 +235,49 @@ export const AdminPage: React.FC = () => {
 
       {/* Platform Metrics Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-slate-500">
+        <div className="p-5 rounded-2xl bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
             <span className="text-xs font-bold uppercase">Predictions</span>
             <Layers className="w-4 h-4 text-[#0EA5E9]" />
           </div>
-          <span className="text-2xl sm:text-3xl font-black text-slate-900 font-mono">{totalPredictions}</span>
-          <p className="text-[10px] text-slate-400">{freePreds} Free · {vipPreds} VIP</p>
+          <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono">{totalPredictions}</span>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500">{freePreds} Free · {vipPreds} VIP</p>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-slate-500">
+        <div className="p-5 rounded-2xl bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
             <span className="text-xs font-bold uppercase">Win Rate</span>
-            <TrendingUp className="w-4 h-4 text-emerald-500" />
+            <TrendingUp className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
           </div>
-          <span className="text-2xl sm:text-3xl font-black text-emerald-600 font-mono">{winRate}%</span>
-          <p className="text-[10px] text-slate-400">{wonPreds} won of {totalPredictions}</p>
+          <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono">{winRate}%</span>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500">{wonPreds} won of {totalPredictions}</p>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-slate-500">
+        <div className="p-5 rounded-2xl bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
             <span className="text-xs font-bold uppercase">Active Tipsters</span>
-            <Star className="w-4 h-4 text-amber-400 fill-amber-300" />
+            <Star className="w-4 h-4 text-amber-400 dark:text-amber-500 fill-amber-300" />
           </div>
-          <span className="text-2xl sm:text-3xl font-black text-slate-900 font-mono">{activeTipsters.length}</span>
+          <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono">{activeTipsters.length}</span>
           {pendingTipsters.length > 0 && (
-            <p className="text-[10px] text-amber-600 font-bold">⚠ {pendingTipsters.length} pending approval</p>
+            <p className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">⚠ {pendingTipsters.length} pending approval</p>
           )}
         </div>
 
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-slate-500">
+        <div className="p-5 rounded-2xl bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
             <span className="text-xs font-bold uppercase">Platform Rev.</span>
             <DollarSign className="w-4 h-4 text-[#0EA5E9]" />
           </div>
           <span className="text-2xl sm:text-3xl font-black text-[#0EA5E9] font-mono">KSh {platformRevenue.toLocaleString()}</span>
-          <p className="text-[10px] text-slate-400">{totalSubscriptions} active subscriptions</p>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500">{totalSubscriptions} active subscriptions</p>
         </div>
       </div>
 
       {/* Pending Tipster Approval Banner */}
       {pendingTipsters.length > 0 && (
-        <div className="flex items-center justify-between px-5 py-3.5 bg-amber-50 border border-amber-300 rounded-2xl">
-          <div className="flex items-center space-x-2 text-amber-800">
+        <div className="flex items-center justify-between px-5 py-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-2xl">
+          <div className="flex items-center space-x-2 text-amber-800 dark:text-amber-400">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span className="text-xs font-bold">
               {pendingTipsters.length} tipster application{pendingTipsters.length > 1 ? 's' : ''} awaiting your approval.
@@ -285,7 +285,7 @@ export const AdminPage: React.FC = () => {
           </div>
           <button
             onClick={() => setActiveTab('tipsters')}
-            className="text-[11px] font-bold text-amber-700 underline underline-offset-2"
+            className="text-[11px] font-bold text-amber-700 dark:text-amber-400 underline underline-offset-2"
           >
             Review now →
           </button>
@@ -293,7 +293,7 @@ export const AdminPage: React.FC = () => {
       )}
 
       {/* Tabs */}
-      <div className="border-b border-slate-200 flex gap-1">
+      <div className="border-b border-slate-200 dark:border-slate-800 flex gap-1">
         {TABS.map(tab => (
           <button
             key={tab.key}
@@ -301,14 +301,14 @@ export const AdminPage: React.FC = () => {
             className={`flex items-center space-x-1.5 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors -mb-px ${
               activeTab === tab.key
                 ? 'border-[#0EA5E9] text-[#0EA5E9]'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             <tab.icon className="w-3.5 h-3.5" />
             <span>{tab.label}</span>
             {tab.count !== undefined && (
               <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${
-                activeTab === tab.key ? 'bg-sky-50 text-[#0EA5E9]' : 'bg-slate-100 text-slate-500'
+                activeTab === tab.key ? 'bg-sky-50 dark:bg-sky-950/40 text-[#0EA5E9]' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
               }`}>
                 {tab.count}
               </span>
@@ -325,41 +325,41 @@ export const AdminPage: React.FC = () => {
       {/* Tab: Platform Revenue & Sources */}
       {activeTab === 'revenue' && (
         <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-sky-50 border border-sky-200 rounded-2xl p-5">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 rounded-2xl p-5">
             <div>
-              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+              <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <DollarSign className="w-5 h-5 text-[#0EA5E9]" />
                 Platform Revenue Overview
               </h3>
-              <p className="text-xs text-slate-600 mt-1">
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
                 FalconForecast automatically collects a 20% platform cut on every tipster subscription payment.
               </p>
             </div>
             <div className="flex items-center gap-4 text-xs font-mono">
-              <div className="bg-white px-3 py-2 rounded-xl border border-sky-200 shadow-xs">
-                <span className="text-[10px] text-slate-400 block uppercase font-sans font-bold">Total Gross</span>
-                <span className="text-lg font-black text-slate-900">KSh {totalGross.toLocaleString()}</span>
+              <div className="bg-white dark:bg-[#111c30] px-3 py-2 rounded-xl border border-sky-200 dark:border-sky-800 shadow-xs">
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 block uppercase font-sans font-bold">Total Gross</span>
+                <span className="text-lg font-black text-slate-900 dark:text-white">KSh {totalGross.toLocaleString()}</span>
               </div>
-              <div className="bg-white px-3 py-2 rounded-xl border border-emerald-200 shadow-xs">
-                <span className="text-[10px] text-emerald-600 block uppercase font-sans font-bold">Platform Cut (20%)</span>
-                <span className="text-lg font-black text-emerald-600">KSh {totalPlatformCut.toLocaleString()}</span>
+              <div className="bg-white dark:bg-[#111c30] px-3 py-2 rounded-xl border border-emerald-200 dark:border-emerald-800 shadow-xs">
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block uppercase font-sans font-bold">Platform Cut (20%)</span>
+                <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">KSh {totalPlatformCut.toLocaleString()}</span>
               </div>
-              <div className="bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-xs">
-                <span className="text-[10px] text-slate-500 block uppercase font-sans font-bold">Tipsters Payout (80%)</span>
-                <span className="text-lg font-black text-slate-700">KSh {totalTipsterNet.toLocaleString()}</span>
+              <div className="bg-white dark:bg-[#111c30] px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 block uppercase font-sans font-bold">Tipsters Payout (80%)</span>
+                <span className="text-lg font-black text-slate-700 dark:text-slate-300">KSh {totalTipsterNet.toLocaleString()}</span>
               </div>
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">Revenue Breakdown by Tipster Source</h4>
-              <span className="text-[10px] font-mono text-slate-400">{tipsterRevenues.length} active revenue streams</span>
+          <div className="bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Revenue Breakdown by Tipster Source</h4>
+              <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">{tipsterRevenues.length} active revenue streams</span>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-700">
-                <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
+              <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+                <thead className="bg-slate-50 dark:bg-slate-900/40 text-slate-600 dark:text-slate-300 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200 dark:border-slate-800">
                   <tr>
                     <th className="py-3.5 px-4">Tipster Source</th>
                     <th className="py-3.5 px-4 text-center">Active Subs</th>
@@ -369,43 +369,43 @@ export const AdminPage: React.FC = () => {
                     <th className="py-3.5 px-4 text-right">Tipster Payout (80%)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
                   {tipsterRevenues.map(({ tipster: t, gross, cut, net, count }) => (
-                    <tr key={t.id} className="hover:bg-slate-50 transition-colors">
+                    <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                       <td className="py-3.5 px-4">
                         <div className="flex items-center space-x-3">
                           <img
                             src={t.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=60'}
                             alt={t.name}
-                            className="w-8 h-8 rounded-lg object-cover border border-slate-200"
+                            className="w-8 h-8 rounded-lg object-cover border border-slate-200 dark:border-slate-800"
                           />
                           <div>
-                            <span className="font-semibold text-slate-900 flex items-center gap-1">
+                            <span className="font-semibold text-slate-900 dark:text-white flex items-center gap-1">
                               {t.name}
                               {t.verified && <CheckCircle2 className="w-3 h-3 text-[#0EA5E9]" />}
                             </span>
-                            <span className="block text-[10px] text-slate-400 font-mono">{t.email}</span>
+                            <span className="block text-[10px] text-slate-400 dark:text-slate-500 font-mono">{t.email}</span>
                           </div>
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-800">
+                      <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-800 dark:text-slate-200">
                         {count}
                       </td>
 
-                      <td className="py-3.5 px-4 text-center font-mono text-slate-500 text-[11px]">
+                      <td className="py-3.5 px-4 text-center font-mono text-slate-500 dark:text-slate-400 text-[11px]">
                         KSh {t.weeklyPrice || 500} / KSh {t.monthlyPrice || 1500}
                       </td>
 
-                      <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-900">
+                      <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-900 dark:text-white">
                         KSh {gross.toLocaleString()}
                       </td>
 
-                      <td className="py-3.5 px-4 text-center font-mono font-bold text-emerald-600 bg-emerald-50/40">
+                      <td className="py-3.5 px-4 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40/40">
                         KSh {cut.toLocaleString()}
                       </td>
 
-                      <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-700">
+                      <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
                         KSh {net.toLocaleString()}
                       </td>
                     </tr>
@@ -420,21 +420,21 @@ export const AdminPage: React.FC = () => {
       {/* Tab: Tipsters Management */}
       {activeTab === 'tipsters' && (
         <div className="space-y-4">
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             Approve or suspend tipster accounts. Update their subscription pricing. Changes sync to Supabase instantly.
           </p>
 
           {tipsterActionError && (
-            <div className="flex items-start gap-2 p-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-xs font-semibold">
+            <div className="flex items-start gap-2 p-3 rounded-xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 text-xs font-semibold">
               <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
               <span>{tipsterActionError}</span>
             </div>
           )}
 
-          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+          <div className="bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-700">
-                <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
+              <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+                <thead className="bg-slate-50 dark:bg-slate-900/40 text-slate-600 dark:text-slate-300 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200 dark:border-slate-800">
                   <tr>
                     <th className="py-3.5 px-4">Tipster</th>
                     <th className="py-3.5 px-4">Status</th>
@@ -446,20 +446,20 @@ export const AdminPage: React.FC = () => {
                     <th className="py-3.5 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
                   {tipsters.map(t => {
                     return (
-                      <tr key={t.id} className="hover:bg-slate-50 transition-colors">
+                      <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                         <td className="py-3.5 px-4">
                           <div className="flex items-center space-x-3">
                             <img
                               src={t.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=60'}
                               alt={t.name}
-                              className="w-8 h-8 rounded-lg object-cover border border-slate-200"
+                              className="w-8 h-8 rounded-lg object-cover border border-slate-200 dark:border-slate-800"
                             />
                             <div>
-                              <span className="font-semibold text-slate-900">{t.name}</span>
-                              <span className="block text-[10px] text-slate-400 font-mono">{t.email}</span>
+                              <span className="font-semibold text-slate-900 dark:text-white">{t.name}</span>
+                              <span className="block text-[10px] text-slate-400 dark:text-slate-500 font-mono">{t.email}</span>
                             </div>
                           </div>
                         </td>
@@ -474,25 +474,25 @@ export const AdminPage: React.FC = () => {
                           {t.winRate ?? 0}%
                         </td>
 
-                        <td className="py-3.5 px-4 text-center font-mono text-slate-600">
-                          <span className="text-emerald-600 font-bold">{t.tipsWon ?? 0}W</span>
+                        <td className="py-3.5 px-4 text-center font-mono text-slate-600 dark:text-slate-300">
+                          <span className="text-emerald-600 dark:text-emerald-400 font-bold">{t.tipsWon ?? 0}W</span>
                           {' – '}
-                          <span className="text-rose-500 font-bold">{t.tipsLost ?? 0}L</span>
-                          <span className="block text-[9px] text-slate-400 font-sans">{t.totalTips ?? 0} tips given</span>
+                          <span className="text-rose-500 dark:text-rose-400 font-bold">{t.tipsLost ?? 0}L</span>
+                          <span className="block text-[9px] text-slate-400 dark:text-slate-500 font-sans">{t.totalTips ?? 0} tips given</span>
                         </td>
 
-                        <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-800">
+                        <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-800 dark:text-slate-200">
                           {t.subscribersCount || 0}
                         </td>
 
                         <td className="py-3.5 px-4 text-center font-mono">
-                          <span className="text-slate-500">KSh {t.weeklyPrice || 500}</span>
-                          <span className="text-[9px] text-slate-400 block">set by tipster</span>
+                          <span className="text-slate-500 dark:text-slate-400">KSh {t.weeklyPrice || 500}</span>
+                          <span className="text-[9px] text-slate-400 dark:text-slate-500 block">set by tipster</span>
                         </td>
 
                         <td className="py-3.5 px-4 text-center font-mono">
-                          <span className="text-slate-500">KSh {t.monthlyPrice || 1500}</span>
-                          <span className="text-[9px] text-slate-400 block">set by tipster</span>
+                          <span className="text-slate-500 dark:text-slate-400">KSh {t.monthlyPrice || 1500}</span>
+                          <span className="text-[9px] text-slate-400 dark:text-slate-500 block">set by tipster</span>
                         </td>
 
                         <td className="py-3.5 px-4 text-right">
@@ -501,7 +501,7 @@ export const AdminPage: React.FC = () => {
                               <button
                                 onClick={() => handleApproveTipster(t.id)}
                                 disabled={tipsterActionPendingId === t.id}
-                                className="px-2 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded border border-emerald-300 text-[10px] font-bold flex items-center space-x-1 disabled:opacity-50"
+                                className="px-2 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 rounded border border-emerald-300 dark:border-emerald-800 text-[10px] font-bold flex items-center space-x-1 disabled:opacity-50"
                                 title="Approve tipster"
                               >
                                 <UserCheck className="w-3 h-3" />
@@ -512,7 +512,7 @@ export const AdminPage: React.FC = () => {
                               <button
                                 onClick={() => handleSuspendTipster(t.id)}
                                 disabled={tipsterActionPendingId === t.id}
-                                className="px-2 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded border border-rose-300 text-[10px] font-bold flex items-center space-x-1 disabled:opacity-50"
+                                className="px-2 py-1 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 rounded border border-rose-300 dark:border-rose-800 text-[10px] font-bold flex items-center space-x-1 disabled:opacity-50"
                                 title="Suspend tipster"
                               >
                                 <UserX className="w-3 h-3" />
@@ -523,7 +523,7 @@ export const AdminPage: React.FC = () => {
                               <button
                                 onClick={() => handleApproveTipster(t.id)}
                                 disabled={tipsterActionPendingId === t.id}
-                                className="px-2 py-1 bg-sky-50 text-[#0EA5E9] hover:bg-sky-100 rounded border border-sky-200 text-[10px] font-bold disabled:opacity-50"
+                                className="px-2 py-1 bg-sky-50 dark:bg-sky-950/40 text-[#0EA5E9] hover:bg-sky-100 dark:hover:bg-sky-900/40 rounded border border-sky-200 dark:border-sky-800 text-[10px] font-bold disabled:opacity-50"
                                 title="Reinstate tipster"
                               >
                                 {tipsterActionPendingId === t.id ? 'Reinstating…' : 'Reinstate'}
@@ -544,22 +544,22 @@ export const AdminPage: React.FC = () => {
       {/* Tab: All Users */}
       {activeTab === 'users' && (
         <div className="space-y-4">
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             Overview of all registered users, their roles, plans, and subscription status.
           </p>
 
           {usersError && (
-            <p className="text-xs font-semibold text-rose-500">
+            <p className="text-xs font-semibold text-rose-500 dark:text-rose-400">
               Failed to load users: {usersError}. This usually means your own profiles.role isn't
               actually 'admin' in the database — Row Level Security blocks seeing other users'
               rows otherwise, even if this panel let you in.
             </p>
           )}
 
-          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+          <div className="bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-700">
-                <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
+              <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+                <thead className="bg-slate-50 dark:bg-slate-900/40 text-slate-600 dark:text-slate-300 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200 dark:border-slate-800">
                   <tr>
                     <th className="py-3.5 px-4">User</th>
                     <th className="py-3.5 px-4 text-center">Role</th>
@@ -568,9 +568,9 @@ export const AdminPage: React.FC = () => {
                     <th className="py-3.5 px-4 text-right">Joined</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
                   {allUsers.map(u => (
-                    <tr key={u.id} className="hover:bg-slate-50 transition-colors">
+                    <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                       <td className="py-3.5 px-4">
                         <div className="flex items-center space-x-3">
                           {u.avatarUrl ? (
@@ -581,8 +581,8 @@ export const AdminPage: React.FC = () => {
                             </div>
                           )}
                           <div>
-                            <span className="font-semibold text-slate-900 block">{u.name}</span>
-                            <span className="text-[10px] text-slate-400 font-mono">{u.email}</span>
+                            <span className="font-semibold text-slate-900 dark:text-white block">{u.name}</span>
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">{u.email}</span>
                           </div>
                         </div>
                       </td>
@@ -596,8 +596,8 @@ export const AdminPage: React.FC = () => {
                       <td className="py-3.5 px-4 text-center">
                         <span className={`text-[10px] font-bold px-2 py-1 rounded-full border capitalize ${
                           u.plan !== 'free'
-                            ? 'bg-sky-50 text-[#0EA5E9] border-sky-200'
-                            : 'bg-slate-100 text-slate-600 border-slate-200'
+                            ? 'bg-sky-50 dark:bg-sky-950/40 text-[#0EA5E9] border-sky-200 dark:border-sky-800'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800'
                         }`}>
                           {u.plan.replace(/_/g, ' ')}
                         </span>
@@ -609,11 +609,11 @@ export const AdminPage: React.FC = () => {
                             {u.tipsterStatus}
                           </span>
                         ) : (
-                          <span className="text-[10px] text-slate-400">—</span>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500">—</span>
                         )}
                       </td>
 
-                      <td className="py-3.5 px-4 text-right font-mono text-slate-500 text-[10px]">
+                      <td className="py-3.5 px-4 text-right font-mono text-slate-500 dark:text-slate-400 text-[10px]">
                         {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
                       </td>
                     </tr>
@@ -631,7 +631,7 @@ export const AdminPage: React.FC = () => {
       {activeTab === 'payments' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               "Problems" = failed, or still pending 15+ minutes after being created (Kentapay's
               callback should normally land within minutes — a payment stuck longer than that
               likely means a dropped callback; check /api/kentapay/query-status's reconciliation
@@ -645,7 +645,7 @@ export const AdminPage: React.FC = () => {
                   className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
                     paymentsFilter === f
                       ? 'bg-[#0EA5E9] text-white border-[#0EA5E9]'
-                      : 'bg-white text-slate-500 border-slate-200 hover:border-[#0EA5E9]'
+                      : 'bg-white dark:bg-[#111c30] text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-[#0EA5E9]'
                   }`}
                 >
                   {f === 'problems' ? `Problems (${problemPayments.length})` : `All (${payments.length})`}
@@ -655,13 +655,13 @@ export const AdminPage: React.FC = () => {
           </div>
 
           {paymentsError && (
-            <p className="text-xs font-semibold text-rose-500">Failed to load payments: {paymentsError}</p>
+            <p className="text-xs font-semibold text-rose-500 dark:text-rose-400">Failed to load payments: {paymentsError}</p>
           )}
 
-          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+          <div className="bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-700">
-                <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
+              <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+                <thead className="bg-slate-50 dark:bg-slate-900/40 text-slate-600 dark:text-slate-300 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200 dark:border-slate-800">
                   <tr>
                     <th className="py-3.5 px-4">Reference</th>
                     <th className="py-3.5 px-4">Type / Kind</th>
@@ -672,35 +672,35 @@ export const AdminPage: React.FC = () => {
                     <th className="py-3.5 px-4 text-right">Created</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
                   {visiblePayments.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-10 text-center text-slate-400">
+                      <td colSpan={7} className="py-10 text-center text-slate-400 dark:text-slate-500">
                         {paymentsFilter === 'problems' ? 'No payment problems right now.' : 'No payments yet.'}
                       </td>
                     </tr>
                   ) : visiblePayments.map(p => (
-                    <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="py-3 px-4 font-mono text-[10px] text-slate-500">{p.reference}</td>
+                    <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3 px-4 font-mono text-[10px] text-slate-500 dark:text-slate-400">{p.reference}</td>
                       <td className="py-3 px-4">
-                        <span className="font-semibold text-slate-800">{p.type}</span>
-                        <span className="block text-[10px] text-slate-400">{p.kind.replace(/_/g, ' ')}</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">{p.type}</span>
+                        <span className="block text-[10px] text-slate-400 dark:text-slate-500">{p.kind.replace(/_/g, ' ')}</span>
                       </td>
-                      <td className="py-3 px-4 text-center font-mono font-bold text-slate-800">KSh {p.amount.toLocaleString()}</td>
-                      <td className="py-3 px-4 font-mono text-slate-600">{p.phone}</td>
+                      <td className="py-3 px-4 text-center font-mono font-bold text-slate-800 dark:text-slate-200">KSh {p.amount.toLocaleString()}</td>
+                      <td className="py-3 px-4 font-mono text-slate-600 dark:text-slate-300">{p.phone}</td>
                       <td className="py-3 px-4">
                         <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${
-                          p.status === 'COMPLETE' ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                            : p.status === 'FAILED' ? 'bg-rose-50 text-rose-700 border-rose-300'
-                            : 'bg-amber-50 text-amber-700 border-amber-300'
+                          p.status === 'COMPLETE' ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800'
+                            : p.status === 'FAILED' ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border-rose-300 dark:border-rose-800'
+                            : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800'
                         }`}>
                           {p.status}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-slate-500 max-w-[220px] truncate" title={p.failureMessage || undefined}>
+                      <td className="py-3 px-4 text-slate-500 dark:text-slate-400 max-w-[220px] truncate" title={p.failureMessage || undefined}>
                         {p.failureMessage || '—'}
                       </td>
-                      <td className="py-3 px-4 text-right font-mono text-slate-500 text-[10px]">
+                      <td className="py-3 px-4 text-right font-mono text-slate-500 dark:text-slate-400 text-[10px]">
                         {new Date(p.createdAt).toLocaleString()}
                       </td>
                     </tr>
