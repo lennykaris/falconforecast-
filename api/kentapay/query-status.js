@@ -17,7 +17,13 @@ export default async function handler(req, res) {
   }
 
   const expectedSecret = process.env.KENTAPAY_CRON_SECRET;
-  const providedSecret = req.headers['x-cron-secret'] || req.query?.secret;
+  // Vercel Cron automatically sends `Authorization: Bearer $CRON_SECRET` on cron-triggered
+  // invocations when a CRON_SECRET env var is set — accepted here alongside the manual
+  // x-cron-secret header / ?secret= query param so this endpoint works both as a real
+  // scheduled job (see vercel.json) and as a manually-triggered reconciliation call.
+  const authHeader = req.headers.authorization || '';
+  const bearerSecret = authHeader.replace(/^Bearer\s+/i, '');
+  const providedSecret = req.headers['x-cron-secret'] || req.query?.secret || bearerSecret;
   if (!expectedSecret || providedSecret !== expectedSecret) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
@@ -49,7 +55,11 @@ export default async function handler(req, res) {
   for (const payment of pending || []) {
     try {
       const data = await kentapayQueryStatus({ transactionId: payment.reference });
-      const status = data?.status;
+      // Kentapay's status codes can come back as either a string ('00') or a number (0) —
+      // kentapay.js's own checkout/B2C status checks already guard against this; comparing
+      // the raw value directly here (as this used to) meant a numeric success response never
+      // matched '00' and got resolved as FAILED instead of left-pending or completed.
+      const status = String(data?.status);
 
       // 16 = pending on provider, 96/99 = gateway-side failure unrelated to the transaction
       // itself — per Kentapay's guidance, leave these PENDING rather than reversing/crediting.

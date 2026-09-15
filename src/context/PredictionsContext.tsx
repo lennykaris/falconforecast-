@@ -8,7 +8,7 @@ interface PredictionsContextType {
   addPrediction: (newPred: Omit<Prediction, 'id'>) => Promise<{ error: Error | null }>;
   updatePrediction: (id: string, updated: Partial<Prediction>) => Promise<{ error: Error | null }>;
   deletePrediction: (id: string) => Promise<{ error: Error | null }>;
-  toggleTier: (id: string) => void;
+  toggleTier: (id: string) => Promise<{ error: Error | null } | undefined>;
   refetchPredictions: () => Promise<void>;
 }
 
@@ -123,39 +123,47 @@ export const PredictionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   };
 
+  // Both used to apply setPredictions optimistically before the write, so a rejected update
+  // (a tipster editing a stale/foreign prediction id under "Tipsters update own predictions,
+  // admins update any") looked like it succeeded until the 3-minute cache TTL silently
+  // reverted it. Now writes first — the list only ever reflects what's actually in the DB.
   const updatePrediction = async (id: string, updatedFields: Partial<Prediction>) => {
-    setPredictions(prev =>
-      prev.map(p => (p.id === id ? { ...p, ...updatedFields } : p))
-    );
-
     try {
       const { error } = await supabase.from('predictions').update(toRow(updatedFields)).eq('id', id);
+      if (error) {
+        console.error('Failed to update prediction in Supabase:', error);
+        return { error: new Error(error.message) };
+      }
+      setPredictions(prev => prev.map(p => (p.id === id ? { ...p, ...updatedFields } : p)));
       sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
-      return { error: error ? new Error(error.message) : null };
+      return { error: null };
     } catch (e) {
-      console.warn('Failed to update prediction in Supabase:', e);
+      console.error('Failed to update prediction in Supabase:', e);
       return { error: e instanceof Error ? e : new Error('Failed to update prediction.') };
     }
   };
 
   const deletePrediction = async (id: string) => {
-    setPredictions(prev => prev.filter(p => p.id !== id));
-
     try {
       const { error } = await supabase.from('predictions').delete().eq('id', id);
+      if (error) {
+        console.error('Failed to delete prediction from Supabase:', error);
+        return { error: new Error(error.message) };
+      }
+      setPredictions(prev => prev.filter(p => p.id !== id));
       sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
-      return { error: error ? new Error(error.message) : null };
+      return { error: null };
     } catch (e) {
-      console.warn('Failed to delete prediction from Supabase:', e);
+      console.error('Failed to delete prediction from Supabase:', e);
       return { error: e instanceof Error ? e : new Error('Failed to delete prediction.') };
     }
   };
 
-  const toggleTier = (id: string) => {
+  const toggleTier = async (id: string) => {
     const target = predictions.find(p => p.id === id);
     if (!target) return;
     const newTier = target.tier === 'free' ? 'vip' : 'free';
-    updatePrediction(id, { tier: newTier });
+    return updatePrediction(id, { tier: newTier });
   };
 
   return (

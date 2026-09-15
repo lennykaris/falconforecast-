@@ -22,13 +22,16 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({ prediction, onUn
   const isPlatformTip = !prediction.tipsterId || prediction.isPlatformTip || prediction.tipsterName === 'Falcon Forecast Platform';
   const isOwnTip = !!user && user.id === prediction.tipsterId;
 
-  // Platform picks stay gated by the site-wide VIP subscription. A tipster's own premium tip is
-  // gated per-tipster: locked unless this user has paid that specific tipster (or it's their own tip).
+  // Platform picks stay gated by the site-wide VIP subscription. A tipster's own premium tip
+  // is gated per-tipster: locked unless this user has paid that specific tipster — but a
+  // global VIP-plan subscriber is also entitled to it (matching the RLS SELECT policy in
+  // supabase_schema.sql, which ORs the sitewide plan check into every tipster's VIP rows too,
+  // not just platform ones) — isVip was missing from this branch entirely.
   const isLocked = prediction.tier !== 'vip'
     ? false
     : isPlatformTip
       ? !isVip
-      : !isAdmin && !isOwnTip && !(user && isSubscribedToTipster(user.id, prediction.tipsterId!));
+      : !isAdmin && !isOwnTip && !isVip && !(user && isSubscribedToTipster(user.id, prediction.tipsterId!));
 
   const formatKickoff = (dateString: string) => {
     try {
@@ -127,7 +130,9 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({ prediction, onUn
             </div>
           </div>
 
-          {/* Pick + Odds */}
+          {/* Pick + Odds — the actual paid selection, so this must never render for real when
+              isLocked is true. The overlay below only covers it visually; without this guard
+              the real tip/odds text sits in the DOM underneath it, inspectable via DevTools. */}
           <div
             className="rounded-xl px-4 py-3.5 flex items-center justify-between bet-odds-box"
           >
@@ -136,7 +141,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({ prediction, onUn
                 Selection
               </p>
               <p className="text-sm font-bold font-display" style={{ color: 'var(--brand)' }}>
-                {prediction.tip}
+                {isLocked ? '•••••••' : prediction.tip}
               </p>
             </div>
             <div className="text-right">
@@ -147,7 +152,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({ prediction, onUn
                 className="text-base font-black font-mono px-2.5 py-0.5 rounded border"
                 style={{ color: 'var(--text-primary)', borderColor: 'var(--border)' }}
               >
-                @{prediction.odds.toFixed(2)}
+                {isLocked ? '@—.——' : `@${prediction.odds.toFixed(2)}`}
               </p>
             </div>
           </div>

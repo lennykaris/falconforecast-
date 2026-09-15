@@ -19,23 +19,24 @@ interface AuthContextType {
 
 const STORAGE_KEY = 'falconforecast_user_session';
 
-// Client-side safety net only — the real, enforced grant is the `profiles.role`
-// column in Supabase (RLS policies check that, not this list). See supabase_schema.sql.
-const ADMIN_EMAILS = ['falconforecasts@gmail.com'];
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 type SupabaseAuthUser = NonNullable<Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']>['user'];
 
 /** `profiles` is the source of truth for role/plan/tipster status; auth metadata is only a fallback
- * for the brief window before that row exists (or if the fetch fails). */
+ * for the brief window before that row exists (or if the fetch fails).
+ *
+ * This used to also treat a hardcoded email list as an automatic admin, independent of the
+ * real profiles.role column — every RLS policy in supabase_schema.sql checks that column via
+ * is_admin(), not this list, so an account recognized as admin only here (DB role still
+ * 'user') could open /admin's UI but have every actual read/write silently rejected —
+ * confusing failures already hit more than once. Trust the DB row alone now. */
 const buildUser = (sbUser: SupabaseAuthUser, profile: Record<string, any> | null): User => {
-  const isHardcodedAdmin = ADMIN_EMAILS.includes(sbUser.email || '');
   return {
     id: sbUser.id,
     name: profile?.name || sbUser.user_metadata?.name || sbUser.email?.split('@')[0] || 'User',
     email: sbUser.email || '',
-    role: isHardcodedAdmin ? 'admin' : (profile?.role || sbUser.user_metadata?.role || 'user'),
+    role: profile?.role || sbUser.user_metadata?.role || 'user',
     plan: profile?.plan || sbUser.user_metadata?.plan || 'free',
     tipsterStatus: profile?.tipster_status,
     bio: profile?.bio,
@@ -168,7 +169,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isLoggedIn = !!user;
   const isAdmin = user?.role === 'admin';
   const isTipster = user?.role === 'tipster';
-  const isVip = user?.plan === 'monthly_vip' || user?.plan === 'annual_vip' || isAdmin;
+  // Mirrors the "VIP predictions viewable by subscribers or admins" RLS policy in
+  // supabase_schema.sql — plan alone used to grant VIP forever, since nothing ever reset it
+  // back to 'free' once vip_expires_at passed. A weekly_pass buyer kept full VIP access
+  // permanently from one KSh 500 payment.
+  const hasUnexpiredVip =
+    (user?.plan === 'weekly_pass' || user?.plan === 'monthly_vip' || user?.plan === 'annual_vip') &&
+    !!user?.vipExpiresAt &&
+    new Date(user.vipExpiresAt).getTime() > Date.now();
+  const isVip = hasUnexpiredVip || isAdmin;
 
   return (
     <AuthContext.Provider

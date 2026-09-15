@@ -10,7 +10,7 @@ export const TopTipsters: React.FC = () => {
   const { tipsters } = useTipsters();
 
   const topTipsters = [...tipsters]
-    .filter(t => t.tipsterStatus === 'active' || t.verified)
+    .filter(t => t.tipsterStatus === 'active')
     .sort((a, b) => (b.winRate || 0) - (a.winRate || 0))
     .slice(0, 5);
 

@@ -21,7 +21,7 @@ interface TipstersContextType {
   /** Called by the tipster themselves — admins cannot change another tipster's prices */
   updateOwnPricing: (tipsterId: string, weeklyPrice: number, monthlyPrice: number) => void;
   updateMpesaPhone: (tipsterId: string, mpesaPhone: string) => void;
-  applyForTipster: (user: User, bio: string, weeklyPrice: number, monthlyPrice: number) => Promise<void>;
+  applyForTipster: (user: User, bio: string, weeklyPrice: number, monthlyPrice: number) => Promise<{ error: string | null }>;
   isSubscribedToTipster: (userId: string, tipsterId: string) => boolean;
   getMySubscriptions: (tipsterId: string) => TipsterSubscription[];
   getTipsterRevenue: (tipsterId: string) => { gross: number; platformCut: number; net: number };
@@ -100,10 +100,14 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             tipsterStatus: p.tipster_status,
             bio: p.bio,
             avatarUrl: p.avatar_url,
-            weeklyPrice: Number(p.weekly_price || 500),
-            monthlyPrice: Number(p.monthly_price || 1500),
+            // != null, not `||` — a tipster who deliberately set a price/win-rate of exactly
+            // 0 (a promotional free tier, or a brand-new tipster with no settled tips yet)
+            // was having that overwritten by these fallback defaults everywhere this list is
+            // read from (marketplace, admin revenue table, tipster dashboard).
+            weeklyPrice: p.weekly_price != null ? Number(p.weekly_price) : 500,
+            monthlyPrice: p.monthly_price != null ? Number(p.monthly_price) : 1500,
             mpesaPhone: p.mpesa_phone || undefined,
-            winRate: Number(p.win_rate || 75.0),
+            winRate: p.win_rate != null ? Number(p.win_rate) : 75.0,
             totalTips: p.total_tips || 0,
             verified: p.verified || false,
           }));
@@ -147,7 +151,25 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     loadSubscriptions();
   }, [user?.id]);
 
+  // All four writes below used to apply their local state optimistically and only caught a
+  // thrown exception — but a write an RLS policy rejects (e.g. an admin whose session got
+  // into the panel via AuthContext's hardcoded email allowlist but whose profiles.role isn't
+  // actually 'admin' in the DB) doesn't throw at all: supabase-js just returns `{ error }`
+  // with zero rows changed. Now writes first and only reflects the change locally once
+  // Supabase actually confirms it, so a rejected write shows as a real failure (logged, and
+  // the local list stays correct) instead of a false "success".
+  const updateProfileRow = async (id: string, payload: Record<string, any>): Promise<string | null> => {
+    const { error } = await supabase.from('profiles').update(payload).eq('id', id);
+    if (error) {
+      console.error('Supabase profile update failed', { id, payload, error });
+      return error.message;
+    }
+    return null;
+  };
+
   const approveTipster = async (tipsterId: string) => {
+    const error = await updateProfileRow(tipsterId, { role: 'tipster', tipster_status: 'active', verified: true });
+    if (error) return;
     setTipsters(prev =>
       prev.map(t =>
         t.id === tipsterId
@@ -155,38 +177,27 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           : t
       )
     );
-
-    try {
-      await supabase
-        .from('profiles')
-        .update({ role: 'tipster', tipster_status: 'active', verified: true })
-        .eq('id', tipsterId);
-    } catch (e) {
-      console.warn('Supabase update approveTipster error', e);
-    }
   };
 
   const suspendTipster = async (tipsterId: string) => {
+    // verified is cleared too — it's a separate "checkmark" flag from tipsterStatus, and
+    // leaving it true on a suspended tipster is what let stale, verified-only filters
+    // elsewhere in the app keep listing/paying them after being cut off.
+    const error = await updateProfileRow(tipsterId, { tipster_status: 'suspended', verified: false });
+    if (error) return;
     setTipsters(prev =>
       prev.map(t =>
         t.id === tipsterId
-          ? { ...t, tipsterStatus: 'suspended' }
+          ? { ...t, tipsterStatus: 'suspended', verified: false }
           : t
       )
     );
-
-    try {
-      await supabase
-        .from('profiles')
-        .update({ tipster_status: 'suspended' })
-        .eq('id', tipsterId);
-    } catch (e) {
-      console.warn('Supabase update suspendTipster error', e);
-    }
   };
 
   /** Only callable by the tipster themselves — NOT by admin */
   const updateOwnPricing = async (tipsterId: string, weeklyPrice: number, monthlyPrice: number) => {
+    const error = await updateProfileRow(tipsterId, { weekly_price: weeklyPrice, monthly_price: monthlyPrice });
+    if (error) return;
     setTipsters(prev =>
       prev.map(t =>
         t.id === tipsterId
@@ -194,31 +205,15 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           : t
       )
     );
-
-    try {
-      await supabase
-        .from('profiles')
-        .update({ weekly_price: weeklyPrice, monthly_price: monthlyPrice })
-        .eq('id', tipsterId);
-    } catch (e) {
-      console.warn('Supabase update pricing error', e);
-    }
   };
 
   /** The M-Pesa number that receives this tipster's automatic payout share. */
   const updateMpesaPhone = async (tipsterId: string, mpesaPhone: string) => {
+    const error = await updateProfileRow(tipsterId, { mpesa_phone: mpesaPhone });
+    if (error) return;
     setTipsters(prev =>
       prev.map(t => (t.id === tipsterId ? { ...t, mpesaPhone } : t))
     );
-
-    try {
-      await supabase
-        .from('profiles')
-        .update({ mpesa_phone: mpesaPhone })
-        .eq('id', tipsterId);
-    } catch (e) {
-      console.warn('Supabase update mpesa phone error', e);
-    }
   };
 
   const applyForTipster = async (user: User, bio: string, weeklyPrice: number, monthlyPrice: number) => {
@@ -240,22 +235,16 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       verified: false,
     };
 
-    setTipsters(prev => [newTipster, ...prev.filter(t => t.id !== user.id)]);
+    const error = await updateProfileRow(user.id, {
+      tipster_status: 'pending',
+      bio,
+      weekly_price: weeklyPrice,
+      monthly_price: monthlyPrice,
+    });
+    if (error) return { error };
 
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          tipster_status: 'pending',
-          bio,
-          weekly_price: weeklyPrice,
-          monthly_price: monthlyPrice,
-        })
-        .eq('id', user.id);
-      if (error) console.error('Supabase applyForTipster error', error);
-    } catch (e) {
-      console.error('Supabase applyForTipster error', e);
-    }
+    setTipsters(prev => [newTipster, ...prev.filter(t => t.id !== user.id)]);
+    return { error: null };
   };
 
   const isSubscribedToTipster = (userId: string, tipsterId: string) => {

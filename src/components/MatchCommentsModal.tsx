@@ -128,8 +128,15 @@ export const MatchCommentsModal: React.FC<MatchCommentsModalProps> = ({ isOpen, 
     setNewComment('');
   };
 
+  // likingId guards against a fast double-click firing two toggles off the same stale
+  // `wasLiked` value before either completes — the comment_likes primary key (comment_id,
+  // user_id) rejects the second write, and since that error was never checked, the UI kept
+  // showing 2 added likes while the DB only had 1, correcting itself only on next reload.
+  const [likingId, setLikingId] = useState<string | null>(null);
+
   const handleToggleLike = async (comment: CommentItem) => {
-    if (!user) return;
+    if (!user || likingId === comment.id) return;
+    setLikingId(comment.id);
     const wasLiked = comment.isLiked;
 
     setComments(prev => prev.map(c => c.id === comment.id
@@ -137,11 +144,20 @@ export const MatchCommentsModal: React.FC<MatchCommentsModalProps> = ({ isOpen, 
       : c
     ));
 
-    if (wasLiked) {
-      await supabase.from('comment_likes').delete().eq('comment_id', comment.id).eq('user_id', user.id);
-    } else {
-      await supabase.from('comment_likes').insert([{ comment_id: comment.id, user_id: user.id }]);
+    const { error } = wasLiked
+      ? await supabase.from('comment_likes').delete().eq('comment_id', comment.id).eq('user_id', user.id)
+      : await supabase.from('comment_likes').insert([{ comment_id: comment.id, user_id: user.id }]);
+
+    if (error) {
+      // The write was rejected — revert the optimistic change instead of leaving the UI
+      // showing a like/unlike that never actually happened.
+      console.error('Failed to toggle comment like:', error);
+      setComments(prev => prev.map(c => c.id === comment.id
+        ? { ...c, isLiked: wasLiked, likes: wasLiked ? c.likes + 1 : c.likes - 1 }
+        : c
+      ));
     }
+    setLikingId(null);
   };
 
   return (
@@ -218,7 +234,7 @@ export const MatchCommentsModal: React.FC<MatchCommentsModalProps> = ({ isOpen, 
                 <div className="pl-9 flex items-center gap-3">
                   <button
                     onClick={() => handleToggleLike(c)}
-                    disabled={!isLoggedIn}
+                    disabled={!isLoggedIn || likingId === c.id}
                     className={`text-[11px] font-semibold flex items-center gap-1 transition-colors disabled:opacity-50 ${
                       c.isLiked ? 'text-[#00a8ff]' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
                     }`}

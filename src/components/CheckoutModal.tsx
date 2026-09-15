@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   X,
@@ -32,9 +32,17 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [payError, setPayError] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
 
+  // CheckoutModal stays mounted for the app's entire lifetime (isOpen just toggles whether it
+  // renders), so closing it doesn't cancel an in-flight pollPaymentStatus call on its own — a
+  // late result from an abandoned payment could otherwise fire success/navigate against
+  // whatever the user has since reopened this modal for. Each close or new submit bumps this,
+  // and a poll's result is only acted on if it's still the current session when it resolves.
+  const sessionRef = useRef(0);
+
   if (!isOpen) return null;
 
   const handleClose = () => {
+    sessionRef.current++;
     setPhoneNumber('');
     setPayState('idle');
     setPayError('');
@@ -45,6 +53,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     e.preventDefault();
     if (!phoneNumber.trim()) return;
 
+    const mySession = ++sessionRef.current;
     setPayState('pending');
     setPayError('');
 
@@ -56,6 +65,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       });
 
       const result = await pollPaymentStatus(reference);
+      if (sessionRef.current !== mySession) return; // closed or restarted since — ignore
 
       if (result.status === 'COMPLETE') {
         await refetchUser();
@@ -73,6 +83,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         setPayError('Still waiting for confirmation. Check your phone for the M-Pesa prompt, or try again.');
       }
     } catch (err) {
+      if (sessionRef.current !== mySession) return;
       setPayState('error');
       setPayError(err instanceof Error ? err.message : 'Failed to start payment.');
     }

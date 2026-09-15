@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   email TEXT UNIQUE NOT NULL,
   name TEXT,
   role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'tipster', 'admin')),
-  plan TEXT NOT NULL DEFAULT 'free' CHECK (plan IN ('free', 'monthly_vip', 'annual_vip')),
+  plan TEXT NOT NULL DEFAULT 'free' CHECK (plan IN ('free', 'weekly_pass', 'monthly_vip', 'annual_vip')),
   tipster_status TEXT NOT NULL DEFAULT 'none' CHECK (tipster_status IN ('none', 'pending', 'active', 'suspended')),
   bio TEXT,
   avatar_url TEXT,
@@ -79,15 +79,17 @@ CREATE POLICY "Users can insert their own profile"
   ON public.profiles FOR INSERT 
   WITH CHECK (auth.uid() = id);
 
--- Users can update bio/name/prices, but CANNOT self-grant role = 'admin'
--- (superseded by the hardened version in section 6b below, which also runs on every
+-- Users can update bio/name/prices, but CANNOT self-grant role = 'admin', plan, or VIP
+-- expiry (superseded by the hardened version in section 6b below, which also runs on every
 -- re-run of this file — kept here so the table has a valid policy even if 6b is trimmed off)
 CREATE POLICY "Users can update own basic profile"
   ON public.profiles FOR UPDATE
   USING (auth.uid() = id)
   WITH CHECK (
     auth.uid() = id AND
-    role = (public.get_profile()).role -- prevents role tampering
+    role = (public.get_profile()).role AND -- prevents role tampering
+    plan = (public.get_profile()).plan AND -- prevents self-granting VIP
+    vip_expires_at IS NOT DISTINCT FROM (public.get_profile()).vip_expires_at
   );
 
 -- Admins have full update rights over any profile (approve tipsters, ban users, change roles)
@@ -160,10 +162,41 @@ CREATE POLICY "Admins view all subscriptions"
 DROP POLICY IF EXISTS "Users insert own subscriptions" ON public.tipster_subscriptions;
 
 -- Allow admins or tipsters to cancel/expire subscriptions (UPDATE)
+--
+-- This originally had no WITH CHECK clause, so Postgres reused the USING clause to validate
+-- the post-update row too — meaning a subscriber could call
+-- `supabase.from('tipster_subscriptions').update({ expires_at: '2099-01-01', status: 'active' })`
+-- directly and permanently extend their own paid subscription for free, since
+-- auth.uid() = user_id holds both before and after. get_subscription() (below) lets the
+-- WITH CHECK compare against the pre-update row to lock every other column: a non-admin
+-- self-update may only move `status`, and only to 'cancelled' or 'expired'.
+CREATE OR REPLACE FUNCTION public.get_subscription(sub_id UUID)
+RETURNS public.tipster_subscriptions
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+STABLE
+AS $$
+  SELECT * FROM public.tipster_subscriptions WHERE id = sub_id;
+$$;
+
 DROP POLICY IF EXISTS "Cancel subscription" ON public.tipster_subscriptions;
 CREATE POLICY "Cancel subscription"
   ON public.tipster_subscriptions FOR UPDATE
-  USING (auth.uid() = user_id OR auth.uid() = tipster_id OR public.is_admin());
+  USING (auth.uid() = user_id OR auth.uid() = tipster_id OR public.is_admin())
+  WITH CHECK (
+    public.is_admin() OR
+    (
+      user_id = (public.get_subscription(id)).user_id AND
+      tipster_id = (public.get_subscription(id)).tipster_id AND
+      billing_cycle = (public.get_subscription(id)).billing_cycle AND
+      price = (public.get_subscription(id)).price AND
+      platform_cut = (public.get_subscription(id)).platform_cut AND
+      tipster_net = (public.get_subscription(id)).tipster_net AND
+      expires_at = (public.get_subscription(id)).expires_at AND
+      status IN ('cancelled', 'expired')
+    )
+  );
 
 -- 4. CREATE PREDICTIONS TABLE (Linked to Tipster Author)
 CREATE TABLE IF NOT EXISTS public.predictions (
@@ -217,6 +250,26 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS subscribed_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now());
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS vip_expires_at TIMESTAMP WITH TIME ZONE;
 
+-- Widen the plan CHECK constraint to allow 'weekly_pass' — a real purchasable VIP tier that
+-- was being mislabeled as 'monthly_vip' (see api/kentapay/_lib/resolvePayment.js). Constraint
+-- name may differ if this table predates the exact CREATE TABLE statement above, so find and
+-- drop it by definition pattern instead of a hardcoded name.
+DO $$
+DECLARE
+  con_name TEXT;
+BEGIN
+  SELECT conname INTO con_name
+  FROM pg_constraint
+  WHERE conrelid = 'public.profiles'::regclass
+    AND pg_get_constraintdef(oid) LIKE '%plan%IN%';
+  IF con_name IS NOT NULL THEN
+    EXECUTE format('ALTER TABLE public.profiles DROP CONSTRAINT %I', con_name);
+  END IF;
+END $$;
+
+ALTER TABLE public.profiles ADD CONSTRAINT profiles_plan_check
+  CHECK (plan IN ('free', 'weekly_pass', 'monthly_vip', 'annual_vip'));
+
 ALTER TABLE public.tipster_subscriptions ADD COLUMN IF NOT EXISTS user_name TEXT;
 ALTER TABLE public.tipster_subscriptions ADD COLUMN IF NOT EXISTS platform_cut NUMERIC(10,2) NOT NULL DEFAULT 0;
 ALTER TABLE public.tipster_subscriptions ADD COLUMN IF NOT EXISTS tipster_net NUMERIC(10,2) NOT NULL DEFAULT 0;
@@ -233,7 +286,10 @@ CREATE POLICY "Free predictions viewable by anyone"
   ON public.predictions FOR SELECT 
   USING (tier = 'free');
 
--- VIP predictions viewable by subscribers of that tipster or global VIP / Admin users
+-- VIP predictions viewable by subscribers of that tipster or global VIP / Admin users.
+-- The plan IN (...) clause used to unlock this permanently once granted — plan alone never
+-- expires on its own, so this now also requires vip_expires_at to still be in the future
+-- (mirrors the same fix to isVip in src/context/AuthContext.tsx).
 CREATE POLICY "VIP predictions viewable by subscribers or admins"
   ON public.predictions FOR SELECT
   USING (
@@ -246,7 +302,10 @@ CREATE POLICY "VIP predictions viewable by subscribers or admins"
       AND ts.expires_at > now()
     ) OR
     public.is_admin() OR
-    (public.get_profile()).plan IN ('monthly_vip', 'annual_vip')
+    (
+      (public.get_profile()).plan IN ('weekly_pass', 'monthly_vip', 'annual_vip') AND
+      (public.get_profile()).vip_expires_at > now()
+    )
   );
 
 -- Active tipsters and admins can publish predictions
@@ -306,6 +365,12 @@ CREATE POLICY "Tipsters and admins insert predictions"
 -- 'pending' (the apply-to-become-a-tipster action) — never straight to 'active', and
 -- `verified` can never be self-set. Admins are unaffected (they use the separate
 -- "Admins can update any profile" policy, which has no such restriction).
+--
+-- 6f. Also pins `plan` and `vip_expires_at` — previously omitted here entirely, which let
+-- any logged-in user grant themselves permanent VIP with a single raw
+-- `supabase.from('profiles').update({ plan: 'annual_vip', vip_expires_at: '2099-01-01' })`
+-- call, no payment required. Real plan changes only ever happen via
+-- api/kentapay/_lib/resolvePayment.js using the service role key, which bypasses RLS.
 DROP POLICY IF EXISTS "Users can update own basic profile" ON public.profiles;
 CREATE POLICY "Users can update own basic profile"
   ON public.profiles FOR UPDATE
@@ -314,6 +379,8 @@ CREATE POLICY "Users can update own basic profile"
     auth.uid() = id AND
     role = (public.get_profile()).role AND
     verified = (public.get_profile()).verified AND
+    plan = (public.get_profile()).plan AND
+    vip_expires_at IS NOT DISTINCT FROM (public.get_profile()).vip_expires_at AND
     (
       tipster_status = (public.get_profile()).tipster_status
       OR tipster_status = 'pending'
@@ -341,10 +408,17 @@ CREATE POLICY "Anyone can view comments"
   ON public.comments FOR SELECT
   USING (true);
 
+-- user_role used to be trusted straight from the client, with only auth.uid() = user_id
+-- checked — anyone could insert a comment with user_role: 'admin' and MatchCommentsModal's
+-- badgeFor() would render it as an official Falcon Forecast staff badge to every viewer. Now
+-- pinned to the poster's real profiles.role.
 DROP POLICY IF EXISTS "Authenticated users can post comments" ON public.comments;
 CREATE POLICY "Authenticated users can post comments"
   ON public.comments FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK (
+    auth.uid() = user_id AND
+    user_role IS NOT DISTINCT FROM (public.get_profile()).role
+  );
 
 DROP POLICY IF EXISTS "Users delete own comments, admins delete any" ON public.comments;
 CREATE POLICY "Users delete own comments, admins delete any"

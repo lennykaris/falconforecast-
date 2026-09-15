@@ -14,7 +14,11 @@ import type { Match } from '../types/prediction';
 import { PostOddsModal } from '../components/PostOddsModal';
 
 export const TipsterDashboardPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isTipster, isAdmin } = useAuth();
+  // Suspension only ever flips tipster_status (role stays 'tipster') — checking role alone
+  // let a suspended tipster keep full dashboard access: posting new odds, editing prices,
+  // and collecting subscriber revenue exactly as before being cut off.
+  const hasAccess = isAdmin || (isTipster && user?.tipsterStatus !== 'suspended');
   const { tipsters, getMySubscriptions, getTipsterRevenue, updateOwnPricing, updateMpesaPhone } = useTipsters();
   const { predictions, updatePrediction } = usePredictions();
 
@@ -30,9 +34,19 @@ export const TipsterDashboardPage: React.FC = () => {
   const [matchesLoading, setMatchesLoading] = useState(true);
   const [matchesError, setMatchesError] = useState<string | null>(null);
   const [oddsMatch, setOddsMatch] = useState<Match | null>(null);
+  const [settleError, setSettleError] = useState('');
+
+  // updatePrediction writes to Supabase before touching local state — this just surfaces a
+  // rejected write (RLS mismatch, stale/foreign prediction id) instead of it silently
+  // reverting once the predictions cache TTL expires.
+  const handleSettle = async (id: string, status: 'won' | 'lost' | 'void') => {
+    setSettleError('');
+    const { error } = await updatePrediction(id, { status });
+    if (error) setSettleError(error.message);
+  };
 
   useEffect(() => {
-    if (!user || (user.role !== 'tipster' && user.role !== 'admin')) return;
+    if (!user || !hasAccess) return;
     fetchUpcomingMatches()
       .then(setMatches)
       .catch(e => setMatchesError(e instanceof Error ? e.message : 'Failed to load matches'))
@@ -77,7 +91,7 @@ export const TipsterDashboardPage: React.FC = () => {
   };
 
   // Guard: must be logged in and be a tipster
-  if (!user || (user.role !== 'tipster' && user.role !== 'admin')) {
+  if (!user || !hasAccess) {
     return (
       <div className="max-w-2xl mx-auto px-4 pt-32 pb-28 text-center">
         <Lock className="w-12 h-12 text-slate-300 mx-auto mb-4" />
@@ -224,6 +238,7 @@ export const TipsterDashboardPage: React.FC = () => {
           <div className="px-5 py-4 border-b border-slate-100">
             <h2 className="text-base font-black text-slate-900">Settle Your Tips</h2>
             <p className="text-[10px] text-slate-400">Mark the outcome once the match has finished</p>
+            {settleError && <p className="text-[10px] font-semibold text-rose-500 mt-1">{settleError}</p>}
           </div>
           <div className="divide-y divide-slate-50">
             {myPendingTips.map(p => (
@@ -234,19 +249,19 @@ export const TipsterDashboardPage: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
                   <button
-                    onClick={() => updatePrediction(p.id, { status: 'won' })}
+                    onClick={() => handleSettle(p.id, 'won')}
                     className="px-2 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded border border-emerald-300 text-[10px] font-bold"
                   >
                     ✅ Won
                   </button>
                   <button
-                    onClick={() => updatePrediction(p.id, { status: 'lost' })}
+                    onClick={() => handleSettle(p.id, 'lost')}
                     className="px-2 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded border border-rose-300 text-[10px] font-bold"
                   >
                     ❌ Lost
                   </button>
                   <button
-                    onClick={() => updatePrediction(p.id, { status: 'void' })}
+                    onClick={() => handleSettle(p.id, 'void')}
                     className="px-2 py-1 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded border border-slate-300 text-[10px] font-bold"
                   >
                     ⚪ Void

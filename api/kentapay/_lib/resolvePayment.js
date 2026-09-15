@@ -1,35 +1,59 @@
 import { normalizePhone, generateTransactionId, kentapayB2C, extractCloudPacketId } from './kentapay.js';
 
+/** Atomically claims a PENDING payment row by writing to it only if it's still PENDING at
+ * write time, returning whether this call actually won the claim. Guards against two
+ * near-simultaneous resolutions of the same payment — e.g. a redelivered callback (Kentapay
+ * doesn't guarantee exactly-once delivery) racing the reconciliation cron — both passing a
+ * plain read-then-branch check before either has written anything. Without this, both callers
+ * could proceed into subscription creation and fire two separate M-Pesa B2C payouts for one
+ * collected payment. */
+async function claimPayment(supabase, paymentId, fields) {
+  const { data, error } = await supabase
+    .from('payments')
+    .update(fields)
+    .eq('id', paymentId)
+    .eq('status', 'PENDING')
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
+}
+
 /** Applies the final outcome of a PENDING payment: marks it COMPLETE/FAILED, and on a
  * successful collect, activates whatever was being paid for (tipster subscription or VIP
  * plan) and fires the automatic tipster payout. Shared between the callback handler (pushed
  * by Kentapay) and the query-status reconciliation job (pulled by us), so both routes credit
  * a transaction exactly the same way regardless of which one resolves it first.
  *
- * Caller must have already confirmed `payment.status === 'PENDING'` (idempotency) and, for a
- * pushed callback, verified the HASH — this function does neither. */
+ * Caller must have already confirmed `payment.status === 'PENDING'` (a fast-path optimization
+ * to skip obviously-already-resolved rows) and, for a pushed callback, verified the HASH —
+ * this function does neither, but does re-verify PENDING atomically via claimPayment before
+ * actually crediting anything, since the caller's own check can be stale by the time this
+ * runs. */
 export async function resolvePayment(supabase, payment, { success, receiptNumber, failureMessage }) {
   if (!success) {
-    await supabase.from('payments').update({
+    await claimPayment(supabase, payment.id, {
       status: 'FAILED',
       failure_message: failureMessage || 'Payment failed',
       updated_at: new Date().toISOString(),
-    }).eq('id', payment.id);
+    });
     return;
   }
-
-  await supabase.from('payments').update({
-    status: 'COMPLETE',
-    receipt_number: receiptNumber || null,
-    updated_at: new Date().toISOString(),
-  }).eq('id', payment.id);
 
   if (payment.type === 'disburse') {
-    // A tipster payout landed successfully — nothing further to do.
+    // A tipster payout — no further entitlement to grant, safe to just claim COMPLETE.
+    await claimPayment(supabase, payment.id, {
+      status: 'COMPLETE',
+      receipt_number: receiptNumber || null,
+      updated_at: new Date().toISOString(),
+    });
     return;
   }
 
-  // type === 'collect': activate/renew what was being paid for.
+  // type === 'collect': grant the entitlement FIRST, while the row is still PENDING. If
+  // anything below throws, the payment stays PENDING (never wrongly marked COMPLETE with
+  // nothing actually granted) and can be retried by a redelivered callback or the
+  // reconciliation cron.
   if (payment.kind === 'tipster_subscription') {
     const days = payment.billing_cycle === 'weekly' ? 7 : 30;
     const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
@@ -50,7 +74,19 @@ export async function resolvePayment(supabase, payment, { success, receiptNumber
       .single();
     if (subErr) throw subErr;
 
-    await supabase.from('payments').update({ subscription_id: newSub.id }).eq('id', payment.id);
+    const claimed = await claimPayment(supabase, payment.id, {
+      status: 'COMPLETE',
+      receipt_number: receiptNumber || null,
+      subscription_id: newSub.id,
+      updated_at: new Date().toISOString(),
+    });
+    if (!claimed) {
+      // Another process already resolved this payment between our initial read and now —
+      // we've created a spare subscription row (the customer keeps it, a harmless extra
+      // access period) but must NOT also fire a duplicate automatic payout below.
+      console.warn(`Payment ${payment.id} was already resolved by another process — skipping payout to avoid a duplicate.`);
+      return;
+    }
 
     // Automatic payout: send the tipster their net share right away.
     const { data: tipster } = await supabase
@@ -97,12 +133,37 @@ export async function resolvePayment(supabase, payment, { success, receiptNumber
       console.warn(`Tipster ${payment.tipster_id} has no mpesa_phone on file — skipping automatic payout for subscription ${newSub.id}. Needs manual payout.`);
     }
   } else if (payment.kind === 'vip_subscription') {
-    const planType = payment.plan_id === 'annual_vip' ? 'annual_vip' : 'monthly_vip';
-    const days = planType === 'annual_vip' ? 365 : (payment.plan_id === 'weekly_pass' ? 7 : 30);
-    await supabase.from('profiles').update({
+    // 'weekly_pass' used to fall through to 'monthly_vip' here, mislabeling a 7-day purchase
+    // as a monthly plan — profiles.plan's CHECK constraint now allows 'weekly_pass' directly
+    // (see supabase_schema.sql), so it's stored as what it actually is.
+    const planType = payment.plan_id === 'annual_vip' ? 'annual_vip'
+      : payment.plan_id === 'weekly_pass' ? 'weekly_pass'
+      : 'monthly_vip';
+    const days = planType === 'annual_vip' ? 365 : planType === 'weekly_pass' ? 7 : 30;
+
+    const { error: profErr } = await supabase.from('profiles').update({
       plan: planType,
       subscribed_at: new Date().toISOString(),
       vip_expires_at: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
     }).eq('id', payment.user_id);
+    if (profErr) throw profErr;
+
+    const claimed = await claimPayment(supabase, payment.id, {
+      status: 'COMPLETE',
+      receipt_number: receiptNumber || null,
+      updated_at: new Date().toISOString(),
+    });
+    if (!claimed) {
+      console.warn(`Payment ${payment.id} was already resolved by another process.`);
+    }
+  } else {
+    // Unknown kind — still claim COMPLETE so the row doesn't stay PENDING forever, but leave
+    // a clear trail since nothing was actually granted.
+    console.warn(`resolvePayment: unrecognized kind "${payment.kind}" for payment ${payment.id} — marking COMPLETE with nothing granted.`);
+    await claimPayment(supabase, payment.id, {
+      status: 'COMPLETE',
+      receipt_number: receiptNumber || null,
+      updated_at: new Date().toISOString(),
+    });
   }
 }

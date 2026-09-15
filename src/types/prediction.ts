@@ -26,7 +26,7 @@ export interface User {
   name: string;
   email: string;
   role: 'user' | 'tipster' | 'admin';
-  plan: 'free' | 'monthly_vip' | 'annual_vip';
+  plan: 'free' | 'weekly_pass' | 'monthly_vip' | 'annual_vip';
   tipsterStatus?: 'none' | 'pending' | 'active' | 'suspended';
   bio?: string;
   avatarUrl?: string;

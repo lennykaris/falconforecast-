@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   Crown, CheckCircle2, Star, UserCheck, Lock,
@@ -22,23 +22,36 @@ export const TipstersPage: React.FC = () => {
   const [payState, setPayState] = useState<'idle' | 'pending' | 'error'>('idle');
   const [payError, setPayError] = useState('');
 
+  // Closing this modal (the X button, unlike Cancel, wasn't disabled mid-payment) doesn't
+  // cancel an in-flight pollPaymentStatus call — without this, a late result from an
+  // abandoned subscribe attempt could pop a success toast or overwrite the error state of
+  // whatever the user has since reopened this modal for (even a different tipster). Each
+  // close or new submit bumps this; a poll's result is only acted on if it's still current.
+  const sessionRef = useRef(0);
+
   // Filters
   const [activeLeague, setActiveLeague] = useState<string>('All');
   const [activeMarket, setActiveMarket] = useState<string>('All');
 
-  // Deep link from a locked prediction card: /tipsters?subscribe=<tipsterId> auto-opens that tipster's modal.
+  // Active only — matches the marketplace grid below. A suspended tipster's `verified` flag
+  // was never cleared on suspension, so `|| t.verified` here used to keep them subscribable
+  // (and, via the deep-link effect below, payable) after being cut off.
+  const activeTipsters = tipsters.filter(t => t.tipsterStatus === 'active');
+
+  // Deep link from a locked prediction card: /tipsters?subscribe=<tipsterId> auto-opens that
+  // tipster's modal — resolved against activeTipsters, not the raw `tipsters` list, so a
+  // suspended tipster's stale link (e.g. from a VIP prediction they published before being
+  // suspended) can't still open a real checkout for them.
   useEffect(() => {
     const subscribeId = searchParams.get('subscribe');
-    if (subscribeId && tipsters.length > 0) {
-      const target = tipsters.find(t => t.id === subscribeId);
+    if (subscribeId && activeTipsters.length > 0) {
+      const target = activeTipsters.find(t => t.id === subscribeId);
       if (target) setSelectedTipster(target);
       searchParams.delete('subscribe');
       setSearchParams(searchParams, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipsters]);
-
-  const activeTipsters = tipsters.filter(t => t.tipsterStatus === 'active' || t.verified);
 
   const filtered = activeTipsters.filter(t => {
     const leagueOk = activeLeague === 'All' || (t.leagues || []).includes(activeLeague);
@@ -48,6 +61,7 @@ export const TipstersPage: React.FC = () => {
 
   const handleSubscribe = async (tipster: User) => {
     if (!user || !phone.trim()) return;
+    const mySession = ++sessionRef.current;
     setPayState('pending');
     setPayError('');
     try {
@@ -59,6 +73,7 @@ export const TipstersPage: React.FC = () => {
       });
 
       const result = await pollPaymentStatus(reference);
+      if (sessionRef.current !== mySession) return; // closed or restarted since — ignore
 
       if (result.status === 'COMPLETE') {
         await refetchSubscriptions();
@@ -75,6 +90,7 @@ export const TipstersPage: React.FC = () => {
         setPayError('Still waiting for confirmation. Check your phone for the M-Pesa prompt, or try again.');
       }
     } catch (e) {
+      if (sessionRef.current !== mySession) return;
       setPayState('error');
       setPayError(e instanceof Error ? e.message : 'Failed to start payment.');
     }
@@ -327,7 +343,7 @@ export const TipstersPage: React.FC = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm">
             <div className="relative w-full max-w-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-6 shadow-2xl space-y-5">
               <button
-                onClick={() => { setSelectedTipster(null); setPhone(''); setPayState('idle'); setPayError(''); }}
+                onClick={() => { sessionRef.current++; setSelectedTipster(null); setPhone(''); setPayState('idle'); setPayError(''); }}
                 className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100"
               >
                 <X className="w-4 h-4" />
@@ -444,7 +460,7 @@ export const TipstersPage: React.FC = () => {
                   )}
                 </button>
                 <button
-                  onClick={() => { setSelectedTipster(null); setPhone(''); setPayState('idle'); setPayError(''); }}
+                  onClick={() => { sessionRef.current++; setSelectedTipster(null); setPhone(''); setPayState('idle'); setPayError(''); }}
                   disabled={payState === 'pending'}
                   className="w-full py-2.5 text-xs font-semibold text-slate-400 hover:text-slate-700 disabled:opacity-60"
                 >

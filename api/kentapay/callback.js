@@ -13,8 +13,12 @@ export default async function handler(req, res) {
 
   const body = req.body || {};
 
-  // Not a transaction result we recognize — ack so Kentapay stops retrying, nothing to act on.
-  if (!body.status || !body.transactionID) {
+  // Not a transaction result we recognize — ack so Kentapay stops retrying, nothing to act
+  // on. Checked for undefined/null explicitly, not falsy — Kentapay's success code can come
+  // back as the number 0 as well as the string '00' (kentapay.js's own status checks already
+  // guard against this same dual representation), and `!0` is true, so a plain `!body.status`
+  // check here would silently discard a genuinely successful callback.
+  if (body.status === undefined || body.status === null || !body.transactionID) {
     res.status(200).json(ACK_OK);
     return;
   }
@@ -66,7 +70,8 @@ export default async function handler(req, res) {
     }
 
     await resolvePayment(supabase, payment, {
-      success: body.status === '00',
+      // Same numeric-vs-string success code as above.
+      success: String(body.status) === '00',
       receiptNumber: body.billerResponse || null,
       failureMessage: body.statusDescription || body.billerResponse || 'Payment failed',
     });

@@ -13,6 +13,7 @@ export const TipsterApplyPage: React.FC = () => {
   const [monthlyPrice, setMonthlyPrice] = useState('1500');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   if (!isLoggedIn || !user) {
     return (
@@ -87,8 +88,13 @@ export const TipsterApplyPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    await applyForTipster(user, bio, Number(weeklyPrice) || 0, Number(monthlyPrice) || 0);
+    setSubmitError('');
+    const { error } = await applyForTipster(user, bio, Number(weeklyPrice) || 0, Number(monthlyPrice) || 0);
     setSubmitting(false);
+    if (error) {
+      setSubmitError(error);
+      return;
+    }
     setSubmitted(true);
   };
 
@@ -163,6 +169,10 @@ export const TipsterApplyPage: React.FC = () => {
               />
             </div>
           </div>
+
+          {submitError && (
+            <p className="text-center text-xs font-semibold text-rose-500">{submitError}</p>
+          )}
 
           <button
             type="submit"

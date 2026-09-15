@@ -28,6 +28,7 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLeague, setSelectedLeague] = useState('All Leagues');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState('');
 
   // Edit form temporary state
   const [editTip, setEditTip] = useState('');
@@ -50,22 +51,49 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
     setEditConfidence(p.confidence);
   };
 
-  const handleSaveEdit = (id: string) => {
-    updatePrediction(id, {
+  // All three now await and check {error} — updatePrediction/deletePrediction/toggleTier
+  // write to Supabase before touching local state, so a rejected write (a stale/foreign
+  // prediction id, an RLS mismatch) surfaces here instead of the table silently showing the
+  // edit/status/tier change as applied until the cache TTL reverts it.
+  const handleSaveEdit = async (id: string) => {
+    setActionError('');
+    const { error } = await updatePrediction(id, {
       tip: editTip,
       odds: editOdds,
       confidence: editConfidence,
     });
+    if (error) {
+      setActionError(error.message);
+      return;
+    }
     setEditingId(null);
   };
 
-  const handleStatusChange = (id: string, status: 'pending' | 'won' | 'lost' | 'void') => {
-    updatePrediction(id, { status });
+  const handleStatusChange = async (id: string, status: 'pending' | 'won' | 'lost' | 'void') => {
+    setActionError('');
+    const { error } = await updatePrediction(id, { status });
+    if (error) setActionError(error.message);
+  };
+
+  const handleDelete = async (id: string) => {
+    setActionError('');
+    const { error } = await deletePrediction(id);
+    if (error) setActionError(error.message);
+  };
+
+  const handleToggleTier = async (id: string) => {
+    setActionError('');
+    const result = await toggleTier(id);
+    if (result?.error) setActionError(result.error.message);
   };
 
   return (
     <div className="space-y-6">
-      
+
+      {actionError && (
+        <p className="text-xs font-semibold text-rose-500">{actionError}</p>
+      )}
+
       {/* CMS Controls & Filters Header */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
         
@@ -219,7 +247,7 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
                       {/* Tier Toggle Switch */}
                       <td className="py-3.5 px-4 text-center">
                         <button
-                          onClick={() => toggleTier(p.id)}
+                          onClick={() => handleToggleTier(p.id)}
                           className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider flex items-center space-x-1 mx-auto transition-all ${
                             p.tier === 'vip'
                               ? 'bg-sky-50 text-[#0EA5E9] border border-sky-300 hover:bg-sky-100'
@@ -269,7 +297,7 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
                               <Edit3 className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => deletePrediction(p.id)}
+                              onClick={() => handleDelete(p.id)}
                               className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors"
                               title="Delete prediction"
                             >

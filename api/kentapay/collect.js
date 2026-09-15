@@ -13,7 +13,7 @@ const PLATFORM_CUT_PCT = 0.20;
 // KSh 1 regardless of the real price, so live payment-flow testing doesn't require spending
 // real money at full price. This is live on production: any real customer checking out while
 // this is `true` pays KSh 1. Flip back to `false` once STK-push testing is done.
-const TESTING_FORCE_KSH1 = true;
+const TESTING_FORCE_KSH1 = false;
 
 // Server-side source of truth for VIP plan prices — matches src/data/predictions.ts.
 // Never trust a client-supplied amount for anything that moves real money.
@@ -66,14 +66,26 @@ export default async function handler(req, res) {
       }
       const { data: tipster, error: tErr } = await supabase
         .from('profiles')
-        .select('weekly_price, monthly_price, name, role')
+        .select('weekly_price, monthly_price, name, role, tipster_status')
         .eq('id', tipsterId)
         .maybeSingle();
       if (tErr || !tipster || tipster.role !== 'tipster') {
         res.status(404).json({ error: 'Tipster not found' });
         return;
       }
-      amount = billingCycle === 'weekly' ? Number(tipster.weekly_price || 500) : Number(tipster.monthly_price || 1500);
+      if (tipster.tipster_status !== 'active') {
+        // role stays 'tipster' when suspended (only tipster_status flips) — checking role
+        // alone let a suspended tipster keep receiving new paid subscriptions and automatic
+        // payouts after being cut off.
+        res.status(403).json({ error: 'This tipster is not currently accepting new subscribers' });
+        return;
+      }
+      // != null, not `||` — a tipster who deliberately set a price of exactly 0 (e.g. a
+      // promotional free tier) was having that overridden by the 500/1500 fallback below,
+      // silently overcharging their subscribers.
+      amount = billingCycle === 'weekly'
+        ? (tipster.weekly_price != null ? Number(tipster.weekly_price) : 500)
+        : (tipster.monthly_price != null ? Number(tipster.monthly_price) : 1500);
       platformCut = parseFloat((amount * PLATFORM_CUT_PCT).toFixed(2));
       tipsterNet = parseFloat((amount - platformCut).toFixed(2));
       narration = `Falcon Forecast - ${tipster.name} subscription`;

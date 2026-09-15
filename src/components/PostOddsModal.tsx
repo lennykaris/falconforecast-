@@ -43,7 +43,10 @@ export const PostOddsModal: React.FC<PostOddsModalProps> = ({ match, onClose }) 
       confidence,
       tier: isFree ? 'free' : 'vip',
       analysis: analysis || undefined,
-      tipsterId: user?.id,
+      // Admin posts are platform tips with no owner (tipster_id null) — an admin's own id
+      // here made the pick permanently unsubscribable, since the RLS subscription-EXISTS
+      // check could then never match any tipster_subscriptions row.
+      tipsterId: isAdmin ? undefined : user?.id,
       tipsterName: isAdmin ? 'Falcon Forecast Platform' : user?.name,
       isPlatformTip: isAdmin,
       status: 'pending',
