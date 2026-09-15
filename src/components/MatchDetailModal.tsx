@@ -31,8 +31,11 @@ function FormBadges({ form }: { form: string[] }) {
       {form.map((result, i) => (
         <span
           key={i}
+          // Draws used to share bg-slate-400 — at 16px it reads as a duller green rather than
+          // a genuinely distinct color, and didn't match the amber used for draws in the
+          // standings table elsewhere on the site. Amber now used consistently for D everywhere.
           className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black text-white ${
-            result === 'W' ? 'bg-emerald-500' : result === 'L' ? 'bg-rose-500' : 'bg-slate-400'
+            result === 'W' ? 'bg-emerald-500' : result === 'L' ? 'bg-red-500' : 'bg-amber-500'
           }`}
         >
           {result}
