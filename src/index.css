@@ -329,6 +329,12 @@ html.dark .odds-btn:hover {
 ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--brand); }
 
+/* Used on horizontally-scrolling strips (mobile league tabs, desktop nav overflow) where a
+ * visible scrollbar would look like a rendering glitch rather than an intentional strip.
+ * Was referenced from HomePage's mobile tabs already but never actually defined. */
+.scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
 /* ─── LIGHT MODE: Modal & Overlay backgrounds ─── */
 html.light [class*="bg-black/"],
 html.light [class*="bg-slate-950"] {

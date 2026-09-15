@@ -65,7 +65,12 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                 </span>
               </Link>
 
-              <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1 flex-shrink-0">
+              {/* flex-shrink-0 here used to mean the full link list (Home/Odds/VIP/Tipsters/
+                  News/About + Admin) never shrank — on narrower "lg" widths, especially once a
+                  tipster's extra "Post Tips" button ate into the right-hand side, the links
+                  simply overflowed the shrinking wrapper next to it and visually spilled into
+                  the search box. overflow-x-auto lets the strip scroll instead of spilling. */}
+              <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1 overflow-x-auto scrollbar-hide min-w-0">
                 <Link
                   to="/matches"
                   className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
