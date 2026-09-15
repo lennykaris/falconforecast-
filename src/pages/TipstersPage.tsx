@@ -280,17 +280,23 @@ export const TipstersPage: React.FC = () => {
                         </div>
                       )}
 
-                      {/* Stats */}
+                      {/* Stats — win_rate/tips_won/tips_lost/total_tips are all computed by a
+                          DB trigger from real settled predictions, never self-reported. */}
                       <div className="grid grid-cols-2 gap-3">
                         <div className="p-3 bg-sky-50 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900 rounded-2xl text-center">
                           <span className="text-[10px] font-bold text-slate-400 uppercase block">Win Rate</span>
-                          <span className="text-xl font-black text-[#0EA5E9] font-mono">{tipster.winRate}%</span>
+                          <span className="text-xl font-black text-[#0EA5E9] font-mono">{tipster.winRate ?? 0}%</span>
                         </div>
                         <div className="p-3 bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600 rounded-2xl text-center">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase block">Total Tips</span>
-                          <span className="text-xl font-black text-slate-900 dark:text-white font-mono">{tipster.totalTips}</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase block">Record</span>
+                          <span className="text-sm font-black font-mono">
+                            <span className="text-emerald-600">{tipster.tipsWon ?? 0}W</span>
+                            <span className="text-slate-300 dark:text-slate-600"> - </span>
+                            <span className="text-rose-500">{tipster.tipsLost ?? 0}L</span>
+                          </span>
                         </div>
                       </div>
+                      <p className="text-[10px] text-slate-400 text-center">{tipster.totalTips ?? 0} tips given</p>
                     </div>
 
                     {/* Pricing & CTA */}

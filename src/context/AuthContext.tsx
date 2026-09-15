@@ -46,6 +46,8 @@ const buildUser = (sbUser: SupabaseAuthUser, profile: Record<string, any> | null
     mpesaPhone: profile?.mpesa_phone || undefined,
     winRate: profile?.win_rate != null ? Number(profile.win_rate) : undefined,
     totalTips: profile?.total_tips,
+    tipsWon: profile?.tips_won,
+    tipsLost: profile?.tips_lost,
     verified: profile?.verified,
     subscribedAt: profile?.subscribed_at || sbUser.created_at,
     vipExpiresAt: profile?.vip_expires_at,

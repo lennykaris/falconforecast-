@@ -404,14 +404,23 @@ export const TipsterDashboardPage: React.FC = () => {
             )}
           </div>
 
-          {/* Performance stats */}
-          <div className="border-t border-slate-100 pt-4 grid grid-cols-2 gap-3">
+          {/* Performance stats — win_rate/tips_won/tips_lost/total_tips are all computed by a
+              DB trigger from real settled predictions, never self-reported. */}
+          <div className="border-t border-slate-100 pt-4 grid grid-cols-3 gap-3">
             <div className="text-center">
-              <span className="text-xl font-black text-[#0EA5E9] font-mono">{myProfile?.winRate || 75}%</span>
+              <span className="text-xl font-black text-[#0EA5E9] font-mono">{myProfile?.winRate ?? 0}%</span>
               <p className="text-[10px] text-slate-400 mt-0.5">Win Rate</p>
             </div>
             <div className="text-center">
-              <span className="text-xl font-black text-slate-900 font-mono">{myProfile?.totalTips || 0}</span>
+              <span className="text-xl font-black font-mono">
+                <span className="text-emerald-600">{myProfile?.tipsWon ?? 0}W</span>
+                <span className="text-slate-300"> - </span>
+                <span className="text-rose-500">{myProfile?.tipsLost ?? 0}L</span>
+              </span>
+              <p className="text-[10px] text-slate-400 mt-0.5">Record</p>
+            </div>
+            <div className="text-center">
+              <span className="text-xl font-black text-slate-900 font-mono">{myProfile?.totalTips ?? 0}</span>
               <p className="text-[10px] text-slate-400 mt-0.5">Total Tips</p>
             </div>
           </div>

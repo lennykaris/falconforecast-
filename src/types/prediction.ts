@@ -42,6 +42,11 @@ export interface User {
   mpesaPhone?: string;
   winRate?: number;
   totalTips?: number;
+  /** Real settled counts behind winRate — win_rate alone doesn't say how many tips that
+   * covers. All three (winRate, tipsWon, tipsLost) are computed by a DB trigger from actual
+   * predictions, never self-reported. */
+  tipsWon?: number;
+  tipsLost?: number;
   subscribersCount?: number;
   verified?: boolean;
   subscribedTipsterIds?: string[];

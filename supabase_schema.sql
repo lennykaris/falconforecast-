@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   avatar_url TEXT,
   weekly_price NUMERIC(10,2) DEFAULT 9.99,
   monthly_price NUMERIC(10,2) DEFAULT 29.99,
-  win_rate NUMERIC(5,2) DEFAULT 75.0,
+  win_rate NUMERIC(5,2) DEFAULT 0,
   total_tips INTEGER DEFAULT 0,
   verified BOOLEAN DEFAULT false,
   stripe_customer_id TEXT,
@@ -251,8 +251,23 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS bio TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS weekly_price NUMERIC(10,2) DEFAULT 9.99;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS monthly_price NUMERIC(10,2) DEFAULT 29.99;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS win_rate NUMERIC(5,2) DEFAULT 75.0;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS win_rate NUMERIC(5,2) DEFAULT 0;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS total_tips INTEGER DEFAULT 0;
+-- Explicit won/lost counts — win_rate alone doesn't tell a subscriber how many tips that
+-- covers, and total_tips (below) counts every tip ever posted, not just settled ones.
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS tips_won INTEGER DEFAULT 0;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS tips_lost INTEGER DEFAULT 0;
+-- win_rate defaulted to 75.0 for every tipster regardless of actual track record until the
+-- trigger below existed, and even after, a tipster with zero settled tips kept whatever
+-- inherited value they already had instead of showing a real, unearned 0 — reset anyone with
+-- no settled predictions yet back to zero. Never touches a tipster who's actually settled tips.
+UPDATE public.profiles p
+SET win_rate = 0, total_tips = 0, tips_won = 0, tips_lost = 0
+WHERE role = 'tipster'
+  AND NOT EXISTS (
+    SELECT 1 FROM public.predictions pr
+    WHERE pr.tipster_id = p.id AND pr.status IN ('won', 'lost')
+  );
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT false;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
@@ -570,12 +585,13 @@ GRANT EXECUTE ON FUNCTION public.tipster_subscriber_counts() TO anon, authentica
 
 -- =====================================================================================
 -- 10. AUTOMATIC WIN-RATE — profiles.win_rate/total_tips used to be static (whatever was set
--- at signup/manually), or worse, driven purely by a tipster self-reporting their own tips as
--- won/lost via the "Settle Your Tips" buttons — no incentive alignment there at all. Now
--- recomputed from real settled predictions every time a prediction's status actually changes,
--- whichever process changes it: api/settle-predictions.js auto-settling against the real
--- final score (the normal path for any prediction with a match_id — see that column's
--- comment above), or a manual admin/tipster override for the rest.
+-- at signup/manually, e.g. every tipster defaulting to 75%), or worse, driven purely by a
+-- tipster self-reporting their own tips as won/lost via the "Settle Your Tips" buttons — no
+-- incentive alignment there at all. Now recomputed from real predictions every time one is
+-- posted, deleted, or its status actually changes, whichever process changes it:
+-- api/settle-predictions.js auto-settling against the real final score (the normal path for
+-- any prediction with a match_id — see that column's comment above), or a manual admin/
+-- tipster override for the rest. Every tipster starts at 0% / 0 tips and earns it from there.
 -- =====================================================================================
 CREATE OR REPLACE FUNCTION public.recompute_tipster_win_rate()
 RETURNS TRIGGER
@@ -585,34 +601,40 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   tid UUID;
-  settled_count INT;
+  all_count INT;
   won_count INT;
+  lost_count INT;
 BEGIN
   tid := COALESCE(NEW.tipster_id, OLD.tipster_id);
   IF tid IS NULL THEN
-    RETURN NEW; -- platform tips (tipster_id NULL) don't feed any tipster's win rate
+    RETURN COALESCE(NEW, OLD); -- platform tips (tipster_id NULL) don't feed any tipster's stats
   END IF;
 
   SELECT
-    COUNT(*) FILTER (WHERE status IN ('won', 'lost')),
-    COUNT(*) FILTER (WHERE status = 'won')
-  INTO settled_count, won_count
+    COUNT(*),
+    COUNT(*) FILTER (WHERE status = 'won'),
+    COUNT(*) FILTER (WHERE status = 'lost')
+  INTO all_count, won_count, lost_count
   FROM public.predictions
   WHERE tipster_id = tid;
 
   UPDATE public.profiles
   SET
-    win_rate = CASE WHEN settled_count > 0 THEN ROUND((won_count::NUMERIC / settled_count) * 100, 1) ELSE win_rate END,
-    total_tips = settled_count
+    total_tips = all_count,
+    tips_won = won_count,
+    tips_lost = lost_count,
+    win_rate = CASE WHEN (won_count + lost_count) > 0
+      THEN ROUND((won_count::NUMERIC / (won_count + lost_count)) * 100, 1)
+      ELSE 0
+    END
   WHERE id = tid;
 
-  RETURN NEW;
+  RETURN COALESCE(NEW, OLD);
 END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_recompute_win_rate ON public.predictions;
 CREATE TRIGGER trg_recompute_win_rate
-  AFTER UPDATE OF status ON public.predictions
+  AFTER INSERT OR DELETE OR UPDATE OF status ON public.predictions
   FOR EACH ROW
-  WHEN (NEW.status IS DISTINCT FROM OLD.status)
   EXECUTE FUNCTION public.recompute_tipster_win_rate();

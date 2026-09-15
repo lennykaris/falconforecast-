@@ -107,8 +107,12 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             weeklyPrice: p.weekly_price != null ? Number(p.weekly_price) : 500,
             monthlyPrice: p.monthly_price != null ? Number(p.monthly_price) : 1500,
             mpesaPhone: p.mpesa_phone || undefined,
-            winRate: p.win_rate != null ? Number(p.win_rate) : 75.0,
+            // Every tipster starts at 0% / 0 tips and earns it — no more inherited 75.0
+            // fallback for someone with zero real settled predictions.
+            winRate: p.win_rate != null ? Number(p.win_rate) : 0,
             totalTips: p.total_tips || 0,
+            tipsWon: p.tips_won || 0,
+            tipsLost: p.tips_lost || 0,
             verified: p.verified || false,
           }));
 

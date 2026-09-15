@@ -27,6 +27,8 @@ const mapProfileRow = (p: any): User => ({
   mpesaPhone: p.mpesa_phone || undefined,
   winRate: p.win_rate != null ? Number(p.win_rate) : undefined,
   totalTips: p.total_tips,
+  tipsWon: p.tips_won,
+  tipsLost: p.tips_lost,
   verified: p.verified,
   subscribedAt: p.subscribed_at,
   vipExpiresAt: p.vip_expires_at,
@@ -357,6 +359,7 @@ export const AdminPage: React.FC = () => {
                     <th className="py-3.5 px-4">Tipster</th>
                     <th className="py-3.5 px-4">Status</th>
                     <th className="py-3.5 px-4 text-center">Win Rate</th>
+                    <th className="py-3.5 px-4 text-center">Record (W-L)</th>
                     <th className="py-3.5 px-4 text-center">Subscribers</th>
                     <th className="py-3.5 px-4 text-center">Weekly Price</th>
                     <th className="py-3.5 px-4 text-center">Monthly Price</th>
@@ -388,7 +391,14 @@ export const AdminPage: React.FC = () => {
                         </td>
 
                         <td className="py-3.5 px-4 text-center font-mono font-bold text-[#0EA5E9]">
-                          {t.winRate || 75}%
+                          {t.winRate ?? 0}%
+                        </td>
+
+                        <td className="py-3.5 px-4 text-center font-mono text-slate-600">
+                          <span className="text-emerald-600 font-bold">{t.tipsWon ?? 0}W</span>
+                          {' – '}
+                          <span className="text-rose-500 font-bold">{t.tipsLost ?? 0}L</span>
+                          <span className="block text-[9px] text-slate-400 font-sans">{t.totalTips ?? 0} tips given</span>
                         </td>
 
                         <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-800">
