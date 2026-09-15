@@ -261,9 +261,19 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS tips_lost INTEGER DEFAULT 0
 -- trigger below existed, and even after, a tipster with zero settled tips kept whatever
 -- inherited value they already had instead of showing a real, unearned 0 — reset anyone with
 -- no settled predictions yet back to zero. Never touches a tipster who's actually settled tips.
+--
+-- `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ... DEFAULT 0` above is a no-op on a column that
+-- already exists — it never actually changed the live column's default away from 75.0, so
+-- explicitly set it here too, or every brand-new applicant keeps inheriting 75% at signup.
+ALTER TABLE public.profiles ALTER COLUMN win_rate SET DEFAULT 0;
+
+-- Was `WHERE role = 'tipster'` — which skips anyone still `role = 'user'` with
+-- `tipster_status = 'pending'` (i.e. every applicant who hasn't been approved yet), so a
+-- pending applicant kept showing the inherited 75% right up to admin approval. Covers anyone
+-- who has ever applied at all, not just those already promoted to the tipster role.
 UPDATE public.profiles p
 SET win_rate = 0, total_tips = 0, tips_won = 0, tips_lost = 0
-WHERE role = 'tipster'
+WHERE tipster_status <> 'none'
   AND NOT EXISTS (
     SELECT 1 FROM public.predictions pr
     WHERE pr.tipster_id = p.id AND pr.status IN ('won', 'lost')
@@ -299,6 +309,32 @@ END $$;
 
 ALTER TABLE public.profiles ADD CONSTRAINT profiles_plan_check
   CHECK (plan IN ('free', 'weekly_pass', 'monthly_vip', 'annual_vip'));
+
+-- Same problem, same fix, for `role` — profiles.role's CHECK constraint was defined inside
+-- the CREATE TABLE IF NOT EXISTS at the very top of this file, which is a no-op once the table
+-- already exists (as it long since has in production). Whatever narrower constraint the table
+-- was actually first created with (e.g. only 'user'/'admin', from before 'tipster' existed as
+-- a role at all) stayed in force regardless of what this file's CREATE TABLE says should be
+-- allowed. This is exactly why "Approve tipster" was failing with
+-- 'new row for relation "profiles" violates check constraint "profiles_role_check"' — the
+-- write was never an RLS problem at all, it was Postgres itself refusing role = 'tipster'.
+DO $$
+DECLARE
+  con_name TEXT;
+BEGIN
+  SELECT c.conname INTO con_name
+  FROM pg_constraint c
+  JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY(c.conkey)
+  WHERE c.conrelid = 'public.profiles'::regclass
+    AND c.contype = 'c'
+    AND a.attname = 'role';
+  IF con_name IS NOT NULL THEN
+    EXECUTE format('ALTER TABLE public.profiles DROP CONSTRAINT %I', con_name);
+  END IF;
+END $$;
+
+ALTER TABLE public.profiles ADD CONSTRAINT profiles_role_check
+  CHECK (role IN ('user', 'tipster', 'admin'));
 
 ALTER TABLE public.tipster_subscriptions ADD COLUMN IF NOT EXISTS user_name TEXT;
 ALTER TABLE public.tipster_subscriptions ADD COLUMN IF NOT EXISTS platform_cut NUMERIC(10,2) NOT NULL DEFAULT 0;

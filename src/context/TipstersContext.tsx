@@ -258,8 +258,13 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       bio,
       weeklyPrice,
       monthlyPrice,
-      winRate: 70.0,
+      // A brand-new applicant has settled zero tips — a hardcoded 70% here (or the DB
+      // column's old 75.0 default) showed a fake, unearned track record before they'd ever
+      // posted a single tip.
+      winRate: 0,
       totalTips: 0,
+      tipsWon: 0,
+      tipsLost: 0,
       subscribersCount: 0,
       verified: false,
     };
