@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import type { Prediction } from '../types/prediction';
 import { useAuth } from '../context/AuthContext';
 import { useTipsters } from '../context/TipstersContext';
-import { MessageSquare, Share2, ShieldCheck, Sparkles, BarChart3 } from 'lucide-react';
+import { MessageSquare, Share2, ShieldCheck, Sparkles, BarChart3, Crown } from 'lucide-react';
 import { MatchCommentsModal } from './MatchCommentsModal';
 import { ShareTipModal } from './ShareTipModal';
 import { MatchDetailModal } from './MatchDetailModal';
@@ -237,22 +237,46 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({ prediction, onUn
           )}
         </div>
 
-        {/* LOCKED OVERLAY */}
+        {/* LOCKED OVERLAY — two visually distinct reasons a tip can be hidden: site-wide VIP
+            (Crown, brand-blue) vs a specific tipster's paid tier (Sparkles + their avatar,
+            indigo accent). Before this they rendered near-identically, so a first-time
+            visitor couldn't tell "upgrade to VIP" from "subscribe to this one tipster" without
+            reading closely — a real conversion-clarity gap on the primary paywall surface. */}
         {isLocked && (
           <div
             className="absolute inset-0 top-10 flex flex-col items-center justify-center text-center p-8 space-y-4 backdrop-blur-sm"
             style={{ backgroundColor: 'var(--bg-surface)', opacity: 0.97 }}
           >
-            <div
-              className="w-10 h-10 rounded-xl border flex items-center justify-center text-sm font-bold font-mono"
-              style={{ borderColor: 'var(--brand)', color: 'var(--brand)' }}
-            >
-              VIP
-            </div>
+            {isPlatformTip ? (
+              <div
+                className="w-11 h-11 rounded-xl border flex items-center justify-center"
+                style={{ borderColor: 'var(--brand)', backgroundColor: 'rgba(56,189,248,0.1)' }}
+              >
+                <Crown className="w-5 h-5" style={{ color: 'var(--brand)' }} />
+              </div>
+            ) : prediction.tipsterAvatar ? (
+              <div className="relative w-11 h-11">
+                <img
+                  src={prediction.tipsterAvatar}
+                  alt=""
+                  className="w-11 h-11 rounded-full object-cover border-2 border-indigo-400"
+                />
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-indigo-500 border-2 flex items-center justify-center" style={{ borderColor: 'var(--bg-surface)' }}>
+                  <Sparkles className="w-2.5 h-2.5 text-white" />
+                </div>
+              </div>
+            ) : (
+              <div className="w-11 h-11 rounded-xl border border-indigo-400 flex items-center justify-center bg-indigo-500/10">
+                <Sparkles className="w-5 h-5 text-indigo-500" />
+              </div>
+            )}
 
             <div className="space-y-1">
               <p className="text-sm font-bold font-display" style={{ color: 'var(--text-primary)' }}>
                 {isPlatformTip ? 'VIP Selection' : `${prediction.tipsterName || 'Tipster'}'s Premium Pick`}
+              </p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: isPlatformTip ? 'var(--brand)' : '#6366f1' }}>
+                {isPlatformTip ? 'Requires site-wide VIP' : 'Requires this tipster\'s subscription'}
               </p>
               <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                 Estimated{' '}
@@ -274,8 +298,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({ prediction, onUn
             ) : (
               <Link
                 to={`/tipsters?subscribe=${prediction.tipsterId}`}
-                className="px-5 py-2.5 text-xs font-bold text-slate-950 rounded-lg transition-all hover:brightness-110"
-                style={{ backgroundColor: 'var(--brand)' }}
+                className="px-5 py-2.5 text-xs font-bold text-white rounded-lg transition-all hover:brightness-110 bg-indigo-500"
               >
                 Subscribe to Unlock
               </Link>

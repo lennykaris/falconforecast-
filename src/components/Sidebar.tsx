@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy, Star, ChevronRight } from 'lucide-react';
+import { Trophy, Star, ChevronRight, Mail } from 'lucide-react';
 
 interface SidebarProps {
   activeLeague?: string;
@@ -49,13 +49,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeLeague = 'Premier League
           </nav>
         </div>
 
+        {/* "All Leagues" already lives in the nav list above — this used to duplicate it with
+            a second button to the same destination. Repurposed as a "can't find your league"
+            escape hatch instead of a dead duplicate. */}
         <div className="pt-6 border-t border-slate-100 dark:border-slate-800 mt-auto">
-          <button
-            onClick={() => onSelectLeague && onSelectLeague('Favorites')}
-            className="w-full py-2 px-3 text-xs font-bold text-[#00a8ff] dark:text-sky-400 border border-[#00a8ff]/40 dark:border-sky-500/40 rounded-lg hover:bg-blue-50 dark:hover:bg-sky-950/40 transition-colors"
+          <a
+            href="mailto:info@FalconForecast.com?subject=League%20request"
+            className="w-full py-2 px-3 text-[11px] font-semibold text-slate-500 dark:text-slate-400 hover:text-[#00a8ff] dark:hover:text-sky-400 flex items-center justify-center gap-1.5 transition-colors"
           >
-            View All Leagues
-          </button>
+            <Mail className="w-3.5 h-3.5" />
+            Can't find your league?
+          </a>
         </div>
       </div>
     </aside>

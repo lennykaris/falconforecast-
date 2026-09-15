@@ -1,14 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { SlidersHorizontal, Shield, Trophy, Info } from 'lucide-react';
+import { SlidersHorizontal, Shield, Trophy, Info, Radio } from 'lucide-react';
 
 import { MySubscriptions } from '../components/MySubscriptions';
 import { TopTipsters } from '../components/TopTipsters';
 import { AdvertBanner } from '../components/AdvertBanner';
 import { Sidebar } from '../components/Sidebar';
 import { MatchDetailModal } from '../components/MatchDetailModal';
+import { LiveBadge } from '../components/LiveBadge';
+import { MatchesSkeleton, StandingsSkeleton } from '../components/Skeleton';
 import { fetchMatches, fetchStandings } from '../lib/matches';
 import type { Match, StandingRow } from '../types/prediction';
+
+/** Auto-refresh cadence for the fixtures list — frequent enough that a live-scores page feels
+ * live, not so frequent it hammers the API for what's mostly a 90-minute-slow-moving dataset. */
+const MATCHES_REFRESH_MS = 45_000;
+
+const timeAgoLabel = (date: Date | null) => {
+  if (!date) return '';
+  const secs = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  if (secs < 5) return 'just now';
+  if (secs < 60) return `${secs}s ago`;
+  const mins = Math.floor(secs / 60);
+  return `${mins}m ago`;
+};
 
 interface HomePageProps {
   onOpenCheckout?: (plan?: any) => void;
@@ -62,19 +77,13 @@ const LeagueCard: React.FC<{ group: LeagueGroupData; onSelectMatch: (id: string)
           <span className="w-2 h-2 rounded-full bg-[#00a8ff]" />
           <h2 className="font-bold text-sm text-slate-900 dark:text-white">{group.league}</h2>
         </div>
-        {group.hasLive && (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
-          </span>
-        )}
+        {group.hasLive && <LiveBadge />}
       </div>
     )}
     {!showHeader && (
       <div className="px-4 pt-3 pb-1 flex items-center justify-between">
         <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300">{group.league}</h3>
-        {group.hasLive && (
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" title="Live" />
-        )}
+        {group.hasLive && <LiveBadge size="xs" />}
       </div>
     )}
 
@@ -98,9 +107,19 @@ const LeagueCard: React.FC<{ group: LeagueGroupData; onSelectMatch: (id: string)
                 {statusLabel(match)}
               </td>
               <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
-                <div className="space-y-1">
-                  <div>{match.homeTeam}</div>
-                  <div>{match.awayTeam}</div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    {match.homeLogo && (
+                      <img src={match.homeLogo} alt="" loading="lazy" className="w-4 h-4 object-contain flex-shrink-0" onError={e => { e.currentTarget.style.display = 'none'; }} />
+                    )}
+                    <span>{match.homeTeam}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {match.awayLogo && (
+                      <img src={match.awayLogo} alt="" loading="lazy" className="w-4 h-4 object-contain flex-shrink-0" onError={e => { e.currentTarget.style.display = 'none'; }} />
+                    )}
+                    <span>{match.awayTeam}</span>
+                  </div>
                 </div>
               </td>
               <td className="py-3 px-4 font-extrabold text-slate-900 dark:text-white font-mono text-center">
@@ -135,6 +154,10 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
 
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [leagueSearch, setLeagueSearch] = useState('');
+  const [liveOnly, setLiveOnly] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [, setTick] = useState(0); // forces the "Updated Xs ago" label to re-render each tick
+  const initialLoadRef = useRef(true);
 
   // Sync selectedLeague with URL route if user came from Navbar
   useEffect(() => {
@@ -153,10 +176,39 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
   }, [location.pathname]);
 
   useEffect(() => {
-    fetchMatches()
-      .then(setMatches)
-      .catch(e => setMatchesError(e instanceof Error ? e.message : 'Failed to load matches'))
-      .finally(() => setMatchesLoading(false));
+    let cancelled = false;
+
+    const load = () => {
+      // Only the very first load shows the full skeleton — background refreshes swap the data
+      // in quietly so live scores update without the list flashing back to a loading state.
+      if (initialLoadRef.current) setMatchesLoading(true);
+      fetchMatches()
+        .then(data => {
+          if (cancelled) return;
+          setMatches(data);
+          setLastUpdated(new Date());
+          setMatchesError(null);
+        })
+        .catch(e => {
+          if (cancelled) return;
+          setMatchesError(e instanceof Error ? e.message : 'Failed to load matches');
+        })
+        .finally(() => {
+          if (cancelled) return;
+          setMatchesLoading(false);
+          initialLoadRef.current = false;
+        });
+    };
+
+    load();
+    const interval = setInterval(load, MATCHES_REFRESH_MS);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
+
+  // Ticks the "Updated Xs ago" label once a second without re-fetching anything.
+  useEffect(() => {
+    const t = setInterval(() => setTick(x => x + 1), 1000);
+    return () => clearInterval(t);
   }, []);
 
   useEffect(() => {
@@ -181,6 +233,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
     const byLeague = new Map<string, { label: string; country: string; flag?: string; matches: Match[] }>();
     const search = leagueSearch.trim().toLowerCase();
     for (const m of matches) {
+      if (liveOnly && !isLiveStatus(m)) continue;
       if (selectedLeague !== 'Favorites') {
         if (LEAGUE_CODE_MAP[selectedLeague] !== m.leagueCode) continue;
       } else if (search) {
@@ -256,31 +309,59 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
                 <Trophy className="w-6 h-6 text-[#00a8ff]" />
                 {selectedLeague === 'Favorites' ? 'All Leagues' : selectedLeague} Matches &amp; Teams
               </h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                 Real fixtures, results, and league standings.
+                {lastUpdated && (
+                  <span className="text-slate-400 dark:text-slate-500 flex items-center gap-1">
+                    · <Radio className="w-2.5 h-2.5" /> Updated {timeAgoLabel(lastUpdated)}
+                  </span>
+                )}
               </p>
             </div>
 
-            <button className="p-2 bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-lg text-slate-600 dark:text-slate-300 hover:border-[#00a8ff]">
+            <button
+              onClick={() => setLiveOnly(v => !v)}
+              title={liveOnly ? 'Showing live matches only — click to show all' : 'Show live matches only'}
+              className={`p-2 border rounded-lg transition-colors flex items-center gap-1.5 ${
+                liveOnly
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-white dark:bg-[#111c30] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-[#00a8ff]'
+              }`}
+            >
               <SlidersHorizontal className="w-4 h-4" />
+              {liveOnly && <span className="text-[10px] font-bold pr-0.5 hidden sm:inline">Live only</span>}
             </button>
           </div>
 
-          {/* Mobile League Tabs (only shown on mobile, sidebar handles it on desktop) */}
+          {/* Mobile League Tabs (only shown on mobile, sidebar handles it on desktop). Live
+              leagues float to the front of the strip and get a pulsing dot, so a mobile user
+              scanning quickly lands on what's actually happening right now instead of a fixed
+              alphabetical-ish order that may have nothing live in view. */}
           <div className="lg:hidden flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1">
-            {['Premier League', 'La Liga', 'Champions League', 'Serie A', 'Bundesliga', 'Favorites'].map(league => (
-              <button
-                key={league}
-                onClick={() => setSelectedLeague(league)}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap border ${
-                  selectedLeague === league
-                    ? 'bg-[#00a8ff] text-white border-[#00a8ff] shadow-sm'
-                    : 'bg-white dark:bg-[#111c30] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#00a8ff] hover:text-[#00a8ff]'
-                }`}
-              >
-                {league === 'Favorites' ? 'All Leagues' : league}
-              </button>
-            ))}
+            {(() => {
+              const fixedLeagues = ['Premier League', 'La Liga', 'Champions League', 'Serie A', 'Bundesliga'];
+              const liveCodes = new Set(matches.filter(isLiveStatus).map(m => m.leagueCode));
+              const ordered = [...fixedLeagues].sort((a, b) =>
+                Number(liveCodes.has(LEAGUE_CODE_MAP[b])) - Number(liveCodes.has(LEAGUE_CODE_MAP[a]))
+              );
+              return [...ordered, 'Favorites'];
+            })().map(league => {
+              const isLive = league !== 'Favorites' && matches.some(m => m.leagueCode === LEAGUE_CODE_MAP[league] && isLiveStatus(m));
+              return (
+                <button
+                  key={league}
+                  onClick={() => setSelectedLeague(league)}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap border flex items-center gap-1.5 ${
+                    selectedLeague === league
+                      ? 'bg-[#00a8ff] text-white border-[#00a8ff] shadow-sm'
+                      : 'bg-white dark:bg-[#111c30] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#00a8ff] hover:text-[#00a8ff]'
+                  }`}
+                >
+                  {isLive && <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${selectedLeague === league ? 'bg-white' : 'bg-emerald-500'}`} />}
+                  {league === 'Favorites' ? 'All Leagues' : league}
+                </button>
+              );
+            })}
           </div>
 
           {/* Mobile Advert Card (shown at top of matches on mobile screens) */}
@@ -319,12 +400,14 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
           {!selectedLeagueUnsupported && (
             <div className="space-y-6">
               {matchesLoading ? (
-                <div className="py-16 text-center text-xs text-slate-400">Loading matches...</div>
+                <MatchesSkeleton />
               ) : matchesError ? (
                 <div className="py-16 text-center text-xs text-rose-500">{matchesError}</div>
               ) : leagueGroups.length === 0 ? (
                 <div className="py-16 text-center text-xs text-slate-400">
-                  {selectedLeague === 'Favorites' && leagueSearch.trim()
+                  {liveOnly
+                    ? 'No matches are live right now — try again shortly.'
+                    : selectedLeague === 'Favorites' && leagueSearch.trim()
                     ? `No leagues or teams matching "${leagueSearch.trim()}" right now.`
                     : 'No matches found for this league right now.'}
                 </div>
@@ -337,14 +420,18 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
                     className="bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm"
                   >
                     <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2.5">
-                      {cg.flag && <img src={cg.flag} alt="" className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0" />}
+                      {cg.flag && (
+                        <img
+                          src={cg.flag}
+                          alt=""
+                          loading="lazy"
+                          className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0"
+                          onError={e => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      )}
                       <h2 className="font-black text-sm text-slate-900 dark:text-white flex-1">{cg.country}</h2>
                       <span className="text-[10px] font-bold text-slate-400">{cg.leagues.length} league{cg.leagues.length !== 1 ? 's' : ''}</span>
-                      {cg.hasLive && (
-                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
-                        </span>
-                      )}
+                      {cg.hasLive && <LiveBadge size="xs" />}
                     </div>
                     <div className="divide-y divide-slate-100 dark:divide-slate-800">
                       {cg.leagues.map(group => <LeagueCard key={group.league} group={group} onSelectMatch={setSelectedMatchId} />)}
@@ -375,7 +462,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
               </div>
 
               {standingsLoading ? (
-                <div className="py-8 text-center text-xs text-slate-400">Loading standings...</div>
+                <StandingsSkeleton />
               ) : standingsError ? (
                 <div className="py-8 text-center text-xs text-rose-500">{standingsError}</div>
               ) : standings.length === 0 ? (

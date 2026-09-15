@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   CheckCircle2,
   Smartphone,
+  Zap,
 } from 'lucide-react';
 import type { SubscriptionPlan } from '../types/prediction';
 import { useAuth } from '../context/AuthContext';
@@ -152,9 +153,22 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 </button>
               </div>
 
-              <div className="flex items-center justify-center space-x-2 text-[10px] text-slate-500 pt-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#0EA5E9]" />
-                <span>Paid securely via M-Pesa • Cancel Anytime</span>
+              {/* Trust signals — a payments modal is exactly where a first-time buyer's
+                  guard is up highest; make the "is this legit" answer visible right where
+                  they're about to hand over their PIN, not buried in a footer somewhere. */}
+              <div className="grid grid-cols-3 gap-2 pt-1">
+                <div className="flex flex-col items-center gap-1 text-center">
+                  <ShieldCheck className="w-4 h-4 text-[#0EA5E9]" />
+                  <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 leading-tight">Secure M-Pesa Checkout</span>
+                </div>
+                <div className="flex flex-col items-center gap-1 text-center">
+                  <Zap className="w-4 h-4 text-[#0EA5E9]" />
+                  <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 leading-tight">Instant Activation</span>
+                </div>
+                <div className="flex flex-col items-center gap-1 text-center">
+                  <Lock className="w-4 h-4 text-[#0EA5E9]" />
+                  <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 leading-tight">Cancel Anytime</span>
+                </div>
               </div>
 
             </form>

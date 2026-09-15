@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   Crown, CheckCircle2, Star, UserCheck, Lock,
-  Filter, Trophy, Zap, X, TrendingUp, ArrowRight, Smartphone
+  Filter, Trophy, Zap, X, TrendingUp, ArrowRight, Smartphone, ShieldCheck
 } from 'lucide-react';
 import { useTipsters } from '../context/TipstersContext';
 import { useAuth } from '../context/AuthContext';
@@ -460,6 +460,21 @@ export const TipstersPage: React.FC = () => {
                     >
                       Cancel
                     </button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="flex flex-col items-center gap-1 text-center">
+                      <ShieldCheck className="w-4 h-4 text-[#0EA5E9]" />
+                      <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 leading-tight">Secure M-Pesa Checkout</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 text-center">
+                      <Zap className="w-4 h-4 text-[#0EA5E9]" />
+                      <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 leading-tight">Instant Activation</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 text-center">
+                      <Lock className="w-4 h-4 text-[#0EA5E9]" />
+                      <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 leading-tight">Cancel Anytime</span>
+                    </div>
                   </div>
 
                   <TipsterReviewsSection

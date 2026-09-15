@@ -46,6 +46,16 @@ export const PaymentPendingView: React.FC<PaymentPendingViewProps> = ({ amountLa
       >
         <X className="w-3 h-3" /> Cancel and go back
       </button>
+
+      {/* Realtime + polling should always resolve this, but if M-Pesa itself is slow or a
+          network glitch stalls both, the user needs a way out that isn't just "keep staring
+          at this screen." */}
+      <p className="text-[10px] text-slate-400 dark:text-slate-500 pt-1">
+        Taking a while?{' '}
+        <a href="mailto:info@FalconForecast.com?subject=Payment%20stuck" className="font-semibold text-slate-500 dark:text-slate-400 hover:text-[#0EA5E9] underline">
+          Contact support
+        </a>
+      </p>
     </div>
   );
 };

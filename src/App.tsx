@@ -8,6 +8,7 @@ import { BetSlipProvider } from './context/BetSlipContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { CheckoutModal } from './components/CheckoutModal';
+import { VipUpsellBanner } from './components/VipUpsellBanner';
 
 import { LandingPage } from './pages/LandingPage';
 import { HomePage } from './pages/HomePage';
@@ -93,9 +94,12 @@ export const AppContent: React.FC = () => {
 
       <div>
         {!isLandingPage && (
-          <Navbar
-            onOpenCheckout={() => handleOpenCheckout(SUBSCRIPTION_PLANS[1])}
-          />
+          <>
+            <Navbar
+              onOpenCheckout={() => handleOpenCheckout(SUBSCRIPTION_PLANS[1])}
+            />
+            <VipUpsellBanner onOpenCheckout={() => handleOpenCheckout(SUBSCRIPTION_PLANS[1])} />
+          </>
         )}
 
         <main className={isLandingPage ? '' : 'pb-24 md:pb-0'}>
