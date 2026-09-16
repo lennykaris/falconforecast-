@@ -38,8 +38,12 @@ export interface User {
   avatarUrl?: string;
   weeklyPrice?: number;
   monthlyPrice?: number;
-  /** M-Pesa number tipsters register to receive their automatic payout share. */
+  /** M-Pesa number tipsters register to receive their payout when they withdraw. */
   mpesaPhone?: string;
+  /** A tipster's withdrawable earnings — credited automatically as subscribers pay, spent
+   * down (server-side, via the withdraw RPC) whenever they cash out. Never self-editable;
+   * see profiles.balance / "Users can update own basic profile" in supabase_schema.sql. */
+  balance?: number;
   winRate?: number;
   totalTips?: number;
   /** Real settled counts behind winRate — win_rate alone doesn't say how many tips that

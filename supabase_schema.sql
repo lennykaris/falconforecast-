@@ -89,7 +89,8 @@ CREATE POLICY "Users can update own basic profile"
     auth.uid() = id AND
     role = (public.get_profile()).role AND -- prevents role tampering
     plan = (public.get_profile()).plan AND -- prevents self-granting VIP
-    vip_expires_at IS NOT DISTINCT FROM (public.get_profile()).vip_expires_at
+    vip_expires_at IS NOT DISTINCT FROM (public.get_profile()).vip_expires_at AND
+    balance IS NOT DISTINCT FROM (public.get_profile()).balance -- only the withdraw/credit RPCs (service role) may move this
   );
 
 -- Admins have full update rights over any profile (approve tipsters, ban users, change roles)
@@ -437,6 +438,12 @@ CREATE POLICY "Tipsters and admins insert predictions"
 -- `supabase.from('profiles').update({ plan: 'annual_vip', vip_expires_at: '2099-01-01' })`
 -- call, no payment required. Real plan changes only ever happen via
 -- api/kentapay/_lib/resolvePayment.js using the service role key, which bypasses RLS.
+--
+-- 14b. Also pins `balance` — a tipster's withdrawable earnings (see section 14). Without
+-- this, a raw `supabase.from('profiles').update({ balance: 999999 })` call would let anyone
+-- grant themselves an arbitrary withdrawable balance. Only the credit_tipster_balance/
+-- claim_tipster_balance RPCs (called exclusively from server code using the service role
+-- key, which bypasses RLS) may ever move this column.
 DROP POLICY IF EXISTS "Users can update own basic profile" ON public.profiles;
 CREATE POLICY "Users can update own basic profile"
   ON public.profiles FOR UPDATE
@@ -447,6 +454,7 @@ CREATE POLICY "Users can update own basic profile"
     verified = (public.get_profile()).verified AND
     plan = (public.get_profile()).plan AND
     vip_expires_at IS NOT DISTINCT FROM (public.get_profile()).vip_expires_at AND
+    balance IS NOT DISTINCT FROM (public.get_profile()).balance AND
     (
       tipster_status = (public.get_profile()).tipster_status
       OR tipster_status = 'pending'
@@ -783,3 +791,55 @@ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
   END IF;
 END $$;
+
+-- =====================================================================================
+-- 14. TIPSTER WITHDRAWABLE BALANCE — subscription payments used to trigger an automatic
+-- M-Pesa B2C payout to the tipster the instant they were collected (see the removed block in
+-- resolvePayment.js's git history). That meant a tipster with no mpesa_phone on file simply
+-- lost that payout with no recovery path at all. Now every subscription payment credits this
+-- balance instead, and the tipster withdraws it on their own schedule via the Withdraw button
+-- on their dashboard (api/kentapay/withdraw.js) — see section 6f above for the RLS pin that
+-- keeps this column self-update-proof.
+-- =====================================================================================
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS balance NUMERIC(10,2) NOT NULL DEFAULT 0;
+
+-- Atomic credit (a single `balance = balance + amount` UPDATE) — called from resolvePayment.js
+-- on every completed subscription payment, and to refund a withdrawal that later fails.
+-- SECURITY DEFINER so it can run from the service-role admin client used server-side; never
+-- exposed to anon/authenticated directly (no GRANT EXECUTE below), so a browser can never
+-- call this itself even with a valid session — only server code with the service role key can.
+CREATE OR REPLACE FUNCTION public.credit_tipster_balance(p_tipster_id UUID, p_amount NUMERIC)
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  UPDATE public.profiles SET balance = balance + p_amount WHERE id = p_tipster_id;
+$$;
+
+-- Atomic claim (a single `balance = balance - amount WHERE balance >= amount` UPDATE) —
+-- called from api/kentapay/withdraw.js before submitting a B2C payout. Returns whether the
+-- claim actually succeeded (false means the balance was insufficient, or changed underneath
+-- a racing second withdrawal click) so the caller never submits a payout for more than the
+-- tipster actually has.
+CREATE OR REPLACE FUNCTION public.claim_tipster_balance(p_tipster_id UUID, p_amount NUMERIC)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  affected INT;
+BEGIN
+  UPDATE public.profiles
+  SET balance = balance - p_amount
+  WHERE id = p_tipster_id AND balance >= p_amount;
+  GET DIAGNOSTICS affected = ROW_COUNT;
+  RETURN affected > 0;
+END;
+$$;
+
+-- Dev/test seed — requested directly to test the withdrawal flow end-to-end against Kentapay
+-- sandbox before any real tipster has a real balance to withdraw. Safe to delete this line
+-- (or just leave it — re-running it only ever resets this one dev account back to 3000).
+UPDATE public.profiles SET balance = 3000 WHERE email = 'glnkariuki@gmail.com';

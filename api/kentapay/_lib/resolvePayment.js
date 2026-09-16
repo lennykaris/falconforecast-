@@ -1,11 +1,13 @@
-import { normalizePhone, generateTransactionId, kentapayB2C, extractCloudPacketId } from './kentapay.js';
+// No Kentapay B2C imports here anymore — subscription payouts now credit a withdrawable
+// balance instead of disbursing automatically; the actual B2C call happens in
+// api/kentapay/withdraw.js when the tipster chooses to withdraw.
 
 /** Atomically claims a PENDING payment row by writing to it only if it's still PENDING at
  * write time, returning whether this call actually won the claim. Guards against two
  * near-simultaneous resolutions of the same payment — e.g. a redelivered callback (Kentapay
  * doesn't guarantee exactly-once delivery) racing the reconciliation cron — both passing a
  * plain read-then-branch check before either has written anything. Without this, both callers
- * could proceed into subscription creation and fire two separate M-Pesa B2C payouts for one
+ * could proceed into subscription creation and credit a tipster's balance twice for one
  * collected payment. */
 async function claimPayment(supabase, paymentId, fields) {
   const { data, error } = await supabase
@@ -21,9 +23,10 @@ async function claimPayment(supabase, paymentId, fields) {
 
 /** Applies the final outcome of a PENDING payment: marks it COMPLETE/FAILED, and on a
  * successful collect, activates whatever was being paid for (tipster subscription or VIP
- * plan) and fires the automatic tipster payout. Shared between the callback handler (pushed
- * by Kentapay) and the query-status reconciliation job (pulled by us), so both routes credit
- * a transaction exactly the same way regardless of which one resolves it first.
+ * plan) — a subscription's payment also credits the tipster's withdrawable balance, see
+ * below. Shared between the callback handler (pushed by Kentapay) and the query-status
+ * reconciliation job (pulled by us), so both routes credit a transaction exactly the same
+ * way regardless of which one resolves it first.
  *
  * Caller must have already confirmed `payment.status === 'PENDING'` (a fast-path optimization
  * to skip obviously-already-resolved rows) and, for a pushed callback, verified the HASH —
@@ -32,11 +35,21 @@ async function claimPayment(supabase, paymentId, fields) {
  * runs. */
 export async function resolvePayment(supabase, payment, { success, receiptNumber, failureMessage }) {
   if (!success) {
-    await claimPayment(supabase, payment.id, {
+    const claimed = await claimPayment(supabase, payment.id, {
       status: 'FAILED',
       failure_message: failureMessage || 'Payment failed',
       updated_at: new Date().toISOString(),
     });
+    // A withdrawal that fails after the tipster's balance was already deducted (see
+    // api/kentapay/withdraw.js) must give that amount back, or it simply vanishes — neither
+    // paid out nor available to withdraw again.
+    if (claimed && payment.type === 'disburse' && payment.kind === 'tipster_payout' && payment.tipster_id) {
+      const { error: refundErr } = await supabase.rpc('credit_tipster_balance', {
+        p_tipster_id: payment.tipster_id,
+        p_amount: payment.amount,
+      });
+      if (refundErr) console.error(`Failed to refund balance for failed withdrawal ${payment.id}:`, refundErr);
+    }
     return;
   }
 
@@ -88,49 +101,23 @@ export async function resolvePayment(supabase, payment, { success, receiptNumber
       return;
     }
 
-    // Automatic payout: send the tipster their net share right away.
-    const { data: tipster } = await supabase
-      .from('profiles')
-      .select('mpesa_phone')
-      .eq('id', payment.tipster_id)
-      .maybeSingle();
-
-    const payoutPhone = tipster?.mpesa_phone ? normalizePhone(tipster.mpesa_phone) : null;
-
-    if (payoutPhone && Number(payment.tipster_net) > 0) {
-      const payoutTransactionId = generateTransactionId();
-
-      await supabase.from('payments').insert([{
-        reference: payoutTransactionId,
-        type: 'disburse',
-        kind: 'tipster_payout',
-        tipster_id: payment.tipster_id,
-        subscription_id: newSub.id,
-        related_payment_id: payment.id,
-        amount: payment.tipster_net,
-        phone: payoutPhone,
-        status: 'PENDING',
-      }]);
-
-      try {
-        const ack = await kentapayB2C({
-          amount: payment.tipster_net,
-          phone: payoutPhone,
-          transactionId: payoutTransactionId,
-        });
-        const cloudPacketId = extractCloudPacketId(ack);
-        if (cloudPacketId) {
-          await supabase.from('payments').update({ cloud_packet_id: cloudPacketId }).eq('reference', payoutTransactionId);
-        }
-      } catch (disburseErr) {
-        console.error('Automatic tipster payout failed to submit:', disburseErr);
-        await supabase.from('payments').update({
-          status: 'FAILED',
-          failure_message: disburseErr instanceof Error ? disburseErr.message : 'Disburse request failed',
-        }).eq('reference', payoutTransactionId);
-      }
-    } else {
-      console.warn(`Tipster ${payment.tipster_id} has no mpesa_phone on file — skipping automatic payout for subscription ${newSub.id}. Needs manual payout.`);
+    // Credit the tipster's withdrawable balance instead of disbursing immediately — this used
+    // to fire an automatic M-Pesa B2C payout the instant a subscription was paid for, which
+    // meant a tipster with no mpesa_phone on file simply lost that payout with no recovery
+    // path ("needs manual payout", per the removed comment here — there was no such manual
+    // path anywhere in the app). Now it accumulates in profiles.balance regardless, and the
+    // tipster withdraws on their own schedule via the Withdraw button on their dashboard
+    // (api/kentapay/withdraw.js) whenever they like, phone on file or not yet.
+    //
+    // Uses an RPC (a single atomic `balance = balance + amount` UPDATE) rather than a
+    // read-then-write from here — two subscriptions completing for the same tipster at
+    // nearly the same time would otherwise race and one credit could get lost.
+    const { error: creditErr } = await supabase.rpc('credit_tipster_balance', {
+      p_tipster_id: payment.tipster_id,
+      p_amount: payment.tipster_net,
+    });
+    if (creditErr) {
+      console.error(`Failed to credit balance for tipster ${payment.tipster_id} on payment ${payment.id}:`, creditErr);
     }
   } else if (payment.kind === 'vip_subscription') {
     // 'weekly_pass' used to fall through to 'monthly_vip' here, mislabeling a 7-day purchase

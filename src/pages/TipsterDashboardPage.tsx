@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Star, DollarSign, Users, TrendingUp, Settings,
   ArrowRight, CheckCircle, Clock, Lock, Edit3,
-  Check, X, ShieldCheck, BarChart3, Zap, Calendar, Smartphone, Search
+  Check, X, ShieldCheck, BarChart3, Zap, Calendar, Smartphone, Search, Wallet
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTipsters, isSubscriptionActive } from '../context/TipstersContext';
@@ -12,9 +12,10 @@ import { usePredictions } from '../context/PredictionsContext';
 import { fetchUpcomingMatches } from '../lib/matches';
 import type { Match } from '../types/prediction';
 import { PostOddsModal } from '../components/PostOddsModal';
+import { WithdrawModal } from '../components/WithdrawModal';
 
 export const TipsterDashboardPage: React.FC = () => {
-  const { user, isTipster, isAdmin } = useAuth();
+  const { user, isTipster, isAdmin, refetchUser } = useAuth();
   // Suspension only ever flips tipster_status (role stays 'tipster') — checking role alone
   // let a suspended tipster keep full dashboard access: posting new odds, editing prices,
   // and collecting subscriber revenue exactly as before being cut off.
@@ -36,6 +37,7 @@ export const TipsterDashboardPage: React.FC = () => {
   const [oddsMatch, setOddsMatch] = useState<Match | null>(null);
   const [settleError, setSettleError] = useState('');
   const [matchSearch, setMatchSearch] = useState('');
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
 
   // updatePrediction writes to Supabase before touching local state — this just surfaces a
   // rejected write (RLS mismatch, stale/foreign prediction id) instead of it silently
@@ -80,7 +82,7 @@ export const TipsterDashboardPage: React.FC = () => {
   };
 
   const handleStartEditPhone = () => {
-    setNewPhone(myProfile?.mpesaPhone || '');
+    setNewPhone(user?.mpesaPhone || '');
     setEditingPhone(true);
   };
 
@@ -150,6 +152,27 @@ export const TipsterDashboardPage: React.FC = () => {
             View public profile <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
+      </div>
+
+      {/* Withdrawable Balance — the real, spendable money, separate from the Revenue Cards
+          below which are a snapshot of currently-active subscriptions, not what's actually
+          available to cash out. Subscription payments credit this balance automatically
+          (see resolvePayment.js); withdrawing it is the only thing that spends it down. */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-md">
+        <div>
+          <span className="text-[10px] font-bold uppercase tracking-wider opacity-80 flex items-center gap-1.5">
+            <Wallet className="w-3.5 h-3.5" /> Withdrawable Balance
+          </span>
+          <span className="text-3xl font-black font-mono block mt-1">KSh {(user?.balance ?? 0).toLocaleString()}</span>
+          <p className="text-[10px] opacity-70 mt-0.5">Credited automatically as subscribers pay — cash out anytime</p>
+        </div>
+        <button
+          onClick={() => setWithdrawOpen(true)}
+          disabled={(user?.balance ?? 0) <= 0}
+          className="px-5 py-3 bg-white text-emerald-700 font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all hover:brightness-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 flex-shrink-0"
+        >
+          <Wallet className="w-4 h-4" /> Withdraw
+        </button>
       </div>
 
       {/* Revenue Cards */}
@@ -258,6 +281,14 @@ export const TipsterDashboardPage: React.FC = () => {
       </div>
 
       <PostOddsModal match={oddsMatch} onClose={() => setOddsMatch(null)} />
+
+      <WithdrawModal
+        isOpen={withdrawOpen}
+        onClose={() => setWithdrawOpen(false)}
+        balance={user?.balance ?? 0}
+        mpesaPhone={user?.mpesaPhone}
+        onSuccess={refetchUser}
+      />
 
       {/* Settle Your Tips — mark your own pending picks won/lost/void */}
       {myPendingTips.length > 0 && (
@@ -421,7 +452,7 @@ export const TipsterDashboardPage: React.FC = () => {
                 className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-sky-300 dark:hover:border-sky-600 transition-colors text-left"
               >
                 <span className="text-sm font-bold text-slate-900 dark:text-white font-mono">
-                  {myProfile?.mpesaPhone || 'Not set — add to receive automatic payouts'}
+                  {user?.mpesaPhone || 'Not set — add to receive automatic payouts'}
                 </span>
                 <Edit3 className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
               </button>

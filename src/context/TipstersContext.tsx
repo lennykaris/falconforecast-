@@ -106,7 +106,15 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             // read from (marketplace, admin revenue table, tipster dashboard).
             weeklyPrice: p.weekly_price != null ? Number(p.weekly_price) : 500,
             monthlyPrice: p.monthly_price != null ? Number(p.monthly_price) : 1500,
-            mpesaPhone: p.mpesa_phone || undefined,
+            // mpesa_phone and balance deliberately NOT mapped here — this query's RLS policy
+            // ("Public tipsters and own profile viewable") lets ANYONE fetch every row with
+            // role = 'tipster', not just the tipster's own. Mapping either field into this
+            // shared, publicly-fetched list would leak every tipster's payout phone number
+            // and withdrawable earnings balance to any visitor loading the marketplace, even
+            // though nothing in the UI happened to render them. TipsterDashboardPage reads its
+            // own mpesaPhone/balance from AuthContext's `user` instead, which is genuinely
+            // scoped server-side (RLS's `auth.uid() = id` self-select branch) to just its own
+            // row's full contents.
             // Every tipster starts at 0% / 0 tips and earns it — no more inherited 75.0
             // fallback for someone with zero real settled predictions.
             winRate: p.win_rate != null ? Number(p.win_rate) : 0,
