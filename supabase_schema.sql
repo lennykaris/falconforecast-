@@ -30,6 +30,15 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 -- Enable Row Level Security (RLS) on Profiles
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
+-- Added here, ahead of every policy below, rather than down in section 14 where the rest of
+-- the withdrawable-balance feature lives — the self-update policy just below already
+-- references this column in its WITH CHECK, and on an existing table (this ADD COLUMN is a
+-- no-op on the CREATE TABLE above) that policy would otherwise run and fail with
+-- "column balance does not exist" before section 14 ever gets a chance to add it. Section 4b
+-- exists for exactly this class of ordering bug; this one column is pulled even earlier since
+-- even section 4b's ALTERs run after this file's first policy that needs it.
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS balance NUMERIC(10,2) NOT NULL DEFAULT 0;
+
 -- =====================================================================================
 -- 2a. RLS HELPER FUNCTIONS — any policy on `profiles` that queries `profiles` from inside
 -- itself re-triggers that same policy under RLS, causing "infinite recursion detected in
@@ -799,9 +808,9 @@ END $$;
 -- lost that payout with no recovery path at all. Now every subscription payment credits this
 -- balance instead, and the tipster withdraws it on their own schedule via the Withdraw button
 -- on their dashboard (api/kentapay/withdraw.js) — see section 6f above for the RLS pin that
--- keeps this column self-update-proof.
+-- keeps this column self-update-proof. (The column itself is added right after
+-- ENABLE ROW LEVEL SECURITY near the top of this file, not here — see the comment there.)
 -- =====================================================================================
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS balance NUMERIC(10,2) NOT NULL DEFAULT 0;
 
 -- Atomic credit (a single `balance = balance + amount` UPDATE) — called from resolvePayment.js
 -- on every completed subscription payment, and to refund a withdrawal that later fails.
