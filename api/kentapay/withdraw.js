@@ -94,13 +94,19 @@ export default async function handler(req, res) {
     } catch (disburseErr) {
       // The claim already deducted the balance — give it back, since nothing was actually
       // paid out.
+      const reason = disburseErr instanceof Error ? disburseErr.message : 'Disburse request failed';
       console.error('Withdrawal B2C request failed to submit:', disburseErr);
       await supabase.from('payments').update({
         status: 'FAILED',
-        failure_message: disburseErr instanceof Error ? disburseErr.message : 'Disburse request failed',
+        failure_message: reason,
       }).eq('reference', transactionId);
       await supabase.rpc('credit_tipster_balance', { p_tipster_id: userId, p_amount: amount });
-      res.status(502).json({ error: 'Failed to submit withdrawal — your balance has been restored.' });
+      // Surfaces the real Kentapay error (e.g. a bad B2C service id, an auth failure, a
+      // sandbox-specific rejection) instead of a generic message — this endpoint isn't
+      // exposing anything a legitimate withdrawing tipster shouldn't already be able to see
+      // about their own attempted payout, and a vague message here was actively unhelpful
+      // for diagnosing why real withdrawals were failing.
+      res.status(502).json({ error: `Failed to submit withdrawal (${reason}) — your balance has been restored.` });
       return;
     }
 
