@@ -22,6 +22,7 @@ export const OddsComparisonPage: React.FC = () => {
   const [activeMatchId, setActiveMatchId] = useState<string | null>(null);
   const [activeMarket, setActiveMarket] = useState('Match Result');
   const [searchQuery, setSearchQuery] = useState('');
+  const [leagueSearch, setLeagueSearch] = useState('');
 
   useEffect(() => {
     fetchUpcomingMatches()
@@ -39,6 +40,11 @@ export const OddsComparisonPage: React.FC = () => {
     const set = new Set(matches.map(m => m.league));
     return ['All', ...Array.from(set).sort()];
   }, [matches]);
+
+  const leagueSearchLower = leagueSearch.trim().toLowerCase();
+  const visibleLeagues = leagueSearchLower
+    ? leagues.filter(lg => lg === 'All' || lg.toLowerCase().includes(leagueSearchLower))
+    : leagues;
 
   const search = searchQuery.trim().toLowerCase();
   const visibleMatches = matches.filter(m => {
@@ -67,8 +73,20 @@ export const OddsComparisonPage: React.FC = () => {
           <div className="bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Leagues</h3>
             <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-3">Every league with an upcoming fixture</p>
+            <div className="relative mb-2">
+              <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={leagueSearch}
+                onChange={e => setLeagueSearch(e.target.value)}
+                placeholder="Search leagues..."
+                className="w-full pl-7 pr-2.5 py-1.5 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-[#00a8ff]"
+              />
+            </div>
             <nav className="space-y-1 max-h-[70vh] overflow-y-auto">
-              {leagues.map(lg => (
+              {visibleLeagues.length === 0 ? (
+                <p className="text-[11px] text-slate-400 text-center py-3">No leagues matching "{leagueSearch.trim()}"</p>
+              ) : visibleLeagues.map(lg => (
                 <button
                   key={lg}
                   onClick={() => setActiveLeague(lg)}

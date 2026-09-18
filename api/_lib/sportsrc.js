@@ -270,8 +270,11 @@ export async function fetchMatchDetail(id) {
     awayLogo: info.teams?.away?.badge || undefined,
     homeScore: played ? info.score?.current?.home ?? null : null,
     awayScore: played ? info.score?.current?.away ?? null : null,
-    venue: detailRes?.data?.info?.venue || null,
-    referee: detailRes?.data?.info?.referee || null,
+    // venue/referee are objects ({stadium, city, ...} / {name, country, ...}), not plain
+    // strings — passing them straight through rendered as the literal text "[object Object]"
+    // wherever the frontend joined them into one line.
+    venue: detailRes?.data?.info?.venue?.stadium || null,
+    referee: detailRes?.data?.info?.referee?.name || null,
     homeManager: detailRes?.data?.info?.managers?.home?.name || undefined,
     awayManager: detailRes?.data?.info?.managers?.away?.name || undefined,
     stats: statsRes ? flattenStats(statsRes.data) : [],
