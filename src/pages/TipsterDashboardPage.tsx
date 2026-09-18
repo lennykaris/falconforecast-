@@ -3,16 +3,28 @@ import { Link } from 'react-router-dom';
 import {
   Star, DollarSign, Users, TrendingUp, Settings,
   ArrowRight, CheckCircle, Clock, Lock, Edit3,
-  Check, X, ShieldCheck, BarChart3, Zap, Calendar, Smartphone, Search, Wallet
+  Check, X, ShieldCheck, BarChart3, Zap, Calendar, Smartphone, Search, Wallet,
+  ArrowDownLeft, ArrowUpRight, Receipt,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTipsters, isSubscriptionActive } from '../context/TipstersContext';
 import { PLATFORM_CUT_PCT } from '../context/TipstersContext';
 import { usePredictions } from '../context/PredictionsContext';
 import { fetchUpcomingMatches } from '../lib/matches';
+import { supabase } from '../lib/supabase';
 import type { Match } from '../types/prediction';
 import { PostOddsModal } from '../components/PostOddsModal';
 import { WithdrawModal } from '../components/WithdrawModal';
+
+interface TransactionRow {
+  id: string;
+  createdAt: string;
+  direction: 'in' | 'out';
+  kind: string;
+  amount: number;
+  status: 'PENDING' | 'COMPLETE' | 'FAILED';
+  failureMessage: string | null;
+}
 
 export const TipsterDashboardPage: React.FC = () => {
   const { user, isTipster, isAdmin, refetchUser } = useAuth();
@@ -39,6 +51,16 @@ export const TipsterDashboardPage: React.FC = () => {
   const [matchSearch, setMatchSearch] = useState('');
   const [withdrawOpen, setWithdrawOpen] = useState(false);
 
+  // Every payment row where this tipster is the party of record — incoming subscription
+  // payments (collect, kind: tipster_subscription) AND their own withdrawals (disburse, kind:
+  // tipster_payout) — RLS's existing "Tipsters view own payouts" policy (tipster_id =
+  // auth.uid()) already covers both without any new policy. This is the only place a tipster
+  // can see whether a withdrawal actually completed, is still pending on Kentapay's side, or
+  // failed — before this there was no UI for it at all, only the admin-only Payments tab.
+  const [transactions, setTransactions] = useState<TransactionRow[]>([]);
+  const [transactionsLoading, setTransactionsLoading] = useState(true);
+  const [transactionsError, setTransactionsError] = useState<string | null>(null);
+
   // updatePrediction writes to Supabase before touching local state — this just surfaces a
   // rejected write (RLS mismatch, stale/foreign prediction id) instead of it silently
   // reverting once the predictions cache TTL expires.
@@ -55,6 +77,35 @@ export const TipsterDashboardPage: React.FC = () => {
       .catch(e => setMatchesError(e instanceof Error ? e.message : 'Failed to load matches'))
       .finally(() => setMatchesLoading(false));
   }, [user]);
+
+  useEffect(() => {
+    if (!user || !hasAccess) return;
+    supabase
+      .from('payments')
+      .select('*')
+      .eq('tipster_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(100)
+      .then(({ data, error }) => {
+        // Supabase's query builder is a thenable, not a real Promise (.finally isn't
+        // available on it), so both branches set loading false themselves instead.
+        if (error) {
+          setTransactionsError(error.message);
+          setTransactionsLoading(false);
+          return;
+        }
+        setTransactions((data || []).map((p: any) => ({
+          id: p.id,
+          createdAt: p.created_at,
+          direction: p.type === 'disburse' ? 'out' : 'in',
+          kind: p.kind,
+          amount: Number(p.type === 'disburse' ? p.amount : (p.tipster_net ?? p.amount)),
+          status: p.status,
+          failureMessage: p.failure_message,
+        })));
+        setTransactionsLoading(false);
+      });
+  }, [user, hasAccess]);
 
   // Find the logged-in tipster's profile in context
   const myProfile = tipsters.find(t => t.id === user?.id) ?? user;
@@ -567,6 +618,74 @@ export const TipsterDashboardPage: React.FC = () => {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Transaction History — the only place a tipster can see whether a withdrawal actually
+          completed, is still pending on Kentapay's side, or failed. Covers both directions:
+          incoming subscription payments (money in) and their own withdrawals (money out). */}
+      <div className="bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800/60">
+          <h2 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+            <Receipt className="w-4 h-4 text-[#0EA5E9]" /> Transaction History
+          </h2>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500">Subscription payments received and your own withdrawals</p>
+        </div>
+
+        {transactionsLoading ? (
+          <div className="py-12 text-center text-xs text-slate-400 dark:text-slate-500">Loading transactions...</div>
+        ) : transactionsError ? (
+          <div className="py-12 text-center text-xs text-rose-500 dark:text-rose-400">{transactionsError}</div>
+        ) : transactions.length === 0 ? (
+          <div className="py-12 text-center text-xs text-slate-400 dark:text-slate-500">No transactions yet.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-slate-700 dark:text-slate-300">
+              <thead className="bg-slate-50 dark:bg-slate-900/40 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px] border-b border-slate-100 dark:border-slate-800/60">
+                <tr>
+                  <th className="py-3 px-4 text-left">Type</th>
+                  <th className="py-3 px-4 text-center">Amount</th>
+                  <th className="py-3 px-4 text-center">Status</th>
+                  <th className="py-3 px-4">Note</th>
+                  <th className="py-3 px-4 text-right">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-800/40">
+                {transactions.map(t => (
+                  <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                    <td className="py-3 px-4">
+                      <span className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200">
+                        {t.direction === 'in' ? (
+                          <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                        ) : (
+                          <ArrowUpRight className="w-3.5 h-3.5 text-[#0EA5E9] flex-shrink-0" />
+                        )}
+                        {t.kind === 'tipster_subscription' ? 'Subscription payment' : t.kind === 'tipster_payout' ? 'Withdrawal' : t.kind.replace(/_/g, ' ')}
+                      </span>
+                    </td>
+                    <td className={`py-3 px-4 text-center font-mono font-bold ${t.direction === 'in' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-200'}`}>
+                      {t.direction === 'in' ? '+' : '-'}KSh {t.amount.toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${
+                        t.status === 'COMPLETE' ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800'
+                          : t.status === 'FAILED' ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border-rose-300 dark:border-rose-800'
+                          : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800'
+                      }`}>
+                        {t.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-slate-500 dark:text-slate-400 max-w-[200px] truncate" title={t.failureMessage || undefined}>
+                      {t.failureMessage || '—'}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono text-slate-500 dark:text-slate-400 text-[10px]">
+                      {new Date(t.createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Revenue Split Info Banner */}

@@ -295,9 +295,14 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
   };
 
-  /** All subscriptions for a specific tipster — used in tipster dashboard */
+  /** All subscriptions for a specific tipster, most recent first — this is also each
+   * subscriber's full history, not just their current one: every renewal/resubscription
+   * inserts a new row (resolvePayment.js) rather than overwriting the last, so a repeat
+   * subscriber naturally shows up here multiple times. Used in the tipster dashboard. */
   const getMySubscriptions = (tipsterId: string) =>
-    subscriptions.filter(s => s.tipsterId === tipsterId);
+    subscriptions
+      .filter(s => s.tipsterId === tipsterId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   /** Revenue breakdown with 20% platform cut for a tipster */
   const getTipsterRevenue = (tipsterId: string) => {
