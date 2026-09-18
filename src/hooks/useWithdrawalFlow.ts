@@ -21,13 +21,13 @@ export function useWithdrawalFlow() {
     setAmount(null);
   };
 
-  const submit = async (): Promise<boolean> => {
+  const submit = async (requestedAmount: number): Promise<boolean> => {
     const mySession = ++sessionRef.current;
     setState('pending');
     setError('');
 
     try {
-      const { reference, amount: withdrawnAmount } = await startWithdrawal();
+      const { reference, amount: withdrawnAmount } = await startWithdrawal(requestedAmount);
       setAmount(withdrawnAmount);
       const result = await awaitPaymentResolution(reference);
       if (sessionRef.current !== mySession) return false;

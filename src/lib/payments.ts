@@ -26,11 +26,12 @@ export async function startKentapayCollect(params: CollectParams): Promise<{ ref
   return data;
 }
 
-/** Kicks off a real M-Pesa B2C payout of a tipster's full withdrawable balance (see
- * api/kentapay/withdraw.js — always the whole balance, no amount to pass). Same "accepted,
- * not yet confirmed" caveat as startKentapayCollect — the actual outcome still comes from
- * the same `payments` row via awaitPaymentResolution below. */
-export async function startWithdrawal(): Promise<{ reference: string; amount: number }> {
+/** Kicks off a real M-Pesa B2C payout of a chosen amount from a tipster's withdrawable
+ * balance (see api/kentapay/withdraw.js). The server re-validates against the real balance
+ * regardless of what's passed here. Same "accepted, not yet confirmed" caveat as
+ * startKentapayCollect — the actual outcome still comes from the same `payments` row via
+ * awaitPaymentResolution below. */
+export async function startWithdrawal(amount: number): Promise<{ reference: string; amount: number }> {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
   if (!token) throw new Error('You must be logged in to withdraw.');
@@ -38,6 +39,7 @@ export async function startWithdrawal(): Promise<{ reference: string; amount: nu
   const res = await fetch('/api/kentapay/withdraw', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ amount }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error || 'Failed to start withdrawal');

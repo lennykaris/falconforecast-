@@ -7,10 +7,16 @@ import {
   getAuthenticatedUserId,
 } from './_lib/kentapay.js';
 
-/** Lets a tipster cash out their accumulated balance (see resolvePayment.js — subscription
- * payments credit `profiles.balance` instead of disbursing instantly) via a real M-Pesa B2C
- * payout, on their own schedule. Always withdraws the full available balance — a single-click
- * action, no amount field, no partial-withdrawal bookkeeping to get wrong. */
+// Safaricom's B2C payout has a documented KES 10 minimum — anything below that is rejected
+// on their end regardless of what Kentapay does with it, so it's rejected here first with a
+// real explanation instead of a confusing Kentapay-side failure later.
+const MIN_WITHDRAWAL = 10;
+
+/** Lets a tipster cash out some or all of their accumulated balance (see resolvePayment.js —
+ * subscription payments credit `profiles.balance` instead of disbursing instantly) via a real
+ * M-Pesa B2C payout, on their own schedule. The client-supplied amount is never trusted
+ * outright — claim_tipster_balance's atomic `balance >= p_amount` check below is what
+ * actually enforces it can't exceed the real balance, not this validation. */
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
@@ -55,7 +61,25 @@ export default async function handler(req, res) {
       return;
     }
 
-    const amount = balance;
+    // Requested amount defaults to the full balance (the old always-withdraw-everything
+    // behavior) when the client omits it, so nothing else calling this endpoint breaks.
+    const requestedAmount = req.body?.amount != null ? Number(req.body.amount) : balance;
+    if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) {
+      res.status(400).json({ error: 'Enter a valid amount to withdraw' });
+      return;
+    }
+    if (requestedAmount < MIN_WITHDRAWAL) {
+      res.status(400).json({ error: `Minimum withdrawal is KSh ${MIN_WITHDRAWAL}` });
+      return;
+    }
+    if (requestedAmount > balance) {
+      res.status(400).json({ error: `You only have KSh ${balance.toLocaleString()} available` });
+      return;
+    }
+    // Round to the nearest shilling — Kentapay's B2C body sends amount as a whole-number
+    // string (see kentapayB2C), so a fractional request would be silently truncated there
+    // anyway; doing it here keeps the claimed/inserted/sent amount all consistent.
+    const amount = Math.round(requestedAmount);
 
     // Atomic `balance = balance - amount WHERE balance >= amount` — a single UPDATE statement,
     // not a read-then-write from here, so two withdrawal clicks in quick succession (a
