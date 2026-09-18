@@ -164,6 +164,26 @@ export interface MatchDetail {
    * from that team's own perspective regardless of which side they were on in each game. */
   homeForm: string[];
   awayForm: string[];
+  /** The full match behind each homeForm/awayForm entry — same order, same length — so the
+   * form badges can expand into an actual "previous matches and the scores they got" list
+   * instead of just a bare W/D/L pill with no way to see what actually happened. */
+  homeRecentMatches: RecentMatchResult[];
+  awayRecentMatches: RecentMatchResult[];
+}
+
+export interface RecentMatchResult {
+  id: string;
+  opponent: string;
+  opponentLogo?: string;
+  /** Always this team's own score first, opponent's second — regardless of which side (home
+   * or away) this team was actually on in that past match. */
+  teamScore: number;
+  opponentScore: number;
+  result: 'W' | 'D' | 'L';
+  competition: string;
+  kickoff: string;
+  /** Whether this team was playing at home in that past match (not the current match). */
+  wasHome: boolean;
 }
 
 export interface SubscriptionPlan {

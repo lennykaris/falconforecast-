@@ -194,22 +194,37 @@ function mapIncidents(incidents) {
   });
 }
 
-// Last N *finished* results for one team, most recent first, as 'W'/'D'/'L' from that team's
-// own perspective — `matches` is one side (home or away) of a `last_matches` response, which
-// lists that team's own history regardless of which side of each of THOSE games they were on,
-// so each entry's winner_code (1=that game's home team, 2=away, 3=draw) has to be reinterpreted
-// against whether `teamName` was the home or away side in that particular past game.
-function computeForm(matches, teamName, limit = 5) {
+// Last N *finished* results for one team, most recent first, as full match objects (opponent,
+// score, competition, date) from that team's own perspective — `matches` is one side (home or
+// away) of a `last_matches` response, which lists that team's own history regardless of which
+// side of each of THOSE games they were on, so each entry's winner_code (1=that game's home
+// team, 2=away, 3=draw) and scores have to be reinterpreted against whether `teamName` was the
+// home or away side in that particular past game. Was collapsed straight down to a bare
+// 'W'/'D'/'L' string with nothing else kept — enough for a form-guide pill, not enough to
+// actually show "previous matches and the scores they got".
+function computeRecentMatches(matches, teamName, limit = 5) {
   if (!matches) return [];
   return matches
     .filter((m) => m.status === 'finished')
     .slice(-limit)
     .reverse()
     .map((m) => {
-      if (m.winner_code === 3) return 'D';
       const wasHome = m.home_team?.name === teamName;
-      const teamWon = wasHome ? m.winner_code === 1 : m.winner_code === 2;
-      return teamWon ? 'W' : 'L';
+      const teamScore = wasHome ? m.home_score : m.away_score;
+      const opponentScore = wasHome ? m.away_score : m.home_score;
+      const opponent = wasHome ? m.away_team : m.home_team;
+      const result = m.winner_code === 3 ? 'D' : (wasHome ? m.winner_code === 1 : m.winner_code === 2) ? 'W' : 'L';
+      return {
+        id: m.id,
+        opponent: opponent?.name || 'Unknown',
+        opponentLogo: opponent?.badge || undefined,
+        teamScore: teamScore ?? 0,
+        opponentScore: opponentScore ?? 0,
+        result,
+        competition: m.tournament || '',
+        kickoff: m.timestamp ? new Date(m.timestamp * 1000).toISOString() : '',
+        wasHome,
+      };
     });
 }
 
@@ -235,6 +250,9 @@ export async function fetchMatchDetail(id) {
 
   const status = mapStatus(info.status, info.status_detail);
   const played = status === 'FINISHED' || status === 'IN_PLAY' || status === 'PAUSED';
+
+  const homeRecentMatches = computeRecentMatches(lastMatchesRes?.data?.home, info.teams?.home?.name);
+  const awayRecentMatches = computeRecentMatches(lastMatchesRes?.data?.away, info.teams?.away?.name);
 
   return {
     id: info.id,
@@ -264,8 +282,10 @@ export async function fetchMatchDetail(id) {
       draws: h2hRes.data.team_duel.draws,
       totalMeetings: h2hRes.data.team_duel.total,
     } : null,
-    homeForm: computeForm(lastMatchesRes?.data?.home, info.teams?.home?.name),
-    awayForm: computeForm(lastMatchesRes?.data?.away, info.teams?.away?.name),
+    homeForm: homeRecentMatches.map((m) => m.result),
+    awayForm: awayRecentMatches.map((m) => m.result),
+    homeRecentMatches,
+    awayRecentMatches,
   };
 }
 

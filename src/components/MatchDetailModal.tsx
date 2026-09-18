@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { X, Loader2, ArrowRightLeft, MapPin } from 'lucide-react';
-import type { MatchDetail, MatchIncident } from '../types/prediction';
+import { X, Loader2, ArrowRightLeft, MapPin, ChevronDown } from 'lucide-react';
+import type { MatchDetail, MatchIncident, RecentMatchResult } from '../types/prediction';
 import { fetchMatchDetail } from '../lib/matches';
 
 interface MatchDetailModalProps {
@@ -45,6 +45,38 @@ function FormBadges({ form }: { form: string[] }) {
   );
 }
 
+/** The actual previous matches behind a team's W/D/L form pills — opponent, score, competition,
+ * date — so "recent form" is more than a bare letter with no way to see what really happened.
+ * Collapsed by default (this modal is already fairly dense); toggled per side. */
+function RecentMatchesList({ matches }: { matches: RecentMatchResult[] }) {
+  if (matches.length === 0) return <p className="text-[10px] text-slate-400 py-2">No recent matches found.</p>;
+  return (
+    <div className="space-y-1.5 pt-1">
+      {matches.map((m) => (
+        <div key={m.id} className="flex items-center gap-2 text-[11px] py-1">
+          <span
+            className={`w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center text-[8px] font-black text-white ${
+              m.result === 'W' ? 'bg-emerald-500' : m.result === 'L' ? 'bg-red-500' : 'bg-amber-500'
+            }`}
+          >
+            {m.result}
+          </span>
+          {m.opponentLogo && <img src={m.opponentLogo} alt="" className="w-4 h-4 object-contain flex-shrink-0" />}
+          <span className="flex-1 min-w-0 truncate text-slate-700 dark:text-slate-200">
+            {m.wasHome ? 'vs' : '@'} {m.opponent}
+          </span>
+          <span className="font-mono font-bold text-slate-900 dark:text-white flex-shrink-0">
+            {m.teamScore}-{m.opponentScore}
+          </span>
+          <span className="text-slate-400 dark:text-slate-500 flex-shrink-0 w-14 text-right truncate" title={m.competition}>
+            {m.kickoff ? new Date(m.kickoff).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : ''}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function IncidentIcon({ incident }: { incident: MatchIncident }) {
   if (incident.type === 'goal') return <span className="w-4 text-center flex-shrink-0">⚽</span>;
   if (incident.type === 'card') {
@@ -62,6 +94,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ matchId, onC
   const [match, setMatch] = useState<MatchDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [expandedSide, setExpandedSide] = useState<'home' | 'away' | null>(null);
 
   useEffect(() => {
     if (!matchId) return;
@@ -85,6 +118,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ matchId, onC
     setLoading(true);
     setMatch(null);
     setError('');
+    setExpandedSide(null);
     load();
 
     const timer = setInterval(() => {
@@ -190,14 +224,38 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ matchId, onC
                   </div>
                 )}
 
-                <div className="flex items-center justify-between gap-4 pt-1">
-                  <div className="flex-1 flex flex-col items-start gap-1">
-                    <span className="text-[10px] font-semibold text-slate-400 uppercase">{match.homeTeam} — last 5</span>
-                    <FormBadges form={match.homeForm} />
+                <div className="flex items-start justify-between gap-4 pt-1">
+                  <div className="flex-1 min-w-0">
+                    <button
+                      onClick={() => setExpandedSide(expandedSide === 'home' ? null : 'home')}
+                      disabled={match.homeForm.length === 0}
+                      className="flex flex-col items-start gap-1 w-full disabled:cursor-default group"
+                    >
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase flex items-center gap-1">
+                        {match.homeTeam} — last 5
+                        {match.homeForm.length > 0 && (
+                          <ChevronDown className={`w-3 h-3 transition-transform ${expandedSide === 'home' ? 'rotate-180' : ''} group-hover:text-[#00a8ff]`} />
+                        )}
+                      </span>
+                      <FormBadges form={match.homeForm} />
+                    </button>
+                    {expandedSide === 'home' && <RecentMatchesList matches={match.homeRecentMatches} />}
                   </div>
-                  <div className="flex-1 flex flex-col items-end gap-1">
-                    <span className="text-[10px] font-semibold text-slate-400 uppercase">{match.awayTeam} — last 5</span>
-                    <FormBadges form={match.awayForm} />
+                  <div className="flex-1 min-w-0">
+                    <button
+                      onClick={() => setExpandedSide(expandedSide === 'away' ? null : 'away')}
+                      disabled={match.awayForm.length === 0}
+                      className="flex flex-col items-end gap-1 w-full disabled:cursor-default group"
+                    >
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase flex items-center gap-1">
+                        {match.awayForm.length > 0 && (
+                          <ChevronDown className={`w-3 h-3 transition-transform ${expandedSide === 'away' ? 'rotate-180' : ''} group-hover:text-[#00a8ff]`} />
+                        )}
+                        {match.awayTeam} — last 5
+                      </span>
+                      <FormBadges form={match.awayForm} />
+                    </button>
+                    {expandedSide === 'away' && <RecentMatchesList matches={match.awayRecentMatches} />}
                   </div>
                 </div>
               </div>
