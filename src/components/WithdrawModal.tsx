@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { X, Wallet, Smartphone, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useWithdrawalFlow } from '../hooks/useWithdrawalFlow';
 import { PaymentPendingView } from './PaymentPendingView';
@@ -20,18 +20,29 @@ interface WithdrawModalProps {
  * full available balance to whatever mpesa_phone the tipster already has on file. */
 export const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, balance, mpesaPhone, onSuccess }) => {
   const { state, error, amount, submit, reset } = useWithdrawalFlow();
+  // Snapshotted the instant Withdraw is clicked — `balance` itself is a live value from
+  // AuthContext that drops to 0 within moments (the claim RPC deducts it server-side, then
+  // the profiles Realtime subscription pushes that 0 straight into this still-open modal),
+  // which is exactly why the pending screen used to show "KSh 0" instead of the real amount.
+  const [pendingAmount, setPendingAmount] = useState<number | null>(null);
 
   if (!isOpen) return null;
 
   const handleClose = () => {
     reset();
+    setPendingAmount(null);
     onClose();
   };
 
   const handleWithdraw = async () => {
+    setPendingAmount(balance);
     const success = await submit();
     if (success) onSuccess();
   };
+
+  // The hook's own `amount` (echoed back from the server once startWithdrawal resolves) is
+  // authoritative once available; the snapshot only covers the brief gap before that.
+  const displayAmount = amount ?? pendingAmount ?? balance;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
@@ -69,7 +80,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, b
             </button>
           </div>
         ) : state === 'pending' ? (
-          <PaymentPendingView amountLabel={`KSh ${balance.toLocaleString()}`} onCancel={handleClose} />
+          <PaymentPendingView amountLabel={`KSh ${displayAmount.toLocaleString()}`} onCancel={handleClose} mode="payout" />
         ) : (
           <div className="p-6 space-y-5">
             <div className="p-4 bg-sky-50/70 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900 rounded-2xl text-center">

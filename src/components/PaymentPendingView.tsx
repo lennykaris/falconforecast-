@@ -4,13 +4,18 @@ import { Smartphone, X } from 'lucide-react';
 interface PaymentPendingViewProps {
   amountLabel: string;
   onCancel: () => void;
+  /** Collect (STK push, the default) asks the payer to approve a prompt with their PIN.
+   * Payout (B2C — withdrawals) is the opposite direction: money is already on its way out,
+   * nothing to approve, just an M-Pesa deposit SMS to wait for. Reusing the collect copy for
+   * a payout told a withdrawing tipster to expect a PIN prompt that was never coming. */
+  mode?: 'collect' | 'payout';
 }
 
 /** The full "waiting for M-Pesa" screen — replaces the whole checkout form while a payment is
  * pending, instead of only the submit button showing a spinner while the form (phone input,
  * pay button) sits there looking interactive. Nothing to fill in anymore at this point; the
  * only real action left is waiting for the phone, or bailing out. */
-export const PaymentPendingView: React.FC<PaymentPendingViewProps> = ({ amountLabel, onCancel }) => {
+export const PaymentPendingView: React.FC<PaymentPendingViewProps> = ({ amountLabel, onCancel, mode = 'collect' }) => {
   return (
     <div className="p-8 text-center space-y-5">
       <div className="relative w-20 h-20 mx-auto">
@@ -22,11 +27,20 @@ export const PaymentPendingView: React.FC<PaymentPendingViewProps> = ({ amountLa
 
       <div className="space-y-1.5">
         <h4 className="text-lg font-extrabold text-slate-900 dark:text-white">
-          Check your phone
+          {mode === 'payout' ? 'Sending your payout' : 'Check your phone'}
         </h4>
         <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
-          An M-Pesa prompt for <strong className="font-bold text-slate-700 dark:text-slate-200">{amountLabel}</strong> was sent to your phone.
-          Enter your PIN to complete it.
+          {mode === 'payout' ? (
+            <>
+              <strong className="font-bold text-slate-700 dark:text-slate-200">{amountLabel}</strong> is on its way
+              to your M-Pesa number. You'll get a deposit SMS shortly — no PIN or prompt needed on your end.
+            </>
+          ) : (
+            <>
+              An M-Pesa prompt for <strong className="font-bold text-slate-700 dark:text-slate-200">{amountLabel}</strong> was sent to your phone.
+              Enter your PIN to complete it.
+            </>
+          )}
         </p>
       </div>
 
