@@ -403,24 +403,15 @@ export const TipstersPage: React.FC = () => {
                     </button>
                   </div>
 
-                  {/* Summary */}
-                  <div className="bg-slate-50 dark:bg-slate-700/40 rounded-xl p-3 text-xs space-y-1 border border-slate-200 dark:border-slate-600">
-                    <div className="flex justify-between text-slate-600 dark:text-slate-300">
-                      <span>Subtotal</span>
-                      <span className="font-mono font-bold">
+                  {/* Summary — was breaking out "Tipster earns 80% / Platform fee 20%",
+                      internal revenue-split accounting that's meaningless (and a little odd)
+                      to show a subscriber mid-checkout. Just the total they're actually
+                      paying. */}
+                  <div className="bg-slate-50 dark:bg-slate-700/40 rounded-xl p-3 text-xs border border-slate-200 dark:border-slate-600">
+                    <div className="flex justify-between items-center text-slate-700 dark:text-slate-200">
+                      <span className="font-semibold">Total</span>
+                      <span className="font-mono font-bold text-sm">
                         KSh {subscriptionCycle === 'weekly' ? selectedTipster.weeklyPrice : selectedTipster.monthlyPrice}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-slate-400">
-                      <span>Tipster earns</span>
-                      <span className="font-mono text-emerald-600 font-bold">
-                        KSh {((subscriptionCycle === 'weekly' ? selectedTipster.weeklyPrice! : selectedTipster.monthlyPrice!) * 0.8).toFixed(0)} (80%)
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-slate-400">
-                      <span>Platform fee</span>
-                      <span className="font-mono">
-                        KSh {((subscriptionCycle === 'weekly' ? selectedTipster.weeklyPrice! : selectedTipster.monthlyPrice!) * 0.2).toFixed(0)} (20%)
                       </span>
                     </div>
                   </div>
