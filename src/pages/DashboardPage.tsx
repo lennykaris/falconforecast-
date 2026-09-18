@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Star } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePredictions } from '../context/PredictionsContext';
+import { useTipsters, isSubscriptionActive } from '../context/TipstersContext';
 import { PredictionCard } from '../components/PredictionCard';
 import { MyTipsterSubscriptions } from '../components/MyTipsterSubscriptions';
 import type { SubscriptionPlan } from '../types/prediction';
@@ -14,10 +16,24 @@ interface DashboardPageProps {
 export const DashboardPage: React.FC<DashboardPageProps> = ({ onOpenCheckout }) => {
   const { user, isLoggedIn, isVip } = useAuth();
   const { predictions } = usePredictions();
+  const { subscriptions } = useTipsters();
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
   const vipPredictions = predictions.filter(p => p.tier === 'vip');
   const popularPlan = SUBSCRIPTION_PLANS.find(p => p.popular) || SUBSCRIPTION_PLANS[1];
+
+  // "VIP Picks" below is every VIP prediction site-wide — platform picks AND every tipster's
+  // premium ones mixed together — so a subscriber had no way to see just the tips from the
+  // specific tipster(s) they actually pay, short of scrolling the whole feed hoping to spot
+  // them. MyTipsterSubscriptions only ever showed subscription status/expiry, never the tips
+  // themselves. Only counts currently-active subscriptions — an expired one shouldn't keep
+  // surfacing that tipster's tips here.
+  const mySubscribedTipsterIds = new Set(
+    subscriptions.filter(s => s.userId === user?.id && isSubscriptionActive(s)).map(s => s.tipsterId)
+  );
+  const myTipsterPicks = predictions
+    .filter(p => p.tipsterId && mySubscribedTipsterIds.has(p.tipsterId))
+    .sort((a, b) => new Date(b.kickoff).getTime() - new Date(a.kickoff).getTime());
 
   if (!isLoggedIn || !user) {
     return (
@@ -154,6 +170,38 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onOpenCheckout }) 
         </div>
 
         <MyTipsterSubscriptions />
+
+        {/* Tips From My Tipsters — every prediction from a tipster this user actually
+            subscribes to, separate from the site-wide VIP feed below. Only rendered once
+            they have at least one active subscription; PredictionCard's own paywall logic
+            already unlocks these automatically since isSubscribedToTipster covers them. */}
+        {mySubscribedTipsterIds.size > 0 && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-black font-display flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                <Star className="w-5 h-5" style={{ color: 'var(--brand)' }} />
+                Tips From My Tipsters
+              </h2>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                Every pick from the tipster{mySubscribedTipsterIds.size > 1 ? 's' : ''} you subscribe to.
+              </p>
+            </div>
+
+            {myTipsterPicks.length === 0 ? (
+              <div className="p-8 rounded-2xl bet-card text-center">
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  No tips posted yet by the tipster{mySubscribedTipsterIds.size > 1 ? 's' : ''} you're subscribed to — check back soon.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {myTipsterPicks.map(prediction => (
+                  <PredictionCard key={prediction.id} prediction={prediction} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* VIP Predictions */}
         <div className="space-y-6">
