@@ -2,23 +2,31 @@ import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   Crown, CheckCircle2, Star, UserCheck, Lock,
-  Filter, Trophy, Zap, X, TrendingUp, ArrowRight, Smartphone, ShieldCheck
+  Filter, Trophy, Zap, X, TrendingUp, ArrowRight, Smartphone, ShieldCheck, ListChecks
 } from 'lucide-react';
 import { useTipsters } from '../context/TipstersContext';
 import { useAuth } from '../context/AuthContext';
+import { usePredictions } from '../context/PredictionsContext';
 import { ALL_LEAGUES, ALL_MARKETS } from '../data/tipsters';
 import { usePaymentFlow } from '../hooks/usePaymentFlow';
 import { PaymentPendingView } from '../components/PaymentPendingView';
 import { Confetti } from '../components/Confetti';
 import { TipsterReviewsSection } from '../components/TipsterReviewsSection';
+import { PredictionCard } from '../components/PredictionCard';
 import type { User } from '../types/prediction';
 
 export const TipstersPage: React.FC = () => {
   const { tipsters, isSubscribedToTipster, refetchSubscriptions } = useTipsters();
   const { user, isTipster, isAdmin } = useAuth();
+  const { predictions } = usePredictions();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [selectedTipster, setSelectedTipster] = useState<User | null>(null);
+  // Separate from selectedTipster (which opens the Subscribe modal) — clicking "See Tips" on
+  // a card should show that tipster's picks without forcing a non-subscriber through the
+  // checkout flow first; PredictionCard's own paywall keeps the actual VIP content locked for
+  // anyone who isn't subscribed regardless.
+  const [viewingTipsterTips, setViewingTipsterTips] = useState<User | null>(null);
   const [subscriptionCycle, setSubscriptionCycle] = useState<'weekly' | 'monthly'>('monthly');
   const [phone, setPhone] = useState('');
   const { payState, payError, submit, reset } = usePaymentFlow();
@@ -46,6 +54,13 @@ export const TipstersPage: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipsters]);
+
+  // Keeps only one modal open at a time — e.g. clicking "Subscribe to Unlock" on a locked
+  // pick inside the See Tips modal navigates to ?subscribe=<id>, which opens the Subscribe
+  // modal via the effect above; without this the See Tips modal stayed open underneath it.
+  useEffect(() => {
+    if (selectedTipster) setViewingTipsterTips(null);
+  }, [selectedTipster]);
 
   const filtered = activeTipsters.filter(t => {
     const leagueOk = activeLeague === 'All' || (t.leagues || []).includes(activeLeague);
@@ -273,7 +288,13 @@ export const TipstersPage: React.FC = () => {
                           </span>
                         </div>
                       </div>
-                      <p className="text-[10px] text-slate-400 text-center">{tipster.totalTips ?? 0} tips given</p>
+                      <button
+                        onClick={() => setViewingTipsterTips(tipster)}
+                        className="w-full flex items-center justify-center gap-1 text-[10px] font-bold text-[#0EA5E9] hover:underline"
+                      >
+                        <ListChecks className="w-3 h-3" />
+                        See Tips ({tipster.totalTips ?? 0})
+                      </button>
                     </div>
 
                     {/* Pricing & CTA */}
@@ -477,6 +498,55 @@ export const TipstersPage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* ── See Tips Modal ── */}
+        {viewingTipsterTips && (() => {
+          const tipsterTips = predictions
+            .filter(p => p.tipsterId === viewingTipsterTips.id)
+            .sort((a, b) => new Date(b.kickoff).getTime() - new Date(a.kickoff).getTime());
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+              <div className="relative w-full max-w-4xl max-h-[85vh] bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+                <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between flex-shrink-0">
+                  <div className="flex items-center gap-3">
+                    <img src={viewingTipsterTips.avatarUrl} alt={viewingTipsterTips.name} className="w-9 h-9 rounded-full object-cover" />
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">{viewingTipsterTips.name}'s Tips</h3>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500">{tipsterTips.length} posted</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setViewingTipsterTips(null)}
+                    className="p-1 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-6 overflow-y-auto">
+                  {tipsterTips.length === 0 ? (
+                    <p className="text-center text-xs text-slate-400 dark:text-slate-500 py-10">
+                      No tips posted yet.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {tipsterTips.map(prediction => (
+                        <PredictionCard
+                          key={prediction.id}
+                          prediction={prediction}
+                          onUnlockClick={() => {
+                            setViewingTipsterTips(null);
+                            setSelectedTipster(viewingTipsterTips);
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
       </div>
     </div>
