@@ -3,6 +3,7 @@ import { X, Wallet, Smartphone, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useWithdrawalFlow } from '../hooks/useWithdrawalFlow';
 import { PaymentPendingView } from './PaymentPendingView';
 import { Confetti } from './Confetti';
+import { ConvertedPrice } from './ConvertedPrice';
 
 // Mirrors api/kentapay/withdraw.js's own MIN_WITHDRAWAL — Safaricom's B2C payout has a
 // documented KES 10 minimum. Checked here too so an amount that's obviously too small never
@@ -112,6 +113,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, b
               <span className="text-2xl font-black text-slate-900 dark:text-white font-mono">
                 KSh {balance.toLocaleString()}
               </span>
+              <ConvertedPrice kes={balance} className="text-[10px] text-slate-400 dark:text-slate-500 block" />
             </div>
 
             <div className="space-y-1.5">

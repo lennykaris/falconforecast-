@@ -14,6 +14,7 @@ import { useAuth } from '../context/AuthContext';
 import { usePaymentFlow } from '../hooks/usePaymentFlow';
 import { PaymentPendingView } from './PaymentPendingView';
 import { Confetti } from './Confetti';
+import { ConvertedPrice } from './ConvertedPrice';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -114,6 +115,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   {selectedPlan.price}
                 </span>
                 <span className="text-xs text-slate-500 block">{selectedPlan.period}</span>
+                <ConvertedPrice kes={selectedPlan.rawPrice} className="text-[10px] text-slate-400 block" />
               </div>
             </div>
 

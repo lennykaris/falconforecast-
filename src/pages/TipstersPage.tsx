@@ -13,6 +13,7 @@ import { PaymentPendingView } from '../components/PaymentPendingView';
 import { Confetti } from '../components/Confetti';
 import { TipsterReviewsSection } from '../components/TipsterReviewsSection';
 import { PredictionCard } from '../components/PredictionCard';
+import { ConvertedPrice } from '../components/ConvertedPrice';
 import type { User } from '../types/prediction';
 
 export const TipstersPage: React.FC = () => {
@@ -303,11 +304,13 @@ export const TipstersPage: React.FC = () => {
                         <div className="text-center">
                           <p className="text-[9px] font-bold text-slate-400 uppercase">Weekly</p>
                           <p className="text-base font-black text-slate-900 dark:text-white font-mono">KSh {tipster.weeklyPrice}<span className="text-[10px] text-slate-400">/wk</span></p>
+                          <ConvertedPrice kes={tipster.weeklyPrice || 500} className="text-[9px] text-slate-400 dark:text-slate-500 block" />
                         </div>
                         <div className="w-px h-8 bg-slate-200 dark:bg-slate-600" />
                         <div className="text-center">
                           <p className="text-[9px] font-bold text-slate-400 uppercase">Monthly</p>
                           <p className="text-base font-black text-[#0EA5E9] font-mono">KSh {tipster.monthlyPrice}<span className="text-[10px] text-slate-400">/mo</span></p>
+                          <ConvertedPrice kes={tipster.monthlyPrice || 1500} className="text-[9px] text-slate-400 dark:text-slate-500 block" />
                         </div>
                         <div className="w-px h-8 bg-slate-200 dark:bg-slate-600" />
                         <div className="text-center">
@@ -431,9 +434,15 @@ export const TipstersPage: React.FC = () => {
                   <div className="bg-slate-50 dark:bg-slate-700/40 rounded-xl p-3 text-xs border border-slate-200 dark:border-slate-600">
                     <div className="flex justify-between items-center text-slate-700 dark:text-slate-200">
                       <span className="font-semibold">Total</span>
-                      <span className="font-mono font-bold text-sm">
-                        KSh {subscriptionCycle === 'weekly' ? selectedTipster.weeklyPrice : selectedTipster.monthlyPrice}
-                      </span>
+                      <div className="text-right">
+                        <span className="font-mono font-bold text-sm block">
+                          KSh {subscriptionCycle === 'weekly' ? selectedTipster.weeklyPrice : selectedTipster.monthlyPrice}
+                        </span>
+                        <ConvertedPrice
+                          kes={(subscriptionCycle === 'weekly' ? selectedTipster.weeklyPrice : selectedTipster.monthlyPrice) || 0}
+                          className="text-[10px] text-slate-400 dark:text-slate-500"
+                        />
+                      </div>
                     </div>
                   </div>
 

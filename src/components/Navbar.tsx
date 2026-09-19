@@ -4,6 +4,7 @@ import { Search, PlusCircle, User, Sun, Moon, Home, Trophy, TrendingUp, Star, Sh
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { fetchMatches } from '../lib/matches';
+import { CurrencySwitcher } from './CurrencySwitcher';
 import type { Match } from '../types/prediction';
 
 const tickerTimeLabel = (m: Match) => {
@@ -192,6 +193,8 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
               )}
 
 
+
+              <CurrencySwitcher />
 
               {/* Interactive Theme Switch Toggle */}
               <button

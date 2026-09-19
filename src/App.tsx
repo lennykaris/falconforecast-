@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext';
 import { PredictionsProvider } from './context/PredictionsContext';
 import { TipstersProvider } from './context/TipstersContext';
 import { BetSlipProvider } from './context/BetSlipContext';
+import { CurrencyProvider } from './context/CurrencyContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { CheckoutModal } from './components/CheckoutModal';
@@ -160,15 +161,17 @@ export function App() {
   return (
     <Router>
       <ThemeProvider>
-        <AuthProvider>
-          <PredictionsProvider>
-            <TipstersProvider>
-              <BetSlipProvider>
-                <AppContent />
-              </BetSlipProvider>
-            </TipstersProvider>
-          </PredictionsProvider>
-        </AuthProvider>
+        <CurrencyProvider>
+          <AuthProvider>
+            <PredictionsProvider>
+              <TipstersProvider>
+                <BetSlipProvider>
+                  <AppContent />
+                </BetSlipProvider>
+              </TipstersProvider>
+            </PredictionsProvider>
+          </AuthProvider>
+        </CurrencyProvider>
       </ThemeProvider>
     </Router>
   );

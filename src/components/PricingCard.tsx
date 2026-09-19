@@ -1,5 +1,6 @@
 import React from 'react';
 import type { SubscriptionPlan } from '../types/prediction';
+import { ConvertedPrice } from './ConvertedPrice';
 
 interface PricingCardProps {
   plan: SubscriptionPlan;
@@ -62,6 +63,9 @@ export const PricingCard: React.FC<PricingCardProps> = ({ plan, isCurrentPlan, o
               {plan.period}
             </span>
           </div>
+          {/* Display-only conversion for context — the actual M-Pesa charge is always the KSh
+              amount above. */}
+          <ConvertedPrice kes={plan.rawPrice} className="text-[11px] mt-0.5 block" style={{ color: 'var(--text-muted)' }} />
         </div>
 
         {/* Features */}
