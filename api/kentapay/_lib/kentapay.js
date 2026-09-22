@@ -60,6 +60,29 @@ function describeStatus(code) {
   return description ? `Kentapay error ${code}: ${description}` : `Kentapay error ${code}`;
 }
 
+// None of the four calls below had any timeout at all — a Kentapay host that's unreachable
+// (a wrong URL, or IP whitelisting silently dropping the connection instead of rejecting it —
+// exactly what happened switching to production) just hung until Vercel's own function
+// execution limit killed it, surfacing to the browser as an opaque 502 with zero information
+// about why. Every fetch now goes through this instead, so a stuck connection fails fast with
+// an error that actually says what happened.
+const REQUEST_TIMEOUT_MS = 15000;
+
+async function fetchWithTimeout(url, options) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error(`Kentapay request timed out after ${REQUEST_TIMEOUT_MS / 1000}s — the host may be unreachable or blocking this server's IP`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 let tokenCache = null; // { accessToken, hmacKey, expiresAt }
 
 /** Fetches (and caches in-process) the access token + HMAC key from Kentapay's token
@@ -77,7 +100,7 @@ async function getAccessToken() {
   }
 
   const basicAuth = Buffer.from(`${username}:${password}`).toString('base64');
-  const res = await fetch(`${BASE_URL}/ServiceLayer/v2/request/access-token?grant_type=client_credentials`, {
+  const res = await fetchWithTimeout(`${BASE_URL}/ServiceLayer/v2/request/access-token?grant_type=client_credentials`, {
     method: 'POST',
     headers: { Authorization: `Basic ${basicAuth}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ clientid: clientId }),
@@ -135,7 +158,7 @@ export async function kentapayCheckout({ amount, phone, transactionId, accountRe
     accountreference: accountReference.slice(0, 10),
   };
   const bodyString = JSON.stringify(body);
-  const res = await fetch(`${BASE_URL}/ServiceLayer/v2/onlinecheckout/request`, {
+  const res = await fetchWithTimeout(`${BASE_URL}/ServiceLayer/v2/onlinecheckout/request`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -167,7 +190,7 @@ export async function kentapayB2C({ amount, phone, transactionId }) {
     timestamp: new Date().toISOString(),
   };
   const bodyString = JSON.stringify(body);
-  const res = await fetch(`${BASE_URL}/ServiceLayer/v2/request/postRequest`, {
+  const res = await fetchWithTimeout(`${BASE_URL}/ServiceLayer/v2/request/postRequest`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -190,7 +213,7 @@ export async function kentapayB2C({ amount, phone, transactionId }) {
  * Bearer-authenticated pull, so there's no HASH to verify. */
 export async function kentapayQueryStatus({ transactionId }) {
   const { accessToken } = await getAccessToken();
-  const res = await fetch(`${BASE_URL}/ServiceLayer/v2/transaction/query`, {
+  const res = await fetchWithTimeout(`${BASE_URL}/ServiceLayer/v2/transaction/query`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
     body: JSON.stringify({ clientid: process.env.KENTAPAY_CLIENT_ID, transactionid: transactionId }),
