@@ -25,13 +25,21 @@ export default async function handler(req, res) {
     return;
   }
 
-  const baseUrl = process.env.KENTAPAY_PROD_BASE_URL;
-  const clientId = process.env.KENTAPAY_PROD_CLIENT_ID;
-  const username = process.env.KENTAPAY_PROD_USERNAME;
-  const password = process.env.KENTAPAY_PROD_PASSWORD;
+  // Falls back to the real, live KENTAPAY_* vars if the isolated KENTAPAY_PROD_* ones aren't
+  // set — added after finding out those live vars had already been overwritten with
+  // production values directly, which meant this diagnostic could no longer see what was
+  // actually about to affect real traffic. This still only ever calls the safe token endpoint.
+  const baseUrl = process.env.KENTAPAY_PROD_BASE_URL || process.env.KENTAPAY_BASE_URL;
+  const clientId = process.env.KENTAPAY_PROD_CLIENT_ID || process.env.KENTAPAY_CLIENT_ID;
+  const username = process.env.KENTAPAY_PROD_USERNAME || process.env.KENTAPAY_USERNAME;
+  const password = process.env.KENTAPAY_PROD_PASSWORD || process.env.KENTAPAY_PASSWORD;
+  const usedLiveVars = !process.env.KENTAPAY_PROD_BASE_URL;
 
-  const missing = ['KENTAPAY_PROD_BASE_URL', 'KENTAPAY_PROD_CLIENT_ID', 'KENTAPAY_PROD_USERNAME', 'KENTAPAY_PROD_PASSWORD']
-    .filter((name) => !process.env[name]);
+  const missing = [];
+  if (!baseUrl) missing.push('KENTAPAY_PROD_BASE_URL/KENTAPAY_BASE_URL');
+  if (!clientId) missing.push('KENTAPAY_PROD_CLIENT_ID/KENTAPAY_CLIENT_ID');
+  if (!username) missing.push('KENTAPAY_PROD_USERNAME/KENTAPAY_USERNAME');
+  if (!password) missing.push('KENTAPAY_PROD_PASSWORD/KENTAPAY_PASSWORD');
   if (missing.length > 0) {
     res.status(400).json({ error: `Missing env vars: ${missing.join(', ')}` });
     return;
@@ -64,6 +72,7 @@ export default async function handler(req, res) {
     const success = String(data.status) === '00' && !!data.access_token;
     res.status(200).json({
       ok: success,
+      usedLiveVars,
       elapsedMs,
       httpStatus: response.status,
       kentapayStatus: data.status,
@@ -75,6 +84,7 @@ export default async function handler(req, res) {
     const elapsedMs = Date.now() - started;
     res.status(200).json({
       ok: false,
+      usedLiveVars,
       elapsedMs,
       error: err instanceof Error ? err.message : String(err),
       note: err instanceof Error && err.name === 'AbortError'
