@@ -45,6 +45,20 @@ export default async function handler(req, res) {
     return;
   }
 
+  // What Kentapay actually needs to whitelist — not our laptop's IP, not this diagnostic
+  // script's IP, but whatever address Vercel's own servers use when THIS function makes an
+  // outbound request. Measured empirically rather than looked up from Vercel's documented
+  // ranges, since those are shared/can rotate — this is the real IP the Kentapay connection
+  // attempt below actually came from.
+  let outboundIp = null;
+  try {
+    const ipRes = await fetch('https://ipwho.is/');
+    const ipData = await ipRes.json();
+    outboundIp = ipData?.ip || null;
+  } catch {
+    // Non-fatal — the Kentapay auth check below is the main point of this endpoint.
+  }
+
   const basic = Buffer.from(`${username}:${password}`).toString('base64');
   const url = `${baseUrl.replace(/\/$/, '')}/ServiceLayer/v2/request/access-token?grant_type=client_credentials`;
 
@@ -65,13 +79,14 @@ export default async function handler(req, res) {
     try { data = JSON.parse(text); } catch { data = null; }
 
     if (!data) {
-      res.status(200).json({ ok: false, elapsedMs, httpStatus: response.status, note: 'Non-JSON response', raw: text.slice(0, 300) });
+      res.status(200).json({ ok: false, outboundIp, elapsedMs, httpStatus: response.status, note: 'Non-JSON response', raw: text.slice(0, 300) });
       return;
     }
 
     const success = String(data.status) === '00' && !!data.access_token;
     res.status(200).json({
       ok: success,
+      outboundIp,
       usedLiveVars,
       elapsedMs,
       httpStatus: response.status,
@@ -84,6 +99,7 @@ export default async function handler(req, res) {
     const elapsedMs = Date.now() - started;
     res.status(200).json({
       ok: false,
+      outboundIp,
       usedLiveVars,
       elapsedMs,
       error: err instanceof Error ? err.message : String(err),
