@@ -23,8 +23,11 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: 'monthly_vip',
     name: 'Pro Predictor',
-    price: 'KSh 1,500',
-    rawPrice: 1500,
+    // ⚠️ TEMPORARY TESTING PRICE — matches TESTING_FORCE_LOW_PRICE in api/kentapay/collect.js,
+    // which is what actually enforces this server-side regardless of what's shown here. Real
+    // price is KSh 1,500. Revert both together once production checkout is confirmed working.
+    price: 'KSh 5',
+    rawPrice: 5,
     period: '/month',
     description: 'Our most popular tier for serious sports bettors aiming for consistent monthly ROI.',
     features: [
