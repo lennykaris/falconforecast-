@@ -9,11 +9,12 @@ import {
 
 const PLATFORM_CUT_PCT = 0.20;
 
-// ⚠️ TEMPORARY TESTING OVERRIDE — forces every checkout (VIP or tipster subscription) to
-// KSh 1 regardless of the real price, so live payment-flow testing doesn't require spending
-// real money at full price. This is live on production: any real customer checking out while
-// this is `true` pays KSh 1. Flip back to `false` once STK-push testing is done.
-const TESTING_FORCE_KSH1 = false;
+// ⚠️ TEMPORARY TESTING OVERRIDE — forces every checkout (VIP or tipster subscription) to a
+// small fixed price regardless of the real one, so live payment-flow testing on PRODUCTION
+// doesn't require spending real money at full price. This is live on production right now:
+// any real customer checking out while this is `true` pays the forced price, not the real
+// one. Flip back to `false` once production STK-push testing is done.
+const TESTING_FORCE_LOW_PRICE = true;
 
 // Server-side source of truth for VIP plan prices — matches src/data/predictions.ts.
 // Never trust a client-supplied amount for anything that moves real money.
@@ -103,12 +104,12 @@ export default async function handler(req, res) {
       return;
     }
 
-    if (TESTING_FORCE_KSH1) {
-      // Tipster subscriptions are forced to KSh 50 instead of 1 — Safaricom's B2C payout has
-      // a documented KES 10 minimum, so the 80% net share of a KSh 1 test (KSh 0.80) would
+    if (TESTING_FORCE_LOW_PRICE) {
+      // Tipster subscriptions are forced to KSh 50 instead of 5 — Safaricom's B2C payout has
+      // a documented KES 10 minimum, so the 80% net share of a KSh 5 test (KSh 4) would
       // always fail that step regardless of credentials. 50 keeps the net share (KSh 40)
       // comfortably clear of that floor while still being cheap to test with.
-      amount = kind === 'tipster_subscription' ? 50 : 1;
+      amount = kind === 'tipster_subscription' ? 50 : 5;
       if (kind === 'tipster_subscription') {
         platformCut = parseFloat((amount * PLATFORM_CUT_PCT).toFixed(2));
         tipsterNet = parseFloat((amount - platformCut).toFixed(2));
@@ -165,9 +166,10 @@ export default async function handler(req, res) {
     res.status(200).json({ reference: transactionId, amount });
   } catch (err) {
     console.error('POST /api/kentapay/collect failed:', err);
-    // A customer never needs to see a raw technical error ("fetch failed", a bare Kentapay
-    // status code, a Supabase error) — just that something went wrong and to try again. The
-    // real detail is already logged above for us to actually diagnose.
-    res.status(502).json({ error: 'We couldn\'t start your payment right now. Please try again in a moment.' });
+    // ⚠️ TEMPORARILY showing the real technical error again (not the friendly generic one)
+    // while actively debugging the production connectivity switch — there are no real
+    // customers on the site yet, so nothing is exposed to anyone but us. Restore the generic
+    // "try again in a moment" message once this is confirmed working end-to-end.
+    res.status(502).json({ error: err instanceof Error ? err.message : 'Failed to start payment' });
   }
 }
