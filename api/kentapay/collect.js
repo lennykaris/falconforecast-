@@ -133,26 +133,41 @@ export default async function handler(req, res) {
     }]);
     if (insertErr) throw insertErr;
 
-    const ack = await kentapayCheckout({
-      amount,
-      phone: normalizedPhone,
-      transactionId,
-      accountReference,
-      narration,
-    });
+    try {
+      const ack = await kentapayCheckout({
+        amount,
+        phone: normalizedPhone,
+        transactionId,
+        accountReference,
+        narration,
+      });
 
-    const cloudPacketId = extractCloudPacketId(ack);
-    if (cloudPacketId) {
-      await supabase.from('payments').update({ cloud_packet_id: cloudPacketId }).eq('reference', transactionId);
-    } else {
-      // Not fatal — we can still fall back to the Query Status API for this transaction —
-      // but the callback's HASH can't be verified without it, so it's worth knowing about.
-      console.warn(`Kentapay collect: no cloudPacketID in acknowledgement for ${transactionId}`);
+      const cloudPacketId = extractCloudPacketId(ack);
+      if (cloudPacketId) {
+        await supabase.from('payments').update({ cloud_packet_id: cloudPacketId }).eq('reference', transactionId);
+      } else {
+        // Not fatal — we can still fall back to the Query Status API for this transaction —
+        // but the callback's HASH can't be verified without it, so it's worth knowing about.
+        console.warn(`Kentapay collect: no cloudPacketID in acknowledgement for ${transactionId}`);
+      }
+    } catch (checkoutErr) {
+      // The payments row above was already inserted as PENDING before this call — without
+      // this, a checkout failure (timeout, auth failure, network error) left it orphaned
+      // PENDING forever instead of FAILED, since the outer catch below never touches it.
+      console.error(`Kentapay checkout request failed for ${transactionId}:`, checkoutErr);
+      await supabase.from('payments').update({
+        status: 'FAILED',
+        failure_message: checkoutErr instanceof Error ? checkoutErr.message : 'Checkout request failed',
+      }).eq('reference', transactionId);
+      throw checkoutErr;
     }
 
     res.status(200).json({ reference: transactionId, amount });
   } catch (err) {
     console.error('POST /api/kentapay/collect failed:', err);
-    res.status(502).json({ error: err instanceof Error ? err.message : 'Failed to start payment' });
+    // A customer never needs to see a raw technical error ("fetch failed", a bare Kentapay
+    // status code, a Supabase error) — just that something went wrong and to try again. The
+    // real detail is already logged above for us to actually diagnose.
+    res.status(502).json({ error: 'We couldn\'t start your payment right now. Please try again in a moment.' });
   }
 }
