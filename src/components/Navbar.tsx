@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Search, PlusCircle, User, Sun, Moon, Home, Trophy, TrendingUp, Star, ShieldCheck, LayoutDashboard, Newspaper, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -21,10 +21,24 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
   const { isLoggedIn, user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const [tickerMatches, setTickerMatches] = useState<{ time: string; teams: string; live: boolean }[]>([]);
 
   const isActive = (path: string) => location.pathname === path;
+
+  // The search input used to sit permanently in the header at a fixed w-36..w-52 width from
+  // "md" upward, which was the single biggest reason the right side crowded out the primary
+  // nav on normal laptop screens -- and it wasn't even wired to anything yet. Collapsing it to
+  // an icon that reveals a small overlay on click means it costs ~0 layout width until used.
+  useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false);
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
 
   useEffect(() => {
     fetchMatches()
@@ -141,15 +155,26 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                 button collapse to icon-only at narrow widths below, so it rarely needs to
                 actually scroll. */}
             <div className="flex items-center gap-2 xl:gap-3 flex-shrink-0 overflow-x-auto scrollbar-hide">
-              <div className="relative hidden md:block w-36 lg:w-44 xl:w-52">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search teams..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-300/80 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-[#00a8ff]"
-                />
+              <div className="relative hidden md:block" ref={searchRef}>
+                <button
+                  onClick={() => setSearchOpen(v => !v)}
+                  title="Search teams"
+                  className="p-2 rounded-lg border border-slate-300/80 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:border-[#00a8ff] hover:text-[#00a8ff] transition-colors"
+                >
+                  <Search className="w-4 h-4" />
+                </button>
+                {searchOpen && (
+                  <div className="absolute right-0 top-full mt-1.5 w-56 sm:w-64 z-50">
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="Search teams..."
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xl focus:outline-none focus:border-[#00a8ff]"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* This whole row (Post Tips, My Panel, Profile, Logout, Currency, Theme) used

@@ -3,6 +3,7 @@ import { Crown, CheckCircle2, Lock, Zap, CalendarDays, ArrowRight } from 'lucide
 import { useAuth } from '../context/AuthContext';
 import { SUBSCRIPTION_PLANS } from '../data/predictions';
 import { Link } from 'react-router-dom';
+import { ConvertedPrice } from './ConvertedPrice';
 
 interface MySubscriptionsProps {
   onUpgrade?: (plan?: any) => void;
@@ -173,12 +174,15 @@ export const MySubscriptions: React.FC<MySubscriptionsProps> = ({ onUpgrade }) =
 
         {/* CTA */}
         {currentPlan === 'free' ? (
-          <button
-            onClick={() => onUpgrade && onUpgrade(SUBSCRIPTION_PLANS[1])}
-            className="w-full py-2.5 bg-gradient-to-r from-[#00a8ff] to-sky-400 hover:from-[#0090e0] hover:to-sky-500 text-white font-bold text-xs rounded-lg transition-all shadow-md shadow-sky-500/20 flex items-center justify-center gap-1.5 active:scale-[0.99]"
-          >
-            <Crown className="w-3.5 h-3.5" /> Upgrade to VIP — {SUBSCRIPTION_PLANS[1].price}{SUBSCRIPTION_PLANS[1].period}
-          </button>
+          <div>
+            <button
+              onClick={() => onUpgrade && onUpgrade(SUBSCRIPTION_PLANS[1])}
+              className="w-full py-2.5 bg-gradient-to-r from-[#00a8ff] to-sky-400 hover:from-[#0090e0] hover:to-sky-500 text-white font-bold text-xs rounded-lg transition-all shadow-md shadow-sky-500/20 flex items-center justify-center gap-1.5 active:scale-[0.99]"
+            >
+              <Crown className="w-3.5 h-3.5" /> Upgrade to VIP — {SUBSCRIPTION_PLANS[1].price}{SUBSCRIPTION_PLANS[1].period}
+            </button>
+            <ConvertedPrice kes={SUBSCRIPTION_PLANS[1].rawPrice} className="text-[10px] text-slate-400 dark:text-slate-500 block text-center mt-1" />
+          </div>
         ) : (
           <Link
             to="/dashboard"

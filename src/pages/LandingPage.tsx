@@ -19,6 +19,7 @@ import { useTipsters } from '../context/TipstersContext';
 import { SUBSCRIPTION_PLANS } from '../data/predictions';
 import { fetchMatches } from '../lib/matches';
 import { supabase } from '../lib/supabase';
+import { ConvertedPrice } from '../components/ConvertedPrice';
 import type { Match } from '../types/prediction';
 
 const NAV_LINKS = [
@@ -716,9 +717,12 @@ export const LandingPage: React.FC = () => {
                     )}
                     <h3 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>{plan.name}</h3>
                     <p className="text-xs mt-2 min-h-[34px]" style={{ color: 'var(--text-muted)' }}>{plan.description}</p>
-                    <div className="font-mono font-black text-2xl mt-4 mb-6" style={{ color: 'var(--text-primary)' }}>
-                      {plan.price}
-                      <span className="text-xs font-semibold ml-1" style={{ color: 'var(--text-muted)' }}>{plan.period}</span>
+                    <div className="mt-4 mb-6">
+                      <div className="font-mono font-black text-2xl" style={{ color: 'var(--text-primary)' }}>
+                        {plan.price}
+                        <span className="text-xs font-semibold ml-1" style={{ color: 'var(--text-muted)' }}>{plan.period}</span>
+                      </div>
+                      <ConvertedPrice kes={plan.rawPrice} className="text-[11px] mt-0.5 block" style={{ color: 'var(--text-muted)' }} />
                     </div>
                     <ul className="space-y-2.5 mb-7 flex-1">
                       {plan.features.slice(0, 3).map(f => (

@@ -35,7 +35,12 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (!cancelled) setCurrencyState(stored);
       } else {
         const detected = await detectCountryCurrency();
-        if (!cancelled && detected) setCurrencyState(detected);
+        // Re-check localStorage here, not just at the top of this effect — this fetch can take
+        // a few hundred ms, and if the user manually picked a currency from the dropdown while
+        // it was in flight, setCurrency() already wrote that choice to localStorage. Without
+        // this check, applying `detected` below would silently overwrite their pick right after
+        // they made it, which is exactly what looked like "the dropdown isn't working".
+        if (!cancelled && detected && !getStoredCurrencyPreference()) setCurrencyState(detected);
         // No detection → stays at the USD default already set above.
       }
 
