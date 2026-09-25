@@ -152,13 +152,21 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                 />
               </div>
 
+              {/* This whole row (Post Tips, My Panel, Profile, Logout, Currency, Theme) used
+                  to switch to full text as early as the "sm" breakpoint (640px) — fine for a
+                  phone-width check, but the primary nav on the left needs far more room than
+                  that at realistic laptop widths (1024-1279px), which is exactly the range
+                  that was pushing links off into an invisible scroll. Pushed to "xl" (1280px)
+                  so icon-only stays the default across ordinary laptop screens, freeing space
+                  for the nav links that actually matter more. */}
               {isLoggedIn && (user?.role === 'tipster' || user?.role === 'admin') && (
                 <Link
                   to="/post-tip"
-                  className="hidden sm:flex px-3.5 py-2 bg-[#00a8ff] hover:bg-[#0090e0] text-white text-xs font-bold rounded-lg transition-colors items-center gap-1.5 shadow-sm whitespace-nowrap"
+                  title="Post Tips"
+                  className="flex px-2.5 xl:px-3.5 py-2 bg-[#00a8ff] hover:bg-[#0090e0] text-white text-xs font-bold rounded-lg transition-colors items-center gap-1.5 shadow-sm whitespace-nowrap"
                 >
                   <PlusCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span>Post Tips</span>
+                  <span className="hidden xl:inline">Post Tips</span>
                 </Link>
               )}
 
@@ -173,27 +181,27 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                     <Link
                       to="/tipster-dashboard"
                       title="My Panel"
-                      className="px-2.5 sm:px-3 py-2 border border-amber-300 bg-amber-50 text-amber-700 hover:border-amber-400 text-xs font-bold rounded-lg transition-colors flex items-center gap-1 whitespace-nowrap"
+                      className="px-2.5 xl:px-3 py-2 border border-amber-300 bg-amber-50 text-amber-700 hover:border-amber-400 text-xs font-bold rounded-lg transition-colors flex items-center gap-1 whitespace-nowrap"
                     >
                       <LayoutDashboard className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span className="hidden sm:inline">My Panel</span>
+                      <span className="hidden xl:inline">My Panel</span>
                     </Link>
                   )}
                   <Link
                     to="/profile"
                     title={user?.name?.split(' ')[0]}
-                    className="px-2.5 sm:px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:border-[#00a8ff] text-xs font-bold rounded-lg transition-colors flex items-center gap-1 whitespace-nowrap"
+                    className="px-2.5 xl:px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:border-[#00a8ff] text-xs font-bold rounded-lg transition-colors flex items-center gap-1 whitespace-nowrap"
                   >
                     <User className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span className="hidden sm:inline">{user?.name?.split(' ')[0]}</span>
+                    <span className="hidden xl:inline">{user?.name?.split(' ')[0]}</span>
                   </Link>
                   <button
                     onClick={logout}
                     title="Logout"
                     className="text-xs text-slate-500 hover:text-red-500 font-medium px-2 py-1 whitespace-nowrap"
                   >
-                    <span className="hidden sm:inline">Logout</span>
-                    <LogOut className="w-3.5 h-3.5 sm:hidden" />
+                    <span className="hidden xl:inline">Logout</span>
+                    <LogOut className="w-3.5 h-3.5 xl:hidden" />
                   </button>
                 </div>
               ) : (
@@ -218,12 +226,12 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                 {theme === 'light' ? (
                   <>
                     <Sun className="w-3.5 h-3.5 text-amber-500 fill-amber-400 flex-shrink-0" />
-                    <span className="hidden sm:inline">Light</span>
+                    <span className="hidden xl:inline">Light</span>
                   </>
                 ) : (
                   <>
                     <Moon className="w-3.5 h-3.5 text-sky-400 fill-sky-400 flex-shrink-0" />
-                    <span className="hidden sm:inline">Dark</span>
+                    <span className="hidden xl:inline">Dark</span>
                   </>
                 )}
               </button>

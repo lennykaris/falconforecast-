@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   X,
@@ -10,6 +10,7 @@ import {
   Zap,
 } from 'lucide-react';
 import type { SubscriptionPlan } from '../types/prediction';
+import { SUBSCRIPTION_PLANS } from '../data/predictions';
 import { useAuth } from '../context/AuthContext';
 import { usePaymentFlow } from '../hooks/usePaymentFlow';
 import { PaymentPendingView } from './PaymentPendingView';
@@ -32,6 +33,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const { payState, payError, submit, reset } = usePaymentFlow();
 
   const [phoneNumber, setPhoneNumber] = useState('');
+  // Whichever plan card the user clicked "Unlock VIP" from used to be locked in for the
+  // whole checkout — there was no way to switch to weekly/annual once the modal was open.
+  // This tracks the plan actually being purchased, defaulting to whatever was passed in,
+  // and is re-synced whenever the modal is opened fresh for a (possibly different) plan.
+  const [plan, setPlan] = useState(selectedPlan);
+
+  useEffect(() => {
+    if (isOpen) setPlan(selectedPlan);
+  }, [isOpen, selectedPlan]);
 
   if (!isOpen) return null;
 
@@ -45,7 +55,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     e.preventDefault();
     if (!phoneNumber.trim()) return;
 
-    const success = await submit({ kind: 'vip_subscription', planId: selectedPlan.id, phone: phoneNumber });
+    const success = await submit({ kind: 'vip_subscription', planId: plan.id, phone: phoneNumber });
     if (success) {
       await refetchUser();
       setTimeout(() => {
@@ -97,9 +107,35 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </p>
           </div>
         ) : payState === 'pending' ? (
-          <PaymentPendingView amountLabel={`${selectedPlan.price} ${selectedPlan.period}`} onCancel={handleClose} />
+          <PaymentPendingView amountLabel={`${plan.price} ${plan.period}`} onCancel={handleClose} />
         ) : (
           <div className="p-6 space-y-6">
+
+            {/* Plan switcher — previously whichever plan the "Unlock VIP" button was clicked
+                from was locked in for the whole checkout, so a user who wanted monthly instead
+                of weekly had to close the modal and go find a different button. */}
+            <div className="grid grid-cols-3 gap-2">
+              {SUBSCRIPTION_PLANS.map(p => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setPlan(p)}
+                  className={`relative px-2 py-2.5 rounded-xl border text-center transition-all ${
+                    plan.id === p.id
+                      ? 'border-[#0EA5E9] bg-sky-50 ring-1 ring-[#0EA5E9]'
+                      : 'border-slate-200 hover:border-sky-300'
+                  }`}
+                >
+                  {p.popular && (
+                    <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-[#0EA5E9] text-white text-[8px] font-bold uppercase tracking-wider rounded-full whitespace-nowrap">
+                      Popular
+                    </span>
+                  )}
+                  <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide">{p.period.replace('/', '')}</span>
+                  <span className="block text-xs font-black text-slate-900 font-mono mt-0.5">{p.price}</span>
+                </button>
+              ))}
+            </div>
 
             {/* Plan Summary Box */}
             <div className="p-4 bg-sky-50/70 border border-sky-100 rounded-2xl flex items-center justify-between">
@@ -107,15 +143,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                   Selected Plan
                 </span>
-                <h4 className="font-bold text-slate-900 text-sm">{selectedPlan.name}</h4>
-                <p className="text-[11px] text-[#0EA5E9] font-medium">{selectedPlan.description.substring(0, 50)}...</p>
+                <h4 className="font-bold text-slate-900 text-sm">{plan.name}</h4>
+                <p className="text-[11px] text-[#0EA5E9] font-medium">{plan.description.substring(0, 50)}...</p>
               </div>
               <div className="text-right">
                 <span className="text-2xl font-black text-slate-900 font-mono">
-                  {selectedPlan.price}
+                  {plan.price}
                 </span>
-                <span className="text-xs text-slate-500 block">{selectedPlan.period}</span>
-                <ConvertedPrice kes={selectedPlan.rawPrice} className="text-[10px] text-slate-400 block" />
+                <span className="text-xs text-slate-500 block">{plan.period}</span>
+                <ConvertedPrice kes={plan.rawPrice} className="text-[10px] text-slate-400 block" />
               </div>
             </div>
 
@@ -151,7 +187,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   />
                 </div>
                 <p className="text-[11px] text-emerald-700">
-                  An STK push prompt will be sent to your phone for payment of <strong className="font-bold">{selectedPlan.price}</strong>.
+                  An STK push prompt will be sent to your phone for payment of <strong className="font-bold">{plan.price}</strong>.
                 </p>
               </div>
 
@@ -166,7 +202,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   className="w-full py-3.5 bg-[#0EA5E9] hover:bg-sky-600 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 disabled:opacity-60"
                 >
                   <Lock className="w-4 h-4" />
-                  <span>Pay {selectedPlan.price} & Unlock VIP</span>
+                  <span>Pay {plan.price} & Unlock VIP</span>
                 </button>
               </div>
 
