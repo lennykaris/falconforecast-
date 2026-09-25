@@ -29,7 +29,7 @@ export const CurrencySwitcher: React.FC = () => {
         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:border-[#00a8ff] transition-all text-xs font-bold shadow-xs whitespace-nowrap"
       >
         <Coins className="w-3.5 h-3.5 text-[#00a8ff] flex-shrink-0" />
-        <span>{current.code}</span>
+        <span className="hidden sm:inline">{current.code}</span>
         <ChevronDown className={`w-3 h-3 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
