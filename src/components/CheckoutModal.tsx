@@ -119,6 +119,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </div>
             </div>
 
+            {/* Clarifies what this subscription actually is — easy to assume it's tied to
+                whichever tipster's card you clicked "Unlock VIP" from, when it's actually a
+                site-wide platform subscription: it pays Falcon Forecast directly (not any
+                tipster), unlocks official picks posted by our own team via the Admin Panel,
+                AND every individual tipster's VIP picks on top — no separate per-tipster
+                subscription needed. */}
+            <div className="flex items-start gap-2 px-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#0EA5E9] flex-shrink-0 mt-0.5" />
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                This is Falcon Forecast's <strong className="font-semibold text-slate-700">platform-wide VIP</strong> — it unlocks our official picks
+                (posted by our admin team) <strong className="font-semibold text-slate-700">and</strong> every tipster's VIP picks, no per-tipster subscription needed.
+                Payment goes to Falcon Forecast, not an individual tipster.
+              </p>
+            </div>
+
             {/* M-Pesa Checkout Form */}
             <form onSubmit={handleSubmitPayment} className="space-y-4">
               <div className="space-y-3 p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl">

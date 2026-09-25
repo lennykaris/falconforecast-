@@ -11,7 +11,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     price: 'KSh 500',
     rawPrice: 500,
     period: '/week',
-    description: 'Perfect for testing our high-converting VIP picks for a single match week.',
+    description: 'Falcon Forecast\'s platform-wide VIP — unlocks official picks from our admin team plus every tipster\'s VIP picks.',
     features: [
       'Access to all VIP Predictions',
       'Daily 85%+ Confidence Picks',
@@ -29,7 +29,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     price: 'KSh 5',
     rawPrice: 5,
     period: '/month',
-    description: 'Our most popular tier for serious sports bettors aiming for consistent monthly ROI.',
+    description: 'Our most popular platform-wide VIP tier — official admin-posted picks plus every tipster\'s VIP picks, paid to Falcon Forecast directly.',
     features: [
       'Everything in 7-Day Pass',
       'Exclusive High-Odds VIP Value Accumulators',
@@ -46,7 +46,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     price: 'KSh 9,999',
     rawPrice: 9999,
     period: '/year',
-    description: 'Maximum value for long-term investors. Get all predictions across all major leagues.',
+    description: 'Maximum value, all year — Falcon Forecast\'s full platform-wide VIP: admin-posted picks plus every tipster\'s VIP picks.',
     features: [
       'Everything in Pro Predictor',
       'Full Season Coverage (All Competitions)',

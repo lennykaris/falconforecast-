@@ -212,8 +212,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onOpenCheckout }) 
               </h2>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
                 {isVip
-                  ? 'High-confidence picks unlocked for your subscription.'
-                  : 'Subscribe to VIP to unlock all predictions.'}
+                  ? 'Official admin-posted picks plus every tipster\'s VIP picks, unlocked by your platform subscription.'
+                  : 'Our platform-wide VIP subscription unlocks admin-posted picks plus every tipster\'s VIP picks.'}
               </p>
             </div>
             {!isVip && (
