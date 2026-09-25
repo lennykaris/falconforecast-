@@ -166,10 +166,10 @@ export default async function handler(req, res) {
     res.status(200).json({ reference: transactionId, amount });
   } catch (err) {
     console.error('POST /api/kentapay/collect failed:', err);
-    // ⚠️ TEMPORARILY showing the real technical error again (not the friendly generic one)
-    // while actively debugging the production connectivity switch — there are no real
-    // customers on the site yet, so nothing is exposed to anyone but us. Restore the generic
-    // "try again in a moment" message once this is confirmed working end-to-end.
-    res.status(502).json({ error: err instanceof Error ? err.message : 'Failed to start payment' });
+    // A customer never needs to see a raw technical error ("fetch failed", a bare Kentapay
+    // status code, a Java stack trace) — just that something went wrong and to try again. The
+    // real detail is already logged above for us to actually diagnose (and was — this is what
+    // surfaced the IndexOutOfBoundsException now reported to Kentapay).
+    res.status(502).json({ error: 'We couldn\'t start your payment right now. Please try again in a moment.' });
   }
 }
