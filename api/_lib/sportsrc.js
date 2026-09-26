@@ -57,6 +57,25 @@ async function sportsrcGet(params) {
   return data;
 }
 
+// SportSRC bills per call, and this module gets hit by several independent, uncoordinated
+// callers on the frontend — Navbar's ticker, the landing page preview, and HomePage's own
+// 45s poll all fire fetchMatches() around the same moment on a typical page load, and the
+// existing Cache-Control on /api/matches only avoids re-hitting SportSRC when Vercel's CDN
+// actually caches that response (it won't, e.g. for requests carrying cookies). This in-memory
+// cache sits below that, shared across every caller on a warm serverless instance, so a burst
+// of near-simultaneous requests (or repeated polling) results in one real upstream call, not
+// one per caller. Lost on cold start, which is fine — it only needs to survive the seconds
+// between callers that show up together, not to be a durable cache.
+const responseCache = new Map();
+
+async function cached(key, ttlMs, fetcher) {
+  const hit = responseCache.get(key);
+  if (hit && hit.expiresAt > Date.now()) return hit.data;
+  const data = await fetcher();
+  responseCache.set(key, { data, expiresAt: Date.now() + ttlMs });
+  return data;
+}
+
 /** Maps SportSRC's per-match status to the same status values football-data.org used, which
  * the frontend (HomePage, LandingPage, Navbar) already switches on — so nothing downstream
  * of /api/matches needed to change for this provider swap. SportSRC folds "half time" into
@@ -88,55 +107,60 @@ export async function fetchMatches({ dateFrom, dateTo } = {}) {
   const from = dateFrom || new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const to = dateTo || new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-  const dates = [];
-  const fromMs = new Date(`${from}T00:00:00Z`).getTime();
-  const toMs = new Date(`${to}T00:00:00Z`).getTime();
-  for (let t = fromMs; t <= toMs; t += 24 * 60 * 60 * 1000) {
-    dates.push(new Date(t).toISOString().slice(0, 10));
-  }
+  // Keyed on the resolved from/to so every caller that omits dateFrom/dateTo (Navbar, the
+  // landing page, HomePage's own poll) shares this same cache entry instead of each triggering
+  // their own 9-day fan-out below.
+  return cached(`matches:${from}:${to}`, 45_000, async () => {
+    const dates = [];
+    const fromMs = new Date(`${from}T00:00:00Z`).getTime();
+    const toMs = new Date(`${to}T00:00:00Z`).getTime();
+    for (let t = fromMs; t <= toMs; t += 24 * 60 * 60 * 1000) {
+      dates.push(new Date(t).toISOString().slice(0, 10));
+    }
 
-  const days = await Promise.all(dates.map((date) =>
-    sportsrcGet({ type: 'matches', sport: 'football', date }).catch((err) => {
-      console.error(`SportSRC matches fetch failed for ${date}:`, err);
-      return { data: [] };
-    })
-  ));
+    const days = await Promise.all(dates.map((date) =>
+      sportsrcGet({ type: 'matches', sport: 'football', date }).catch((err) => {
+        console.error(`SportSRC matches fetch failed for ${date}:`, err);
+        return { data: [] };
+      })
+    ));
 
-  const matches = [];
-  for (const day of days) {
-    for (const leagueBlock of day.data || []) {
-      const leagueName = leagueBlock.league?.name;
-      const country = leagueBlock.league?.country;
-      const countryFlag = leagueBlock.league?.flag;
-      const competition = findCompetition(leagueName, country);
-      const leagueCode = competition ? competition.code : slugifyLeague(leagueName, country);
-      for (const m of leagueBlock.matches || []) {
-        const status = mapStatus(m.status, m.status_detail);
-        const played = status === 'FINISHED' || status === 'IN_PLAY' || status === 'PAUSED';
-        matches.push({
-          id: String(m.id),
-          league: leagueName || leagueCode,
-          leagueCode,
-          country: country || undefined,
-          countryFlag: countryFlag || undefined,
-          homeTeam: m.teams?.home?.name || 'TBD',
-          awayTeam: m.teams?.away?.name || 'TBD',
-          homeTla: m.teams?.home?.code || undefined,
-          awayTla: m.teams?.away?.code || undefined,
-          kickoff: new Date(m.timestamp).toISOString(),
-          status,
-          // SportSRC reports 0-0 as a placeholder for matches that haven't kicked off yet —
-          // only trust the score once the match has actually started.
-          homeScore: played ? m.score?.current?.home ?? null : null,
-          awayScore: played ? m.score?.current?.away ?? null : null,
-          homeLogo: m.teams?.home?.badge || undefined,
-          awayLogo: m.teams?.away?.badge || undefined,
-        });
+    const matches = [];
+    for (const day of days) {
+      for (const leagueBlock of day.data || []) {
+        const leagueName = leagueBlock.league?.name;
+        const country = leagueBlock.league?.country;
+        const countryFlag = leagueBlock.league?.flag;
+        const competition = findCompetition(leagueName, country);
+        const leagueCode = competition ? competition.code : slugifyLeague(leagueName, country);
+        for (const m of leagueBlock.matches || []) {
+          const status = mapStatus(m.status, m.status_detail);
+          const played = status === 'FINISHED' || status === 'IN_PLAY' || status === 'PAUSED';
+          matches.push({
+            id: String(m.id),
+            league: leagueName || leagueCode,
+            leagueCode,
+            country: country || undefined,
+            countryFlag: countryFlag || undefined,
+            homeTeam: m.teams?.home?.name || 'TBD',
+            awayTeam: m.teams?.away?.name || 'TBD',
+            homeTla: m.teams?.home?.code || undefined,
+            awayTla: m.teams?.away?.code || undefined,
+            kickoff: new Date(m.timestamp).toISOString(),
+            status,
+            // SportSRC reports 0-0 as a placeholder for matches that haven't kicked off yet —
+            // only trust the score once the match has actually started.
+            homeScore: played ? m.score?.current?.home ?? null : null,
+            awayScore: played ? m.score?.current?.away ?? null : null,
+            homeLogo: m.teams?.home?.badge || undefined,
+            awayLogo: m.teams?.away?.badge || undefined,
+          });
+        }
       }
     }
-  }
 
-  return matches.sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime());
+    return matches.sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime());
+  });
 }
 
 /** Best-effort live match clock, since SportSRC's `detail` endpoint gives a period start
@@ -237,59 +261,65 @@ function computeRecentMatches(matches, teamName, limit = 5) {
  * testing; if that ever changes, each piece degrades independently (that piece just comes back
  * empty) rather than failing the whole match. */
 export async function fetchMatchDetail(id) {
-  const [detailRes, statsRes, incidentsRes, h2hRes, lastMatchesRes] = await Promise.all([
-    sportsrcGet({ type: 'detail', id }),
-    sportsrcGet({ type: 'stats', id }).catch((err) => { console.error(`SportSRC stats fetch failed for ${id}:`, err); return null; }),
-    sportsrcGet({ type: 'incidents', id }).catch((err) => { console.error(`SportSRC incidents fetch failed for ${id}:`, err); return null; }),
-    sportsrcGet({ type: 'h2h', id }).catch((err) => { console.error(`SportSRC h2h fetch failed for ${id}:`, err); return null; }),
-    sportsrcGet({ type: 'last_matches', id }).catch((err) => { console.error(`SportSRC last_matches fetch failed for ${id}:`, err); return null; }),
-  ]);
+  // Short TTL — this is a live-match view that already polls itself (see MatchDetailModal's
+  // POLL_MS), so this cache isn't meant to replace that; it just collapses the case where the
+  // same match id gets requested more than once in quick succession (e.g. a re-render, or a
+  // second surface showing the same match) into a single 5x SportSRC call instead of two.
+  return cached(`match-detail:${id}`, 10_000, async () => {
+    const [detailRes, statsRes, incidentsRes, h2hRes, lastMatchesRes] = await Promise.all([
+      sportsrcGet({ type: 'detail', id }),
+      sportsrcGet({ type: 'stats', id }).catch((err) => { console.error(`SportSRC stats fetch failed for ${id}:`, err); return null; }),
+      sportsrcGet({ type: 'incidents', id }).catch((err) => { console.error(`SportSRC incidents fetch failed for ${id}:`, err); return null; }),
+      sportsrcGet({ type: 'h2h', id }).catch((err) => { console.error(`SportSRC h2h fetch failed for ${id}:`, err); return null; }),
+      sportsrcGet({ type: 'last_matches', id }).catch((err) => { console.error(`SportSRC last_matches fetch failed for ${id}:`, err); return null; }),
+    ]);
 
-  const info = detailRes?.data?.match_info;
-  if (!info) throw new Error('Match not found');
+    const info = detailRes?.data?.match_info;
+    if (!info) throw new Error('Match not found');
 
-  const status = mapStatus(info.status, info.status_detail);
-  const played = status === 'FINISHED' || status === 'IN_PLAY' || status === 'PAUSED';
+    const status = mapStatus(info.status, info.status_detail);
+    const played = status === 'FINISHED' || status === 'IN_PLAY' || status === 'PAUSED';
 
-  const homeRecentMatches = computeRecentMatches(lastMatchesRes?.data?.home, info.teams?.home?.name);
-  const awayRecentMatches = computeRecentMatches(lastMatchesRes?.data?.away, info.teams?.away?.name);
+    const homeRecentMatches = computeRecentMatches(lastMatchesRes?.data?.home, info.teams?.home?.name);
+    const awayRecentMatches = computeRecentMatches(lastMatchesRes?.data?.away, info.teams?.away?.name);
 
-  return {
-    id: info.id,
-    league: info.league?.name || '',
-    round: info.league?.round || undefined,
-    status,
-    statusDetail: info.status_detail,
-    liveMinute: status === 'IN_PLAY' || status === 'PAUSED'
-      ? estimateLiveMinute(info.status_detail, info.time_info?.period_start)
-      : null,
-    kickoff: new Date(info.timestamp).toISOString(),
-    homeTeam: info.teams?.home?.name || 'TBD',
-    awayTeam: info.teams?.away?.name || 'TBD',
-    homeLogo: info.teams?.home?.badge || undefined,
-    awayLogo: info.teams?.away?.badge || undefined,
-    homeScore: played ? info.score?.current?.home ?? null : null,
-    awayScore: played ? info.score?.current?.away ?? null : null,
-    // venue/referee are objects ({stadium, city, ...} / {name, country, ...}), not plain
-    // strings — passing them straight through rendered as the literal text "[object Object]"
-    // wherever the frontend joined them into one line.
-    venue: detailRes?.data?.info?.venue?.stadium || null,
-    referee: detailRes?.data?.info?.referee?.name || null,
-    homeManager: detailRes?.data?.info?.managers?.home?.name || undefined,
-    awayManager: detailRes?.data?.info?.managers?.away?.name || undefined,
-    stats: statsRes ? flattenStats(statsRes.data) : [],
-    incidents: incidentsRes ? mapIncidents(incidentsRes.data) : [],
-    h2h: h2hRes?.data?.team_duel ? {
-      homeWins: h2hRes.data.team_duel.home_wins,
-      awayWins: h2hRes.data.team_duel.away_wins,
-      draws: h2hRes.data.team_duel.draws,
-      totalMeetings: h2hRes.data.team_duel.total,
-    } : null,
-    homeForm: homeRecentMatches.map((m) => m.result),
-    awayForm: awayRecentMatches.map((m) => m.result),
-    homeRecentMatches,
-    awayRecentMatches,
-  };
+    return {
+      id: info.id,
+      league: info.league?.name || '',
+      round: info.league?.round || undefined,
+      status,
+      statusDetail: info.status_detail,
+      liveMinute: status === 'IN_PLAY' || status === 'PAUSED'
+        ? estimateLiveMinute(info.status_detail, info.time_info?.period_start)
+        : null,
+      kickoff: new Date(info.timestamp).toISOString(),
+      homeTeam: info.teams?.home?.name || 'TBD',
+      awayTeam: info.teams?.away?.name || 'TBD',
+      homeLogo: info.teams?.home?.badge || undefined,
+      awayLogo: info.teams?.away?.badge || undefined,
+      homeScore: played ? info.score?.current?.home ?? null : null,
+      awayScore: played ? info.score?.current?.away ?? null : null,
+      // venue/referee are objects ({stadium, city, ...} / {name, country, ...}), not plain
+      // strings — passing them straight through rendered as the literal text "[object Object]"
+      // wherever the frontend joined them into one line.
+      venue: detailRes?.data?.info?.venue?.stadium || null,
+      referee: detailRes?.data?.info?.referee?.name || null,
+      homeManager: detailRes?.data?.info?.managers?.home?.name || undefined,
+      awayManager: detailRes?.data?.info?.managers?.away?.name || undefined,
+      stats: statsRes ? flattenStats(statsRes.data) : [],
+      incidents: incidentsRes ? mapIncidents(incidentsRes.data) : [],
+      h2h: h2hRes?.data?.team_duel ? {
+        homeWins: h2hRes.data.team_duel.home_wins,
+        awayWins: h2hRes.data.team_duel.away_wins,
+        draws: h2hRes.data.team_duel.draws,
+        totalMeetings: h2hRes.data.team_duel.total,
+      } : null,
+      homeForm: homeRecentMatches.map((m) => m.result),
+      awayForm: awayRecentMatches.map((m) => m.result),
+      homeRecentMatches,
+      awayRecentMatches,
+    };
+  });
 }
 
 /** Fetches the current league table for one of FalconForecast's internal competition codes
@@ -314,8 +344,12 @@ function mapStandingTable(data) {
 export async function fetchStandings(competitionCode) {
   const competition = COMPETITIONS.find((c) => c.code === competitionCode);
   if (!competition) throw new Error(`Unknown competition code: ${competitionCode}`);
-  const data = await sportsrcGet({ type: 'standing', league_id: competition.standingId });
-  return mapStandingTable(data);
+  // League tables move at most a few times a day (after matches finish) — no reason to treat
+  // this like live score data.
+  return cached(`standings:${competitionCode}`, 5 * 60_000, async () => {
+    const data = await sportsrcGet({ type: 'standing', league_id: competition.standingId });
+    return mapStandingTable(data);
+  });
 }
 
 /** Standings for any league at all, not just the curated COMPETITIONS set — SportSRC's
@@ -324,6 +358,8 @@ export async function fetchStandings(competitionCode) {
  * fixtures (not just the curated handful), this is what makes a table available for the long
  * tail too — any match id from that league works, not just today's. */
 export async function fetchStandingsByMatchId(matchId) {
-  const data = await sportsrcGet({ type: 'standing', id: matchId });
-  return mapStandingTable(data);
+  return cached(`standings-by-match:${matchId}`, 5 * 60_000, async () => {
+    const data = await sportsrcGet({ type: 'standing', id: matchId });
+    return mapStandingTable(data);
+  });
 }
