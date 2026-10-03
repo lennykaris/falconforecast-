@@ -9,6 +9,39 @@
  * plain read-then-branch check before either has written anything. Without this, both callers
  * could proceed into subscription creation and credit a tipster's balance twice for one
  * collected payment. */
+/** Credits the platform's own cut — 20% of a tipster subscription, or 100% of a VIP
+ * subscription — into the admin account's withdrawable `profiles.balance`, reusing the exact
+ * same balance/RPC mechanism tipsters use rather than inventing a separate ledger. Assumes
+ * exactly one `role = 'admin'` row, which is the only configuration this app currently
+ * supports (the oldest one is picked if that ever changes); a real multi-admin setup would
+ * need a dedicated "platform treasury" account instead of crediting one admin arbitrarily. */
+async function creditPlatformAdmin(supabase, amount) {
+  if (!amount || amount <= 0) return;
+  const { data: admin, error } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('role', 'admin')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error || !admin) {
+    console.error('creditPlatformAdmin: no admin profile found to credit', error);
+    return;
+  }
+  const { error: creditErr } = await supabase.rpc('credit_tipster_balance', {
+    p_tipster_id: admin.id,
+    p_amount: amount,
+  });
+  if (creditErr) console.error('Failed to credit platform admin balance:', creditErr);
+}
+
+/** Atomically claims a PENDING payment row by writing to it only if it's still PENDING at
+ * write time, returning whether this call actually won the claim. Guards against two
+ * near-simultaneous resolutions of the same payment — e.g. a redelivered callback (Kentapay
+ * doesn't guarantee exactly-once delivery) racing the reconciliation cron — both passing a
+ * plain read-then-branch check before either has written anything. Without this, both callers
+ * could proceed into subscription creation and credit a tipster's balance twice for one
+ * collected payment. */
 async function claimPayment(supabase, paymentId, fields) {
   const { data, error } = await supabase
     .from('payments')
@@ -119,6 +152,10 @@ export async function resolvePayment(supabase, payment, { success, receiptNumber
     if (creditErr) {
       console.error(`Failed to credit balance for tipster ${payment.tipster_id} on payment ${payment.id}:`, creditErr);
     }
+
+    // The platform's 20% side of this same payment — previously only ever recorded on the
+    // payment row itself (`platform_cut`), never actually credited anywhere withdrawable.
+    await creditPlatformAdmin(supabase, payment.platform_cut);
   } else if (payment.kind === 'vip_subscription') {
     // 'weekly_pass' used to fall through to 'monthly_vip' here, mislabeling a 7-day purchase
     // as a monthly plan — profiles.plan's CHECK constraint now allows 'weekly_pass' directly
@@ -142,7 +179,11 @@ export async function resolvePayment(supabase, payment, { success, receiptNumber
     });
     if (!claimed) {
       console.warn(`Payment ${payment.id} was already resolved by another process.`);
+      return;
     }
+
+    // VIP subscriptions aren't split with any tipster — the full amount is platform revenue.
+    await creditPlatformAdmin(supabase, payment.amount);
   } else {
     // Unknown kind — still claim COMPLETE so the row doesn't stay PENDING forever, but leave
     // a clear trail since nothing was actually granted.

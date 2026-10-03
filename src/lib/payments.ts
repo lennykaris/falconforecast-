@@ -56,17 +56,54 @@ export interface PaymentPollOutcome {
   failureMessage?: string;
 }
 
-/** Polls our own `payments` row (RLS-scoped to the current user) for the outcome Kentapay's
- * callback writes once the user has approved or declined the M-Pesa prompt on their phone. */
+/** Actively asks our server to check this one payment's real status with Kentapay directly
+ * (api/kentapay/check-status.js), instead of only waiting for Kentapay's push callback — which
+ * in practice doesn't always arrive. Returns null on any failure (not authenticated, network
+ * error, server hiccup) so the caller just falls back to the next passive poll tick; this is
+ * strictly a bonus nudge, never the only way a payment can resolve. */
+async function checkPaymentStatusNow(reference: string): Promise<{ status: string; failureMessage?: string } | null> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return null;
+
+    const res = await fetch('/api/kentapay/check-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ reference }),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+/** Polls our own `payments` row (RLS-scoped to the current user) for the outcome, same as
+ * Kentapay's callback would write — but since that push callback doesn't reliably arrive,
+ * this also actively re-checks with Kentapay itself every `activeCheckEveryMs`, so a genuine
+ * failure surfaces as FAILED within this poll window instead of sitting PENDING until the
+ * once-daily reconciliation cron (Vercel's Hobby plan caps cron jobs to once a day) gets to
+ * it. */
 export async function pollPaymentStatus(
   reference: string,
-  { intervalMs = 3000, timeoutMs = 90000 }: { intervalMs?: number; timeoutMs?: number } = {}
+  { intervalMs = 3000, timeoutMs = 90000, activeCheckEveryMs = 15000 }: { intervalMs?: number; timeoutMs?: number; activeCheckEveryMs?: number } = {}
 ): Promise<PaymentPollOutcome> {
   const start = Date.now();
+  let lastActiveCheck = 0;
   while (Date.now() - start < timeoutMs) {
     const { data } = await supabase.from('payments').select('status, failure_message').eq('reference', reference).maybeSingle();
     if (data?.status === 'COMPLETE') return { status: 'COMPLETE' };
     if (data?.status === 'FAILED') return { status: 'FAILED', failureMessage: data.failure_message || undefined };
+
+    const elapsed = Date.now() - start;
+    if (elapsed - lastActiveCheck >= activeCheckEveryMs) {
+      lastActiveCheck = elapsed;
+      const checked = await checkPaymentStatusNow(reference);
+      if (checked?.status === 'COMPLETE') return { status: 'COMPLETE' };
+      if (checked?.status === 'FAILED') return { status: 'FAILED', failureMessage: checked.failureMessage || undefined };
+    }
+
     await new Promise(r => setTimeout(r, intervalMs));
   }
   return { status: 'TIMEOUT' };

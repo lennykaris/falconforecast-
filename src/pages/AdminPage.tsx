@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom';
 import {
   ShieldCheck, Plus, Layers,
   Users, UserCheck, UserX, DollarSign,
-  TrendingUp, Star, AlertCircle, BarChart3, ArrowUpRight, CheckCircle2, Lock
+  TrendingUp, Star, AlertCircle, BarChart3, ArrowUpRight, CheckCircle2, Lock, Wallet, Zap
 } from 'lucide-react';
 import { usePredictions } from '../context/PredictionsContext';
 import { useTipsters, PLATFORM_CUT_PCT, isSubscriptionActive } from '../context/TipstersContext';
 import { AdminTable } from '../components/AdminTable';
 import { AddPredictionModal } from '../components/AddPredictionModal';
+import { WithdrawModal } from '../components/WithdrawModal';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import type { User } from '../types/prediction';
@@ -63,11 +64,17 @@ const mapPaymentRow = (p: any): PaymentRow => ({
 
 export const AdminPage: React.FC = () => {
   const { predictions } = usePredictions();
-  const { tipsters, approveTipster, suspendTipster, subscriptions } = useTipsters();
-  const { user, isAdmin } = useAuth();
+  const { tipsters, approveTipster, suspendTipster, subscriptions, updateMpesaPhone } = useTipsters();
+  const { user, isAdmin, refetchUser } = useAuth();
 
   const [activeTab, setActiveTab] = useState<AdminTab>('predictions');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  // Admins have nowhere else to set their own payout number — tipsters do it under My
+  // Pricing (TipsterDashboardPage), a page admins can't access since it's gated to the
+  // tipster role. This is the admin-side equivalent, inline in the Revenue tab.
+  const [editingAdminPhone, setEditingAdminPhone] = useState(false);
+  const [adminPhoneInput, setAdminPhoneInput] = useState('');
 
   // Every registered user — the tipsters list from TipstersContext deliberately excludes
   // regular (non-tipster, non-pending) users, so this panel needs its own real fetch of
@@ -161,6 +168,21 @@ export const AdminPage: React.FC = () => {
   const totalGross = tipsterRevenues.reduce((s, r) => s + r.gross, 0);
   const totalPlatformCut = tipsterRevenues.reduce((s, r) => s + r.cut, 0);
   const totalTipsterNet = tipsterRevenues.reduce((s, r) => s + r.net, 0);
+
+  // Lifetime platform money — unlike totalGross/totalPlatformCut above (which only look at
+  // currently-ACTIVE tipster subscriptions), these sum every COMPLETE payment ever, tipster
+  // and VIP alike, so a subscription expiring doesn't make its past revenue disappear from
+  // the historical picture.
+  const completedPayments = payments.filter(p => p.status === 'COMPLETE');
+  const vipRevenue = completedPayments.filter(p => p.kind === 'vip_subscription').reduce((s, p) => s + p.amount, 0);
+  const tipsterSubRevenue = completedPayments.filter(p => p.kind === 'tipster_subscription').reduce((s, p) => s + p.amount, 0);
+  // Platform Revenue: the total gross that has ever flowed through the platform, tipster
+  // subscriptions and VIP combined — a top-line, lifetime number.
+  const lifetimePlatformRevenue = tipsterSubRevenue + vipRevenue;
+  // Platform Earnings: what the platform actually keeps — the 20% cut of tipster subs, plus
+  // the full amount of every VIP subscription (VIP isn't split with any tipster). This is the
+  // number that funds the withdrawable balance below, distinct from the gross revenue above.
+  const platformEarnings = parseFloat((tipsterSubRevenue * PLATFORM_CUT_PCT).toFixed(2)) + vipRevenue;
 
   const TABS: { key: AdminTab; label: string; icon: React.ElementType; count?: number }[] = [
     { key: 'predictions', label: 'Predictions CMS', icon: Layers, count: totalPredictions },
@@ -325,14 +347,89 @@ export const AdminPage: React.FC = () => {
       {/* Tab: Platform Revenue & Sources */}
       {activeTab === 'revenue' && (
         <div className="space-y-6">
+          {/* Withdrawable Balance — the platform's own real, spendable money (platform_cut +
+              full VIP amounts, credited automatically on every completed payment — see
+              resolvePayment.js). Separate from the Revenue/Earnings figures below, which are
+              informational totals, not what's actually available to cash out right now. */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-md">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider opacity-80 flex items-center gap-1.5">
+                <Wallet className="w-3.5 h-3.5" /> Available Balance
+              </span>
+              <span className="text-3xl font-black font-mono block mt-1">KSh {(user?.balance ?? 0).toLocaleString()}</span>
+              <p className="text-[10px] opacity-70 mt-0.5">Platform's 20% cut + full VIP revenue, credited automatically — withdraw any amount, anytime</p>
+            </div>
+            {user?.mpesaPhone ? (
+              <button
+                onClick={() => setWithdrawOpen(true)}
+                disabled={(user?.balance ?? 0) <= 0}
+                className="px-5 py-3 bg-white text-emerald-700 font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all hover:brightness-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 flex-shrink-0"
+              >
+                <Wallet className="w-4 h-4" /> Withdraw
+              </button>
+            ) : editingAdminPhone ? (
+              <form
+                onSubmit={e => {
+                  e.preventDefault();
+                  if (!user || !adminPhoneInput.trim()) return;
+                  updateMpesaPhone(user.id, adminPhoneInput.trim());
+                  setEditingAdminPhone(false);
+                }}
+                className="flex items-center gap-2 flex-shrink-0"
+              >
+                <input
+                  autoFocus
+                  type="tel"
+                  value={adminPhoneInput}
+                  onChange={e => setAdminPhoneInput(e.target.value)}
+                  placeholder="0712345678"
+                  className="w-36 px-3 py-2.5 rounded-xl border-0 text-xs font-bold text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-white"
+                />
+                <button type="submit" className="px-3 py-2.5 bg-white text-emerald-700 font-black text-xs uppercase rounded-xl shadow-md">Save</button>
+              </form>
+            ) : (
+              <button
+                onClick={() => { setAdminPhoneInput(''); setEditingAdminPhone(true); }}
+                className="px-5 py-3 bg-white/15 hover:bg-white/25 text-white font-bold text-xs rounded-xl transition-all flex-shrink-0"
+              >
+                Add M-Pesa number to withdraw
+              </button>
+            )}
+          </div>
+
+          {/* Platform Revenue vs Platform Earnings — kept visually distinct on purpose.
+              Revenue is the lifetime gross that has flowed through the platform (tipster subs
+              + VIP combined); Earnings is only the slice the platform actually keeps (20% of
+              tipster subs, 100% of VIP). Revenue will always be the bigger number — most of a
+              tipster subscription's gross belongs to the tipster, not the platform. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="p-5 rounded-2xl bg-gradient-to-br from-[#0EA5E9] to-sky-700 text-white shadow-md space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">Platform Revenue</span>
+                <DollarSign className="w-4 h-4 opacity-70" />
+              </div>
+              <span className="text-3xl font-black font-mono">KSh {lifetimePlatformRevenue.toLocaleString()}</span>
+              <p className="text-[10px] opacity-70">Lifetime gross collected — tipster subs + VIP combined</p>
+            </div>
+            <div className="p-5 rounded-2xl bg-white dark:bg-[#111c30] border border-emerald-200 dark:border-emerald-800 shadow-xs space-y-1">
+              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                <span className="text-[10px] font-bold uppercase tracking-wider">Platform Earnings</span>
+                <TrendingUp className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+              </div>
+              <span className="text-3xl font-black font-mono text-emerald-600 dark:text-emerald-400">KSh {platformEarnings.toLocaleString()}</span>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500">What the platform actually keeps — 20% of tipster subs + 100% of VIP</p>
+            </div>
+          </div>
+
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 rounded-2xl p-5">
             <div>
               <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-[#0EA5E9]" />
-                Platform Revenue Overview
+                <Zap className="w-5 h-5 text-[#0EA5E9]" />
+                Active Tipster Subscriptions Snapshot
               </h3>
               <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
-                FalconForecast automatically collects a 20% platform cut on every tipster subscription payment.
+                Currently-active tipster subscriptions only (expired ones drop out) — the breakdown below, and the
+                basis for the per-tipster table. FalconForecast takes a 20% cut on every tipster subscription.
               </p>
             </div>
             <div className="flex items-center gap-4 text-xs font-mono">
@@ -716,6 +813,14 @@ export const AdminPage: React.FC = () => {
       <AddPredictionModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
+      />
+
+      <WithdrawModal
+        isOpen={withdrawOpen}
+        onClose={() => setWithdrawOpen(false)}
+        balance={user?.balance ?? 0}
+        mpesaPhone={user?.mpesaPhone}
+        onSuccess={refetchUser}
       />
     </div>
   );
