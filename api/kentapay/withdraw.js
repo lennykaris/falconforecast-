@@ -7,10 +7,14 @@ import {
   getAuthenticatedUserId,
 } from './_lib/kentapay.js';
 
-// Safaricom's B2C payout has a documented KES 10 minimum — anything below that is rejected
-// on their end regardless of what Kentapay does with it, so it's rejected here first with a
-// real explanation instead of a confusing Kentapay-side failure later.
-const MIN_WITHDRAWAL = 10;
+// ⚠️ TEMPORARY TESTING OVERRIDE — Safaricom's B2C payout has a documented KES 10 minimum,
+// normally rejected here first with a real explanation instead of a confusing Kentapay-side
+// failure later. Lowered to 1 so accounts with a small test balance (e.g. the platform
+// admin's current KSh 8) can actually exercise a real withdrawal. Safaricom's own floor still
+// applies upstream regardless of this value — an amount under their real minimum will still
+// fail, just as a genuine Kentapay error instead of being caught here. Restore to 10 once B2C
+// testing is done.
+const MIN_WITHDRAWAL = 1;
 
 /** Lets a tipster cash out some or all of their accumulated balance (see resolvePayment.js —
  * subscription payments credit `profiles.balance` instead of disbursing instantly) via a real

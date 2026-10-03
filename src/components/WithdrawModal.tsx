@@ -5,10 +5,9 @@ import { PaymentPendingView } from './PaymentPendingView';
 import { Confetti } from './Confetti';
 import { ConvertedPrice } from './ConvertedPrice';
 
-// Mirrors api/kentapay/withdraw.js's own MIN_WITHDRAWAL — Safaricom's B2C payout has a
-// documented KES 10 minimum. Checked here too so an amount that's obviously too small never
-// even reaches the server.
-const MIN_WITHDRAWAL = 10;
+// Mirrors api/kentapay/withdraw.js's own MIN_WITHDRAWAL — temporarily lowered to 1 for B2C
+// testing with small balances; restore to 10 (Safaricom's real documented minimum) once done.
+const MIN_WITHDRAWAL = 1;
 
 interface WithdrawModalProps {
   isOpen: boolean;
