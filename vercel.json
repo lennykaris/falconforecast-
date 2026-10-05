@@ -3,7 +3,7 @@
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "crons": [
-    { "path": "/api/kentapay/query-status", "schedule": "0 3 * * *" },
+    { "path": "/api/payhero/query-status", "schedule": "0 3 * * *" },
     { "path": "/api/settle-predictions", "schedule": "30 3 * * *" }
   ]
 }

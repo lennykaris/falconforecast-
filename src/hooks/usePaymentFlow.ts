@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { startKentapayCollect, awaitPaymentResolution } from '../lib/payments';
+import { startPaymentCollect, awaitPaymentResolution } from '../lib/payments';
 
 interface PaymentFlowParams {
   kind: 'vip_subscription' | 'tipster_subscription';
@@ -11,11 +11,8 @@ interface PaymentFlowParams {
 
 export type PayState = 'idle' | 'pending' | 'success' | 'error';
 
-/** The M-Pesa checkout state machine (submit -> startKentapayCollect -> await resolution ->
- * success/error), previously copy-pasted near-identically between CheckoutModal and
- * TipstersPage's inline subscribe modal — including the session-token cancellation guard
- * (closing mid-payment then reopening for a different plan/tipster shouldn't let a late
- * result from the abandoned attempt hijack the new one). One implementation now, shared. */
+/** The M-Pesa checkout state machine (submit -> startPaymentCollect -> await resolution ->
+ * success/error), shared across checkout modals. */
 export function usePaymentFlow() {
   const [payState, setPayState] = useState<PayState>('idle');
   const [payError, setPayError] = useState('');
@@ -33,7 +30,7 @@ export function usePaymentFlow() {
     setPayError('');
 
     try {
-      const { reference } = await startKentapayCollect(params);
+      const { reference } = await startPaymentCollect(params);
       const result = await awaitPaymentResolution(reference);
       if (sessionRef.current !== mySession) return false; // closed or restarted since — ignore
 

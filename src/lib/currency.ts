@@ -1,9 +1,9 @@
-// Every real payment on this site (M-Pesa via Kentapay) is charged and paid out in Kenyan
+// Every real payment on this site (M-Pesa via PayHero) is charged and paid out in Kenyan
 // Shillings — that's a hard constraint of M-Pesa itself, not a choice this app makes. So the
 // currency switcher is display-only: KSh stays the real, actual amount everywhere money
 // actually changes hands; this just adds an approximate converted line ("≈ $11.60") for
-// visitors who think in a different currency. Never used to compute what Kentapay is told to
-// charge — see api/kentapay/collect.js and withdraw.js, which only ever deal in raw KES.
+// visitors who think in a different currency. Never used to compute what PayHero is told to
+// charge — see api/payhero/collect.js and withdraw.js, which only ever deal in raw KES.
 
 export interface CurrencyOption {
   code: string;

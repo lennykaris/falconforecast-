@@ -55,7 +55,7 @@ export const TipsterDashboardPage: React.FC = () => {
   // payments (collect, kind: tipster_subscription) AND their own withdrawals (disburse, kind:
   // tipster_payout) — RLS's existing "Tipsters view own payouts" policy (tipster_id =
   // auth.uid()) already covers both without any new policy. This is the only place a tipster
-  // can see whether a withdrawal actually completed, is still pending on Kentapay's side, or
+  // can see whether a withdrawal actually completed, is still pending, or
   // failed — before this there was no UI for it at all, only the admin-only Payments tab.
   const [transactions, setTransactions] = useState<TransactionRow[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(true);
@@ -621,7 +621,7 @@ export const TipsterDashboardPage: React.FC = () => {
       </div>
 
       {/* Transaction History — the only place a tipster can see whether a withdrawal actually
-          completed, is still pending on Kentapay's side, or failed. Covers both directions:
+          completed, is still pending, or failed. Covers both directions:
           incoming subscription payments (money in) and their own withdrawals (money out). */}
       <div className="bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800/60">

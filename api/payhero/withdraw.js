@@ -1,26 +1,16 @@
 import {
   normalizePhone,
   generateTransactionId,
-  kentapayB2C,
-  extractCloudPacketId,
+  payheroWithdraw,
   getSupabaseAdmin,
   getAuthenticatedUserId,
-} from './_lib/kentapay.js';
+} from './_lib/payhero.js';
 
-// ⚠️ TEMPORARY TESTING OVERRIDE — Safaricom's B2C payout has a documented KES 10 minimum,
-// normally rejected here first with a real explanation instead of a confusing Kentapay-side
-// failure later. Lowered to 1 so accounts with a small test balance (e.g. the platform
-// admin's current KSh 8) can actually exercise a real withdrawal. Safaricom's own floor still
-// applies upstream regardless of this value — an amount under their real minimum will still
-// fail, just as a genuine Kentapay error instead of being caught here. Restore to 10 once B2C
-// testing is done.
-const MIN_WITHDRAWAL = 1;
+const MIN_WITHDRAWAL = 10;
 
-/** Lets a tipster cash out some or all of their accumulated balance (see resolvePayment.js —
- * subscription payments credit `profiles.balance` instead of disbursing instantly) via a real
- * M-Pesa B2C payout, on their own schedule. The client-supplied amount is never trusted
- * outright — claim_tipster_balance's atomic `balance >= p_amount` check below is what
- * actually enforces it can't exceed the real balance, not this validation. */
+/**
+ * Lets a tipster withdraw their accumulated balance via PayHero M-Pesa B2C.
+ */
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
@@ -65,8 +55,6 @@ export default async function handler(req, res) {
       return;
     }
 
-    // Requested amount defaults to the full balance (the old always-withdraw-everything
-    // behavior) when the client omits it, so nothing else calling this endpoint breaks.
     const requestedAmount = req.body?.amount != null ? Number(req.body.amount) : balance;
     if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) {
       res.status(400).json({ error: 'Enter a valid amount to withdraw' });
@@ -80,14 +68,9 @@ export default async function handler(req, res) {
       res.status(400).json({ error: `You only have KSh ${balance.toLocaleString()} available` });
       return;
     }
-    // Round to the nearest shilling — Kentapay's B2C body sends amount as a whole-number
-    // string (see kentapayB2C), so a fractional request would be silently truncated there
-    // anyway; doing it here keeps the claimed/inserted/sent amount all consistent.
     const amount = Math.round(requestedAmount);
 
-    // Atomic `balance = balance - amount WHERE balance >= amount` — a single UPDATE statement,
-    // not a read-then-write from here, so two withdrawal clicks in quick succession (a
-    // double-tap, or a retried request) can't both succeed against the same balance.
+    // Atomically claim balance
     const { data: claimed, error: claimErr } = await supabase.rpc('claim_tipster_balance', {
       p_tipster_id: userId,
       p_amount: amount,
@@ -112,35 +95,26 @@ export default async function handler(req, res) {
     if (insertErr) throw insertErr;
 
     try {
-      const ack = await kentapayB2C({ amount, phone: normalizedPhone, transactionId });
-      const cloudPacketId = extractCloudPacketId(ack);
-      if (cloudPacketId) {
-        await supabase.from('payments').update({ cloud_packet_id: cloudPacketId }).eq('reference', transactionId);
-      } else {
-        console.warn(`Kentapay withdraw: no cloudPacketID in acknowledgement for ${transactionId}`);
+      const ack = await payheroWithdraw({ amount, phone: normalizedPhone, transactionId });
+      const ref = ack?.reference || ack?.transaction_id || ack?.CheckoutRequestID;
+      if (ref) {
+        await supabase.from('payments').update({ cloud_packet_id: String(ref) }).eq('reference', transactionId);
       }
     } catch (disburseErr) {
-      // The claim already deducted the balance — give it back, since nothing was actually
-      // paid out.
       const reason = disburseErr instanceof Error ? disburseErr.message : 'Disburse request failed';
-      console.error('Withdrawal B2C request failed to submit:', disburseErr);
+      console.error('PayHero withdrawal request failed:', disburseErr);
       await supabase.from('payments').update({
         status: 'FAILED',
         failure_message: reason,
       }).eq('reference', transactionId);
       await supabase.rpc('credit_tipster_balance', { p_tipster_id: userId, p_amount: amount });
-      // Surfaces the real Kentapay error (e.g. a bad B2C service id, an auth failure, a
-      // sandbox-specific rejection) instead of a generic message — this endpoint isn't
-      // exposing anything a legitimate withdrawing tipster shouldn't already be able to see
-      // about their own attempted payout, and a vague message here was actively unhelpful
-      // for diagnosing why real withdrawals were failing.
       res.status(502).json({ error: `Failed to submit withdrawal (${reason}) — your balance has been restored.` });
       return;
     }
 
     res.status(200).json({ reference: transactionId, amount });
   } catch (err) {
-    console.error('POST /api/kentapay/withdraw failed:', err);
+    console.error('POST /api/payhero/withdraw failed:', err);
     res.status(502).json({ error: err instanceof Error ? err.message : 'Failed to process withdrawal' });
   }
 }

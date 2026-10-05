@@ -23,7 +23,7 @@ function getSupabaseAdmin() {
  *
  * Not user-facing — call it from a Vercel Cron job (see vercel.json) or trigger manually,
  * authenticated with CRON_SECRET rather than a user session (same shared secret Vercel Cron
- * itself sends automatically — see api/kentapay/query-status.js for the identical pattern). */
+ * itself sends automatically — see api/payhero/query-status.js for the identical pattern). */
 export default async function handler(req, res) {
   if (req.method !== 'POST' && req.method !== 'GET') {
     res.status(405).end();

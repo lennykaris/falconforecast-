@@ -1,23 +1,16 @@
 import {
   normalizePhone,
   generateTransactionId,
-  kentapayCheckout,
-  extractCloudPacketId,
+  payheroInitiateStk,
   getSupabaseAdmin,
   getAuthenticatedUserId,
-} from './_lib/kentapay.js';
+} from './_lib/payhero.js';
 
 const PLATFORM_CUT_PCT = 0.20;
 
-// ⚠️ TEMPORARY TESTING OVERRIDE — forces every checkout (VIP or tipster subscription) to a
-// small fixed price regardless of the real one, so live payment-flow testing on PRODUCTION
-// doesn't require spending real money at full price. This is live on production right now:
-// any real customer checking out while this is `true` pays the forced price, not the real
-// one. Flip back to `false` once production STK-push testing is done.
-const TESTING_FORCE_LOW_PRICE = true;
+// Set to true or via env var when testing STK push live with minimal amount (KSh 5 or 15)
+const TESTING_FORCE_LOW_PRICE = process.env.TESTING_FORCE_LOW_PRICE === 'true';
 
-// Server-side source of truth for VIP plan prices — matches src/data/predictions.ts.
-// Never trust a client-supplied amount for anything that moves real money.
 const VIP_PLAN_PRICES = {
   weekly_pass: 500,
   monthly_vip: 1500,
@@ -58,7 +51,14 @@ export default async function handler(req, res) {
       return;
     }
 
-    let amount, platformCut = null, tipsterNet = null, narration, accountReference;
+    // Fetch user profile for customer name
+    const { data: userProfile } = await supabase
+      .from('profiles')
+      .select('name')
+      .eq('id', userId)
+      .maybeSingle();
+
+    let amount, platformCut = null, tipsterNet = null;
 
     if (kind === 'tipster_subscription') {
       if (!tipsterId || !billingCycle) {
@@ -75,40 +75,27 @@ export default async function handler(req, res) {
         return;
       }
       if (tipster.tipster_status !== 'active') {
-        // role stays 'tipster' when suspended (only tipster_status flips) — checking role
-        // alone let a suspended tipster keep receiving new paid subscriptions and automatic
-        // payouts after being cut off.
         res.status(403).json({ error: 'This tipster is not currently accepting new subscribers' });
         return;
       }
-      // != null, not `||` — a tipster who deliberately set a price of exactly 0 (e.g. a
-      // promotional free tier) was having that overridden by the 500/1500 fallback below,
-      // silently overcharging their subscribers.
+
       amount = billingCycle === 'weekly'
         ? (tipster.weekly_price != null ? Number(tipster.weekly_price) : 500)
         : (tipster.monthly_price != null ? Number(tipster.monthly_price) : 1500);
       platformCut = parseFloat((amount * PLATFORM_CUT_PCT).toFixed(2));
       tipsterNet = parseFloat((amount - platformCut).toFixed(2));
-      narration = `Falcon Forecast - ${tipster.name} subscription`;
-      accountReference = 'FFTIPSTER';
     } else if (kind === 'vip_subscription') {
       amount = VIP_PLAN_PRICES[planId];
       if (!amount) {
         res.status(400).json({ error: 'Unknown plan' });
         return;
       }
-      narration = 'Falcon Forecast - VIP subscription';
-      accountReference = 'FFVIP';
     } else {
       res.status(400).json({ error: 'Unknown payment kind' });
       return;
     }
 
     if (TESTING_FORCE_LOW_PRICE) {
-      // Tipster subscriptions are forced to KSh 15 instead of 5 — Safaricom's B2C payout has
-      // a documented KES 10 minimum, so the 80% net share of a KSh 5 test (KSh 4) would
-      // always fail that step regardless of credentials. 15 keeps the net share (KSh 12)
-      // clear of that floor while still being cheap to test with.
       amount = kind === 'tipster_subscription' ? 15 : 5;
       if (kind === 'tipster_subscription') {
         platformCut = parseFloat((amount * PLATFORM_CUT_PCT).toFixed(2));
@@ -135,41 +122,29 @@ export default async function handler(req, res) {
     if (insertErr) throw insertErr;
 
     try {
-      const ack = await kentapayCheckout({
+      const ack = await payheroInitiateStk({
         amount,
         phone: normalizedPhone,
         transactionId,
-        accountReference,
-        narration,
+        customerName: userProfile?.name || 'Falcon Forecast User',
       });
 
-      const cloudPacketId = extractCloudPacketId(ack);
-      if (cloudPacketId) {
-        await supabase.from('payments').update({ cloud_packet_id: cloudPacketId }).eq('reference', transactionId);
-      } else {
-        // Not fatal — we can still fall back to the Query Status API for this transaction —
-        // but the callback's HASH can't be verified without it, so it's worth knowing about.
-        console.warn(`Kentapay collect: no cloudPacketID in acknowledgement for ${transactionId}`);
+      const checkoutRequestId = ack?.CheckoutRequestID || ack?.reference;
+      if (checkoutRequestId) {
+        await supabase.from('payments').update({ cloud_packet_id: String(checkoutRequestId) }).eq('reference', transactionId);
       }
-    } catch (checkoutErr) {
-      // The payments row above was already inserted as PENDING before this call — without
-      // this, a checkout failure (timeout, auth failure, network error) left it orphaned
-      // PENDING forever instead of FAILED, since the outer catch below never touches it.
-      console.error(`Kentapay checkout request failed for ${transactionId}:`, checkoutErr);
+    } catch (stkErr) {
+      console.error(`PayHero STK push request failed for ${transactionId}:`, stkErr);
       await supabase.from('payments').update({
         status: 'FAILED',
-        failure_message: checkoutErr instanceof Error ? checkoutErr.message : 'Checkout request failed',
+        failure_message: stkErr instanceof Error ? stkErr.message : 'STK Push failed to initiate',
       }).eq('reference', transactionId);
-      throw checkoutErr;
+      throw stkErr;
     }
 
     res.status(200).json({ reference: transactionId, amount });
   } catch (err) {
-    console.error('POST /api/kentapay/collect failed:', err);
-    // A customer never needs to see a raw technical error ("fetch failed", a bare Kentapay
-    // status code, a Java stack trace) — just that something went wrong and to try again. The
-    // real detail is already logged above for us to actually diagnose (and was — this is what
-    // surfaced the IndexOutOfBoundsException now reported to Kentapay).
-    res.status(502).json({ error: 'We couldn\'t start your payment right now. Please try again in a moment.' });
+    console.error('POST /api/payhero/collect failed:', err);
+    res.status(502).json({ error: err instanceof Error ? err.message : 'We couldn\'t start your payment right now. Please try again in a moment.' });
   }
 }

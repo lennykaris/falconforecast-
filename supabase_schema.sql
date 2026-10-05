@@ -556,9 +556,9 @@ AS $$
 $$;
 
 -- =====================================================================================
--- 9. KENTAPAY PAYMENTS — real M-Pesa collect (user pays) and disburse (automatic tipster
--- payout) via Kentapay (Eclectics International's "Swivel" gateway). All writes to this
--- table happen server-side from the Vercel functions in api/kentapay/*.js using the
+-- 9. PAYHERO PAYMENTS — real M-Pesa collect (user pays) and disburse (automatic tipster
+-- payout) via PayHero Kenya. All writes to this
+-- table happen server-side from the Vercel functions in api/payhero/*.js using the
 -- Supabase service role key, which bypasses RLS entirely — there is deliberately no
 -- INSERT/UPDATE policy for any client role, since a browser must never be able to
 -- fabricate or edit a money-moving record directly.
@@ -807,7 +807,7 @@ END $$;
 -- resolvePayment.js's git history). That meant a tipster with no mpesa_phone on file simply
 -- lost that payout with no recovery path at all. Now every subscription payment credits this
 -- balance instead, and the tipster withdraws it on their own schedule via the Withdraw button
--- on their dashboard (api/kentapay/withdraw.js) — see section 6f above for the RLS pin that
+-- on their dashboard (api/payhero/withdraw.js) — see section 6f above for the RLS pin that
 -- keeps this column self-update-proof. (The column itself is added right after
 -- ENABLE ROW LEVEL SECURITY near the top of this file, not here — see the comment there.)
 -- =====================================================================================
@@ -827,7 +827,7 @@ AS $$
 $$;
 
 -- Atomic claim (a single `balance = balance - amount WHERE balance >= amount` UPDATE) —
--- called from api/kentapay/withdraw.js before submitting a B2C payout. Returns whether the
+-- called from api/payhero/withdraw.js before submitting a B2C payout. Returns whether the
 -- claim actually succeeded (false means the balance was insufficient, or changed underneath
 -- a racing second withdrawal click) so the caller never submits a payout for more than the
 -- tipster actually has.

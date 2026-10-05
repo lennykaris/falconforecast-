@@ -137,7 +137,7 @@ export const AdminPage: React.FC = () => {
     if (error) setTipsterActionError(error);
   };
 
-  const stalePendingCutoff = Date.now() - 15 * 60 * 1000; // Kentapay's own callback should land within minutes
+  const stalePendingCutoff = Date.now() - 15 * 60 * 1000; // PayHero callback should land within minutes
   const problemPayments = payments.filter(p =>
     p.status === 'FAILED' || (p.status === 'PENDING' && new Date(p.createdAt).getTime() < stalePendingCutoff)
   );
@@ -729,10 +729,10 @@ export const AdminPage: React.FC = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              "Problems" = failed, or still pending 15+ minutes after being created (Kentapay's
+              "Problems" = failed, or still pending 15+ minutes after being created (PayHero's
               callback should normally land within minutes — a payment stuck longer than that
-              likely means a dropped callback; check /api/kentapay/query-status's reconciliation
-              or the reference directly with Kentapay support).
+              likely means a dropped callback; check /api/payhero/query-status's reconciliation
+              or the reference directly in the PayHero dashboard).
             </p>
             <div className="flex gap-1.5 flex-shrink-0">
               {(['problems', 'all'] as const).map(f => (

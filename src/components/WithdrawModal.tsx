@@ -5,9 +5,8 @@ import { PaymentPendingView } from './PaymentPendingView';
 import { Confetti } from './Confetti';
 import { ConvertedPrice } from './ConvertedPrice';
 
-// Mirrors api/kentapay/withdraw.js's own MIN_WITHDRAWAL — temporarily lowered to 1 for B2C
-// testing with small balances; restore to 10 (Safaricom's real documented minimum) once done.
-const MIN_WITHDRAWAL = 1;
+// Mirrors api/payhero/withdraw.js's own MIN_WITHDRAWAL (minimum KES 10 for M-Pesa B2C).
+const MIN_WITHDRAWAL = 10;
 
 interface WithdrawModalProps {
   isOpen: boolean;

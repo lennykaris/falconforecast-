@@ -43,6 +43,9 @@ export const MatchCommentsModal: React.FC<MatchCommentsModalProps> = ({ isOpen, 
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [posting, setPosting] = useState(false);
+  // likingId guards against a fast double-click firing two toggles off the same stale
+  // `wasLiked` value before either completes
+  const [likingId, setLikingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen || !prediction) return;
@@ -127,12 +130,6 @@ export const MatchCommentsModal: React.FC<MatchCommentsModalProps> = ({ isOpen, 
     }, ...prev]);
     setNewComment('');
   };
-
-  // likingId guards against a fast double-click firing two toggles off the same stale
-  // `wasLiked` value before either completes — the comment_likes primary key (comment_id,
-  // user_id) rejects the second write, and since that error was never checked, the UI kept
-  // showing 2 added likes while the DB only had 1, correcting itself only on next reload.
-  const [likingId, setLikingId] = useState<string | null>(null);
 
   const handleToggleLike = async (comment: CommentItem) => {
     if (!user || likingId === comment.id) return;
