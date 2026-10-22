@@ -848,7 +848,3 @@ BEGIN
 END;
 $$;
 
--- Dev/test seed — requested directly to test the withdrawal flow end-to-end against Kentapay
--- sandbox before any real tipster has a real balance to withdraw. Safe to delete this line
--- (or just leave it — re-running it only ever resets this one dev account back to 3000).
-UPDATE public.profiles SET balance = 3000 WHERE email = 'glnkariuki@gmail.com';
