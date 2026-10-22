@@ -8,15 +8,15 @@ interface CollectParams {
   phone: string;
 }
 
-/** Kicks off a real M-Pesa STK push via our PayHero proxy. The response only means the
- * request was accepted and the prompt is on its way to the phone. Poll or listen
- * for the callback-driven DB update. */
-export async function startPaymentCollect(params: CollectParams): Promise<{ reference: string; amount: number }> {
+/** Kicks off a real M-Pesa STK push via our Kentapay proxy. The response only means the
+ * request was accepted and the prompt is (probably) on its way to the phone — never treat
+ * this as payment confirmation. Poll or listen for the callback-driven DB update instead. */
+export async function startKentapayCollect(params: CollectParams): Promise<{ reference: string; amount: number }> {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
   if (!token) throw new Error('You must be logged in to pay.');
 
-  const res = await fetch('/api/payhero/collect', {
+  const res = await fetch('/api/kentapay/collect', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(params),
@@ -26,17 +26,17 @@ export async function startPaymentCollect(params: CollectParams): Promise<{ refe
   return data;
 }
 
-// Backwards compatibility alias
-export const startKentapayCollect = startPaymentCollect;
-
 /** Kicks off a real M-Pesa B2C payout of a chosen amount from a tipster's withdrawable
- * balance (see api/payhero/withdraw.js). The server re-validates against the real balance. */
+ * balance (see api/kentapay/withdraw.js). The server re-validates against the real balance
+ * regardless of what's passed here. Same "accepted, not yet confirmed" caveat as
+ * startKentapayCollect — the actual outcome still comes from the same `payments` row via
+ * awaitPaymentResolution below. */
 export async function startWithdrawal(amount: number): Promise<{ reference: string; amount: number }> {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
   if (!token) throw new Error('You must be logged in to withdraw.');
 
-  const res = await fetch('/api/payhero/withdraw', {
+  const res = await fetch('/api/kentapay/withdraw', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ amount }),
@@ -50,20 +50,24 @@ export type PaymentPollResult = 'COMPLETE' | 'FAILED' | 'TIMEOUT';
 
 export interface PaymentPollOutcome {
   status: PaymentPollResult;
-  /** The real reason from PayHero's callback (e.g. "Request cancelled by user") — only set
-   * when status is 'FAILED'. Falls back to a generic message in the UI when this is empty. */
+  /** The real reason from Kentapay's callback (e.g. "Request cancelled by user") — only set
+   * when status is 'FAILED'. Falls back to a generic message in the UI when this is empty,
+   * which happens for older rows or callbacks that didn't include a description. */
   failureMessage?: string;
 }
 
-/** Actively asks our server to check this one payment's real status with PayHero directly
- * (api/payhero/check-status.js), instead of only waiting for PayHero's push callback. */
+/** Actively asks our server to check this one payment's real status with Kentapay directly
+ * (api/kentapay/check-status.js), instead of only waiting for Kentapay's push callback — which
+ * in practice doesn't always arrive. Returns null on any failure (not authenticated, network
+ * error, server hiccup) so the caller just falls back to the next passive poll tick; this is
+ * strictly a bonus nudge, never the only way a payment can resolve. */
 async function checkPaymentStatusNow(reference: string): Promise<{ status: string; failureMessage?: string } | null> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
     if (!token) return null;
 
-    const res = await fetch('/api/payhero/check-status', {
+    const res = await fetch('/api/kentapay/check-status', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ reference }),
@@ -75,8 +79,12 @@ async function checkPaymentStatusNow(reference: string): Promise<{ status: strin
   }
 }
 
-/** Polls our own `payments` row for the outcome, and actively re-checks with PayHero
- * every `activeCheckEveryMs` so genuine outcomes resolve promptly. */
+/** Polls our own `payments` row (RLS-scoped to the current user) for the outcome, same as
+ * Kentapay's callback would write — but since that push callback doesn't reliably arrive,
+ * this also actively re-checks with Kentapay itself every `activeCheckEveryMs`, so a genuine
+ * failure surfaces as FAILED within this poll window instead of sitting PENDING until the
+ * once-daily reconciliation cron (Vercel's Hobby plan caps cron jobs to once a day) gets to
+ * it. */
 export async function pollPaymentStatus(
   reference: string,
   { intervalMs = 3000, timeoutMs = 90000, activeCheckEveryMs = 15000 }: { intervalMs?: number; timeoutMs?: number; activeCheckEveryMs?: number } = {}
