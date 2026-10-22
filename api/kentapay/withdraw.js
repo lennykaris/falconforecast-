@@ -117,7 +117,10 @@ export default async function handler(req, res) {
       if (cloudPacketId) {
         await supabase.from('payments').update({ cloud_packet_id: cloudPacketId }).eq('reference', transactionId);
       } else {
-        console.warn(`Kentapay withdraw: no cloudPacketID in acknowledgement for ${transactionId}`);
+        // TEMPORARY: full raw ack logged to find out exactly what Kentapay's real B2C
+        // acknowledgment shape is. Remove once that's understood (see collect.js's matching
+        // comment).
+        console.warn(`Kentapay withdraw: no cloudPacketID in acknowledgement for ${transactionId}. Raw ack: ${JSON.stringify(ack)}`);
       }
     } catch (disburseErr) {
       // The claim already deducted the balance — give it back, since nothing was actually

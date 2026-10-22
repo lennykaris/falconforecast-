@@ -149,7 +149,10 @@ export default async function handler(req, res) {
       } else {
         // Not fatal — we can still fall back to the Query Status API for this transaction —
         // but the callback's HASH can't be verified without it, so it's worth knowing about.
-        console.warn(`Kentapay collect: no cloudPacketID in acknowledgement for ${transactionId}`);
+        // TEMPORARY: full raw ack logged (not just the warning) to find out exactly what
+        // Kentapay's real acknowledgment shape is, since extractCloudPacketId never seems to
+        // find a cloudPacketID in it. Remove once that's understood.
+        console.warn(`Kentapay collect: no cloudPacketID in acknowledgement for ${transactionId}. Raw ack: ${JSON.stringify(ack)}`);
       }
     } catch (checkoutErr) {
       // The payments row above was already inserted as PENDING before this call — without

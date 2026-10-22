@@ -13,6 +13,12 @@ export default async function handler(req, res) {
 
   const body = req.body || {};
 
+  // TEMPORARY: log every callback hit verbatim, before any shape assumptions are applied —
+  // needed to confirm whether Kentapay's real callback payload actually matches what the
+  // checks below expect (status/transactionID/HASH/etc.), since the rest of this handler has
+  // never been observed to actually resolve a payment in production. Remove once confirmed.
+  console.warn(`Kentapay callback received. Raw body: ${JSON.stringify(body)}`);
+
   // Not a transaction result we recognize — ack so Kentapay stops retrying, nothing to act
   // on. Checked for undefined/null explicitly, not falsy — Kentapay's success code can come
   // back as the number 0 as well as the string '00' (kentapay.js's own status checks already
