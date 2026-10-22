@@ -60,6 +60,30 @@ html.dark {
   --footer-bg:      #111c30;
 }
 
+/* ─── HERO TEXT (sits over the scroll-scrubbed photo background at lg+) ─── */
+/* Below lg there's no photo, so these follow the normal theme colors. At lg+ the photo is
+   always the same busy, colorful image regardless of site theme, so the text is pinned to
+   white/near-white there rather than following light/dark mode — a Tailwind arbitrary-value
+   class (text-[color:var(--text-primary)]) combined with lg:text-white didn't reliably win
+   the cascade in this build, so this uses a plain mobile-first media query instead. */
+.hero-text-strong {
+  color: var(--text-primary);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.85);
+}
+.hero-text-soft {
+  color: var(--text-secondary);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.85);
+}
+.hero-text-muted {
+  color: var(--text-muted);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.85);
+}
+@media (min-width: 1024px) {
+  .hero-text-strong { color: #ffffff; }
+  .hero-text-soft { color: #e2e8f0; }
+  .hero-text-muted { color: #cbd5e1; }
+}
+
 /* ─── BASE ─── */
 *, *::before, *::after { box-sizing: border-box; }
 

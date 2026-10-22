@@ -115,10 +115,10 @@ const AnimatedStat: React.FC<{ target: number; suffix?: string; label: string }>
 
   return (
     <div ref={ref}>
-      <div className="font-mono font-black text-2xl sm:text-3xl" style={{ color: 'var(--text-primary)' }}>
+      <div className="font-mono font-black text-2xl sm:text-3xl hero-text-strong">
         {value}<span style={{ color: 'var(--brand)' }}>{suffix}</span>
       </div>
-      <div className="text-[11px] font-semibold uppercase tracking-wide mt-1" style={{ color: 'var(--text-muted)' }}>{label}</div>
+      <div className="text-[11px] font-semibold uppercase tracking-wide mt-1 hero-text-muted">{label}</div>
     </div>
   );
 };
@@ -406,15 +406,6 @@ export const LandingPage: React.FC = () => {
           {/* Ambient background: scroll-scrubbed frame sequence, full-bleed behind the whole hero */}
           <div className="hidden lg:block absolute inset-0 overflow-hidden pointer-events-none">
             <HeroFrameSequence />
-            <div className="absolute inset-0" style={{ backgroundColor: 'var(--bg-base)', opacity: 0.4 }} />
-            <div
-              className="absolute inset-0"
-              style={{
-                backgroundColor: 'var(--bg-base)',
-                maskImage: 'radial-gradient(ellipse 50% 75% at 50% 40%, black 30%, transparent 85%)',
-                WebkitMaskImage: 'radial-gradient(ellipse 50% 75% at 50% 40%, black 30%, transparent 85%)',
-              }}
-            />
           </div>
 
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -433,7 +424,7 @@ export const LandingPage: React.FC = () => {
 
               <div className="relative z-10 max-w-2xl mx-auto text-center space-y-7">
                 <Reveal delay={80}>
-                  <h1 className="text-4xl sm:text-5xl xl:text-6xl font-black font-display leading-[1.04] tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                  <h1 className="text-4xl sm:text-5xl xl:text-6xl font-black font-display leading-[1.04] tracking-tight hero-text-strong">
                     Football tips that{' '}
                     <span style={{ color: 'var(--brand)' }}>beat the bookmaker</span>,
                     not just guess the score.
@@ -441,7 +432,7 @@ export const LandingPage: React.FC = () => {
                 </Reveal>
 
                 <Reveal delay={140}>
-                  <p className="text-base leading-relaxed max-w-lg mx-auto" style={{ color: 'var(--text-secondary)' }}>
+                  <p className="text-base leading-relaxed max-w-lg mx-auto hero-text-soft">
                     Falcon Forecast blends xG modeling with a marketplace of verified tipsters to deliver
                     confidence-scored predictions across the Premier League, La Liga, Serie A, Bundesliga
                     and the Champions League — free tips daily, VIP picks when you want an edge.
