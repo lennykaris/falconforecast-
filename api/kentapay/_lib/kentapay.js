@@ -68,6 +68,18 @@ function describeStatus(code) {
 // an error that actually says what happened.
 const REQUEST_TIMEOUT_MS = 15000;
 
+/** B2C's `timestamp` field must be `YYYY/MM/DD HH:mm:ss` per Kentapay's docs — not
+ * ISO-8601, which is what `new Date().toISOString()` was sending before this, a shape
+ * Kentapay's parser almost certainly never recognized as a valid timestamp at all. Formatted
+ * in EAT (UTC+3), since this is a Kenya-specific M-Pesa gateway and Vercel's functions run in
+ * UTC by default — sending a bare UTC clock reading under a field that likely expects local
+ * Kenya time would itself be silently wrong, 3 hours off, even with the right string shape. */
+function kentapayTimestamp() {
+  const eat = new Date(Date.now() + 3 * 60 * 60 * 1000);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${eat.getUTCFullYear()}/${pad(eat.getUTCMonth() + 1)}/${pad(eat.getUTCDate())} ${pad(eat.getUTCHours())}:${pad(eat.getUTCMinutes())}:${pad(eat.getUTCSeconds())}`;
+}
+
 async function fetchWithTimeout(url, options) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -129,10 +141,11 @@ function signRequest(bodyString, hmacKey) {
   return createHmac('sha512', hmacKey).update(bodyString).digest('hex');
 }
 
-/** Pulls the gateway's request identifier out of an acknowledgement response, whatever
- * casing it comes back in — Kentapay's own docs are inconsistent between `cloudPacketID`
- * (generic postRequest) and `CLOUDPACKETID` (checkout error samples). We need this value to
- * verify the callback's HASH later, so it must survive regardless of casing. */
+/** Pulls the gateway's request identifier out of a B2C/generic-postRequest acknowledgement,
+ * whatever casing it comes back in. Per Kentapay's docs, a *successful* onlinecheckout/request
+ * (STK push) acknowledgement never includes this field at all — CLOUDPACKETID only appears in
+ * their checkout error samples, never in a success response. Only use this for B2C/postRequest
+ * acknowledgements; see extractCheckoutRequestId for checkout. */
 export function extractCloudPacketId(ackResponse) {
   if (!ackResponse || typeof ackResponse !== 'object') return null;
   for (const key of Object.keys(ackResponse)) {
@@ -142,6 +155,23 @@ export function extractCloudPacketId(ackResponse) {
   if (original && typeof original === 'object') {
     for (const key of Object.keys(original)) {
       if (key.toLowerCase() === 'cloudpacketid') return String(original[key]);
+    }
+  }
+  return null;
+}
+
+/** The checkout/STK-push equivalent of extractCloudPacketId — a successful onlinecheckout
+ * acknowledgement carries ORIGINAL_RESPONSE.CheckoutRequestID instead of a cloudPacketID.
+ * Kentapay's callback docs describe the HASH formula generically as using "the identifier
+ * from your initial response" and illustrate it with B2C's cloudPacketID specifically; for
+ * checkout, that identifier is this CheckoutRequestID instead — not documented explicitly as
+ * such, but the only value checkout's success response actually provides for this purpose. */
+export function extractCheckoutRequestId(ackResponse) {
+  if (!ackResponse || typeof ackResponse !== 'object') return null;
+  const original = ackResponse.ORIGINAL_RESPONSE;
+  if (original && typeof original === 'object') {
+    for (const key of Object.keys(original)) {
+      if (key.toLowerCase() === 'checkoutrequestid') return String(original[key]);
     }
   }
   return null;
@@ -193,7 +223,7 @@ export async function kentapayB2C({ amount, phone, transactionId }) {
     accountno: phone,
     amount: String(Math.round(amount)),
     currencycode: 'KES',
-    timestamp: new Date().toISOString(),
+    timestamp: kentapayTimestamp(),
   };
   const bodyString = JSON.stringify(body);
   const res = await fetchWithTimeout(`${BASE_URL}/ServiceLayer/v2/request/postRequest`, {

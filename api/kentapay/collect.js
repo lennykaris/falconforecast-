@@ -3,6 +3,7 @@ import {
   generateTransactionId,
   kentapayCheckout,
   extractCloudPacketId,
+  extractCheckoutRequestId,
   getSupabaseAdmin,
   getAuthenticatedUserId,
 } from './_lib/kentapay.js';
@@ -143,16 +144,18 @@ export default async function handler(req, res) {
         narration,
       });
 
-      const cloudPacketId = extractCloudPacketId(ack);
-      if (cloudPacketId) {
-        await supabase.from('payments').update({ cloud_packet_id: cloudPacketId }).eq('reference', transactionId);
+      // A successful onlinecheckout/request acknowledgement never actually includes a
+      // cloudPacketID per Kentapay's own docs (only their error samples have one) — it
+      // carries ORIGINAL_RESPONSE.CheckoutRequestID instead, which the callback's HASH
+      // verification uses in cloudPacketID's place for this payment type. Still tried first
+      // in case Kentapay ever does include one, since extractCloudPacketId costs nothing.
+      const identifier = extractCloudPacketId(ack) || extractCheckoutRequestId(ack);
+      if (identifier) {
+        await supabase.from('payments').update({ cloud_packet_id: identifier }).eq('reference', transactionId);
       } else {
         // Not fatal — we can still fall back to the Query Status API for this transaction —
         // but the callback's HASH can't be verified without it, so it's worth knowing about.
-        // TEMPORARY: full raw ack logged (not just the warning) to find out exactly what
-        // Kentapay's real acknowledgment shape is, since extractCloudPacketId never seems to
-        // find a cloudPacketID in it. Remove once that's understood.
-        console.warn(`Kentapay collect: no cloudPacketID in acknowledgement for ${transactionId}. Raw ack: ${JSON.stringify(ack)}`);
+        console.warn(`Kentapay collect: no cloudPacketID or CheckoutRequestID in acknowledgement for ${transactionId}. Raw ack: ${JSON.stringify(ack)}`);
       }
     } catch (checkoutErr) {
       // The payments row above was already inserted as PENDING before this call — without
