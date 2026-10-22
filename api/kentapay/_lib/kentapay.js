@@ -110,7 +110,13 @@ async function getAccessToken() {
     throw new Error(describeStatus(data?.status) || `Kentapay token request failed: ${res.status}`);
   }
 
-  const expiresInMs = (Number(data.expires_in) || 55) * 60 * 1000;
+  // `expires_in` is in SECONDS per OAuth2's client_credentials convention (RFC 6749 §4.2.2),
+  // which Kentapay's token endpoint follows — this used to multiply by 60 as if it were
+  // minutes, over-caching the token ~60x past its real lifetime. Once the real (much shorter)
+  // expiry passed, every subsequent call on a still-warm serverless instance kept reusing the
+  // now-dead cached token and failing with Kentapay's "Invalid Access token", until that
+  // instance eventually cold-started and reset the in-process cache.
+  const expiresInMs = (Number(data.expires_in) || 300) * 1000;
   tokenCache = {
     accessToken: data.access_token,
     hmacKey: data.key,
