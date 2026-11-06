@@ -33,6 +33,7 @@ import { PrivacyPage } from './pages/PrivacyPage';
 import { TipstersPage } from './pages/TipstersPage';
 import { TipsterDashboardPage } from './pages/TipsterDashboardPage';
 import { TipsterApplyPage } from './pages/TipsterApplyPage';
+import { BookmakersPage } from './pages/BookmakersPage';
 
 import type { SubscriptionPlan } from './types/prediction';
 import { SUBSCRIPTION_PLANS } from './data/predictions';
@@ -52,6 +53,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/vip': 'VIP Membership | Falcon Forecast',
   '/tipsters': 'Verified Tipster Marketplace | Falcon Forecast',
   '/odds-comparison': 'Odds Comparison | Falcon Forecast',
+  '/bookmakers': 'Betting Sites in Kenya | Falcon Forecast',
   '/news': 'Football News | Falcon Forecast',
   '/about': 'About Us | Falcon Forecast',
   '/dashboard': 'My Dashboard | Falcon Forecast',
@@ -112,6 +114,7 @@ export const AppContent: React.FC = () => {
             <Route path="/post-tip" element={<PostTipPage />} />
             <Route path="/premium-tips" element={<PremiumTipsPage onOpenCheckout={handleOpenCheckout} />} />
             <Route path="/odds-comparison" element={<OddsComparisonPage />} />
+            <Route path="/bookmakers" element={<BookmakersPage />} />
             
             {/* Football League Routes */}
             <Route path="/premier-league" element={<HomePage onOpenCheckout={handleOpenCheckout} />} />

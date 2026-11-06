@@ -72,6 +72,7 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
     { to: '/champions-league', label: 'Champions League' },
     { to: '/serie-a', label: 'Serie A' },
     { to: '/bundesliga', label: 'Bundesliga' },
+    { to: '/bookmakers', label: 'Betting Sites' },
   ];
 
   return (
@@ -111,6 +112,14 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                   }`}
                 >
                   Odds Comparison
+                </Link>
+                <Link
+                  to="/bookmakers"
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
+                    isActive('/bookmakers') ? 'text-[#38bdf8] bg-white/10' : 'text-slate-300 hover:text-white'
+                  }`}
+                >
+                  Bookmakers
                 </Link>
                 <Link
                   to="/premium-tips"

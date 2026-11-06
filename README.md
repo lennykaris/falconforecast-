@@ -9,6 +9,8 @@ Built with **Vite + React 19 + TypeScript + Tailwind CSS v4**, backed by **Supab
 - **Real fixtures & results** (`/matches` and league routes) — live via a SportSRC proxy, including real scores and league standings.
 - **Free & VIP tips** (`/tips`, `/premium-tips`, `/vip`) — platform picks gated by a sitewide VIP subscription; tipster picks gated per-tipster (pay that specific tipster to unlock their premium tips, or they can mark a tip free).
 - **Tipster marketplace** (`/tipsters`) — browse verified tipsters, subscribe weekly/monthly.
+- **Betting site directory** (`/bookmakers`) — direct links to selected external sportsbooks; no affiliate rankings or bonus claims.
+- **Community match predictions** — signed-in users vote home/draw/away; match details show aggregate percentages without exposing individual votes.
 - **Tipster dashboard** (`/tipster-dashboard`) — post odds on real upcoming fixtures, manage pricing, view real subscribers and revenue.
 - **Admin panel** (`/admin`, admin-only) — approve/suspend tipsters, manage predictions, view platform-wide revenue.
 - **Google sign-in** via Supabase's hosted OAuth flow, plus email/password auth with password reset.

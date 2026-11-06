@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Loader2, ArrowRightLeft, MapPin, ChevronDown } from 'lucide-react';
 import type { MatchDetail, MatchIncident, RecentMatchResult } from '../types/prediction';
 import { fetchMatchDetail } from '../lib/matches';
+import { CommunityPredictionPoll } from './CommunityPredictionPoll';
 
 interface MatchDetailModalProps {
   matchId: string | null;
@@ -197,6 +198,13 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ matchId, onC
                 </p>
               )}
             </div>
+
+            <CommunityPredictionPoll
+              matchId={match.id}
+              homeTeam={match.homeTeam}
+              awayTeam={match.awayTeam}
+              matchStatus={match.status}
+            />
 
             {/* Head-to-head & form — matters most before a match has even kicked off (no live
                 stats exist yet), but left visible regardless of status since it's still

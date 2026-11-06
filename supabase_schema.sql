@@ -538,6 +538,53 @@ CREATE INDEX IF NOT EXISTS idx_comments_prediction ON public.comments(prediction
 CREATE INDEX IF NOT EXISTS idx_comment_likes_comment ON public.comment_likes(comment_id);
 
 -- =====================================================================================
+-- 7a. COMMUNITY MATCH PREDICTIONS — one private vote per signed-in user and match; only
+-- aggregate counts are exposed publicly by the SECURITY DEFINER RPC below.
+-- =====================================================================================
+CREATE TABLE IF NOT EXISTS public.community_prediction_votes (
+  match_id TEXT NOT NULL,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  selection TEXT NOT NULL CHECK (selection IN ('home', 'draw', 'away')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  PRIMARY KEY (match_id, user_id)
+);
+
+ALTER TABLE public.community_prediction_votes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users view own community prediction" ON public.community_prediction_votes;
+CREATE POLICY "Users view own community prediction"
+  ON public.community_prediction_votes FOR SELECT
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users add own community prediction" ON public.community_prediction_votes;
+CREATE POLICY "Users add own community prediction"
+  ON public.community_prediction_votes FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users update own community prediction" ON public.community_prediction_votes;
+CREATE POLICY "Users update own community prediction"
+  ON public.community_prediction_votes FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE OR REPLACE FUNCTION public.community_prediction_counts(p_match_id TEXT)
+RETURNS TABLE(selection TEXT, vote_count BIGINT)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+STABLE
+AS $$
+  SELECT votes.selection, COUNT(*)::BIGINT
+  FROM public.community_prediction_votes AS votes
+  WHERE votes.match_id = p_match_id
+  GROUP BY votes.selection;
+$$;
+
+REVOKE ALL ON FUNCTION public.community_prediction_counts(TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.community_prediction_counts(TEXT) TO anon, authenticated;
+
+-- =====================================================================================
 -- 8. PUBLIC PLATFORM STATS — a safe, aggregate-only RPC for the marketing landing page.
 -- Row Level Security intentionally restricts tipster_subscriptions to each user's own
 -- rows, so a logged-out visitor can never see real aggregate counts directly. This
