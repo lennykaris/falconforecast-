@@ -122,8 +122,8 @@ export const TipsterDashboardPage: React.FC = () => {
   const expiredSubscribers = mySubscriptions.filter(s => s.status !== 'active');
 
   const handleStartEdit = () => {
-    setNewWeekly(myProfile?.weeklyPrice || 9.99);
-    setNewMonthly(myProfile?.monthlyPrice || 29.99);
+    setNewWeekly(myProfile?.weeklyPrice ?? 0);
+    setNewMonthly(myProfile?.monthlyPrice ?? 0);
     setEditingPrices(true);
   };
 
@@ -403,7 +403,8 @@ export const TipsterDashboardPage: React.FC = () => {
               <div className="flex gap-1">
                 <button
                   onClick={() => handleSavePrices(updateOwnPricing)}
-                  className="p-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-lg border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                  disabled={!Number.isFinite(newWeekly) || !Number.isFinite(newMonthly) || newWeekly < 100 || newMonthly < 200}
+                  className="p-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-lg border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   title="Save"
                 >
                   <Check className="w-4 h-4" />
@@ -435,10 +436,10 @@ export const TipsterDashboardPage: React.FC = () => {
                 </div>
               ) : (
                 <div className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-800">
-                  <span className="text-xl font-black text-slate-900 dark:text-white font-mono">KSh {myProfile?.weeklyPrice || 500}</span>
+                  <span className="text-xl font-black text-slate-900 dark:text-white font-mono">KSh {myProfile?.weeklyPrice ?? 'Not set'}</span>
                   <div className="text-right">
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block">You earn: KSh {Math.round((myProfile?.weeklyPrice || 500) * (1 - PLATFORM_CUT_PCT))}</span>
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500">Platform: KSh {Math.round((myProfile?.weeklyPrice || 500) * PLATFORM_CUT_PCT)}</span>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block">You earn: KSh {Math.round((myProfile?.weeklyPrice ?? 0) * (1 - PLATFORM_CUT_PCT))}</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500">Platform: KSh {Math.round((myProfile?.weeklyPrice ?? 0) * PLATFORM_CUT_PCT)}</span>
                   </div>
                 </div>
               )}
@@ -460,10 +461,10 @@ export const TipsterDashboardPage: React.FC = () => {
                 </div>
               ) : (
                 <div className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-800">
-                  <span className="text-xl font-black text-slate-900 dark:text-white font-mono">KSh {myProfile?.monthlyPrice || 1500}</span>
+                  <span className="text-xl font-black text-slate-900 dark:text-white font-mono">KSh {myProfile?.monthlyPrice ?? 'Not set'}</span>
                   <div className="text-right">
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block">You earn: KSh {Math.round((myProfile?.monthlyPrice || 1500) * (1 - PLATFORM_CUT_PCT))}</span>
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500">Platform: KSh {Math.round((myProfile?.monthlyPrice || 1500) * PLATFORM_CUT_PCT)}</span>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block">You earn: KSh {Math.round((myProfile?.monthlyPrice ?? 0) * (1 - PLATFORM_CUT_PCT))}</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500">Platform: KSh {Math.round((myProfile?.monthlyPrice ?? 0) * PLATFORM_CUT_PCT)}</span>
                   </div>
                 </div>
               )}

@@ -60,7 +60,12 @@ export const TipstersPage: React.FC = () => {
   // pick inside the See Tips modal navigates to ?subscribe=<id>, which opens the Subscribe
   // modal via the effect above; without this the See Tips modal stayed open underneath it.
   useEffect(() => {
-    if (selectedTipster) setViewingTipsterTips(null);
+    if (selectedTipster) {
+      setViewingTipsterTips(null);
+      setSubscriptionCycle(
+        selectedTipster.monthlyPrice != null && selectedTipster.monthlyPrice > 0 ? 'monthly' : 'weekly'
+      );
+    }
   }, [selectedTipster]);
 
   const filtered = activeTipsters.filter(t => {
@@ -90,6 +95,9 @@ export const TipstersPage: React.FC = () => {
 
   const clearFilters = () => { setActiveLeague('All'); setActiveMarket('All'); };
   const hasFilters = activeLeague !== 'All' || activeMarket !== 'All';
+  const selectedPrice = selectedTipster
+    ? (subscriptionCycle === 'weekly' ? selectedTipster.weeklyPrice : selectedTipster.monthlyPrice)
+    : undefined;
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0f1827]">
@@ -208,6 +216,9 @@ export const TipstersPage: React.FC = () => {
                 // Admins get every tipster's content unlocked without an actual paid
                 // subscription — matches PredictionCard's own admin bypass.
                 const subscribed = isAdmin || (user ? isSubscribedToTipster(user.id, tipster.id) : false);
+                const hasSubscriptionPrice =
+                  (tipster.weeklyPrice != null && tipster.weeklyPrice > 0) ||
+                  (tipster.monthlyPrice != null && tipster.monthlyPrice > 0);
                 return (
                   <div
                     key={tipster.id}
@@ -303,20 +314,22 @@ export const TipstersPage: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <div className="text-center">
                           <p className="text-[9px] font-bold text-slate-400 uppercase">Weekly</p>
-                          <p className="text-base font-black text-slate-900 dark:text-white font-mono">KSh {tipster.weeklyPrice}<span className="text-[10px] text-slate-400">/wk</span></p>
-                          <ConvertedPrice kes={tipster.weeklyPrice || 500} className="text-[9px] text-slate-400 dark:text-slate-500 block" />
+                          <p className="text-base font-black text-slate-900 dark:text-white font-mono">{tipster.weeklyPrice != null ? `KSh ${tipster.weeklyPrice}` : 'Not set'}<span className="text-[10px] text-slate-400">/wk</span></p>
+                          {tipster.weeklyPrice != null && <ConvertedPrice kes={tipster.weeklyPrice} className="text-[9px] text-slate-400 dark:text-slate-500 block" />}
                         </div>
                         <div className="w-px h-8 bg-slate-200 dark:bg-slate-600" />
                         <div className="text-center">
                           <p className="text-[9px] font-bold text-slate-400 uppercase">Monthly</p>
-                          <p className="text-base font-black text-[#0EA5E9] font-mono">KSh {tipster.monthlyPrice}<span className="text-[10px] text-slate-400">/mo</span></p>
-                          <ConvertedPrice kes={tipster.monthlyPrice || 1500} className="text-[9px] text-slate-400 dark:text-slate-500 block" />
+                          <p className="text-base font-black text-[#0EA5E9] font-mono">{tipster.monthlyPrice != null ? `KSh ${tipster.monthlyPrice}` : 'Not set'}<span className="text-[10px] text-slate-400">/mo</span></p>
+                          {tipster.monthlyPrice != null && <ConvertedPrice kes={tipster.monthlyPrice} className="text-[9px] text-slate-400 dark:text-slate-500 block" />}
                         </div>
                         <div className="w-px h-8 bg-slate-200 dark:bg-slate-600" />
                         <div className="text-center">
                           <p className="text-[9px] font-bold text-emerald-500 uppercase">Save</p>
                           <p className="text-xs font-black text-emerald-600">
-                            {Math.round(100 - ((tipster.monthlyPrice || 1500) / ((tipster.weeklyPrice || 500) * 4.3)) * 100)}%
+                            {tipster.weeklyPrice != null && tipster.weeklyPrice > 0 && tipster.monthlyPrice != null
+                              ? `${Math.round(100 - (tipster.monthlyPrice / (tipster.weeklyPrice * 4.3)) * 100)}%`
+                              : '—'}
                           </p>
                         </div>
                       </div>
@@ -328,14 +341,15 @@ export const TipstersPage: React.FC = () => {
                         </div>
                       ) : (
                         <button
+                          disabled={!hasSubscriptionPrice}
                           onClick={() => {
                             if (!user) { window.location.href = '/login'; return; }
                             setSelectedTipster(tipster);
                           }}
-                          className="w-full py-3.5 bg-[#0EA5E9] hover:bg-sky-600 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all hover:shadow-lg flex items-center justify-center space-x-1.5"
+                          className="w-full py-3.5 bg-[#0EA5E9] hover:bg-sky-600 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all hover:shadow-lg flex items-center justify-center space-x-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <Crown className="w-4 h-4 fill-white" />
-                          <span>Subscribe to {tipster.name.split(' ')[0]}</span>
+                          <span>{hasSubscriptionPrice ? `Subscribe to ${tipster.name.split(' ')[0]}` : 'Pricing not set'}</span>
                         </button>
                       )}
                     </div>
@@ -395,33 +409,35 @@ export const TipstersPage: React.FC = () => {
                   {/* Cycle Selector */}
                   <div className="grid grid-cols-2 gap-3">
                     <button
+                      disabled={selectedTipster.weeklyPrice == null || selectedTipster.weeklyPrice <= 0}
                       onClick={() => setSubscriptionCycle('weekly')}
                       className={`p-4 rounded-2xl border-2 text-center transition-all ${
                         subscriptionCycle === 'weekly'
                           ? 'border-[#0EA5E9] bg-sky-50 dark:bg-sky-950/40'
-                          : 'border-slate-200 dark:border-slate-600 hover:border-sky-300'
-                      }`}
+                            : 'border-slate-200 dark:border-slate-600 hover:border-sky-300'
+                          } disabled:opacity-40 disabled:cursor-not-allowed`}
                     >
                       <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Weekly</p>
                       <p className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-                        KSh {selectedTipster.weeklyPrice}
+                        {selectedTipster.weeklyPrice != null ? `KSh ${selectedTipster.weeklyPrice}` : 'Not set'}
                       </p>
                       <p className="text-[10px] text-slate-400 mt-1">per week</p>
                     </button>
                     <button
+                      disabled={selectedTipster.monthlyPrice == null || selectedTipster.monthlyPrice <= 0}
                       onClick={() => setSubscriptionCycle('monthly')}
                       className={`p-4 rounded-2xl border-2 text-center transition-all relative overflow-hidden ${
                         subscriptionCycle === 'monthly'
                           ? 'border-[#0EA5E9] bg-sky-50 dark:bg-sky-950/40'
-                          : 'border-slate-200 dark:border-slate-600 hover:border-sky-300'
-                      }`}
+                            : 'border-slate-200 dark:border-slate-600 hover:border-sky-300'
+                          } disabled:opacity-40 disabled:cursor-not-allowed`}
                     >
                       <span className="absolute top-2 right-2 text-[9px] font-black text-white bg-emerald-500 px-1.5 py-0.5 rounded-full">
                         BEST VALUE
                       </span>
                       <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Monthly</p>
                       <p className="text-2xl font-black text-[#0EA5E9] font-mono">
-                        KSh {selectedTipster.monthlyPrice}
+                        {selectedTipster.monthlyPrice != null ? `KSh ${selectedTipster.monthlyPrice}` : 'Not set'}
                       </p>
                       <p className="text-[10px] text-slate-400 mt-1">per month</p>
                     </button>
@@ -436,10 +452,10 @@ export const TipstersPage: React.FC = () => {
                       <span className="font-semibold">Total</span>
                       <div className="text-right">
                         <span className="font-mono font-bold text-sm block">
-                          KSh {subscriptionCycle === 'weekly' ? selectedTipster.weeklyPrice : selectedTipster.monthlyPrice}
+                          {selectedPrice != null ? `KSh ${selectedPrice}` : 'Not set'}
                         </span>
                         <ConvertedPrice
-                          kes={(subscriptionCycle === 'weekly' ? selectedTipster.weeklyPrice : selectedTipster.monthlyPrice) || 0}
+                          kes={selectedPrice ?? 0}
                           className="text-[10px] text-slate-400 dark:text-slate-500"
                         />
                       </div>
@@ -467,12 +483,14 @@ export const TipstersPage: React.FC = () => {
                   <div className="space-y-2">
                     <button
                       onClick={() => handleSubscribe(selectedTipster)}
-                      disabled={!phone.trim()}
+                      disabled={!phone.trim() || selectedPrice == null || selectedPrice <= 0}
                       className="w-full py-3.5 bg-[#0EA5E9] hover:bg-sky-600 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 disabled:opacity-60"
                     >
                       <Lock className="w-4 h-4" />
                       <span>
-                        Pay — KSh {subscriptionCycle === 'weekly' ? selectedTipster.weeklyPrice : selectedTipster.monthlyPrice}/{subscriptionCycle === 'weekly' ? 'wk' : 'mo'}
+                        {selectedPrice != null && selectedPrice > 0
+                          ? `Pay — KSh ${selectedPrice}/${subscriptionCycle === 'weekly' ? 'wk' : 'mo'}`
+                          : 'Price not set'}
                       </span>
                     </button>
                     <button

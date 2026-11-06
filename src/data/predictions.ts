@@ -23,11 +23,8 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: 'monthly_vip',
     name: 'Pro Predictor',
-    // ⚠️ TEMPORARY TESTING PRICE — matches TESTING_FORCE_LOW_PRICE in api/kentapay/collect.js,
-    // which is what actually enforces this server-side regardless of what's shown here. Real
-    // price is KSh 1,500. Revert both together once production checkout is confirmed working.
-    price: 'KSh 5',
-    rawPrice: 5,
+    price: 'KSh 1,500',
+    rawPrice: 1500,
     period: '/month',
     description: 'Our most popular platform-wide VIP tier — official admin-posted picks plus every tipster\'s VIP picks, paid to Falcon Forecast directly.',
     features: [
@@ -59,11 +56,9 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   }
 ];
 
-/** Every market a tip can be posted under — platform tips (PostTipPage) and tipster tips
- * (PostOddsModal) both use this same fixed list now, instead of tipsters typing free text.
- * Fixed to exactly these strings because api/_lib/settleTip.js pattern-matches on them to
- * auto-settle a prediction against the real final score; adding a new option here means also
- * adding a case for it there, or it'll just sit unsettled forever needing a manual override. */
+/** These standard markets are auto-settled by api/_lib/settleTip.js. Custom selections are
+ * also allowed in tip forms, but remain pending for manual settlement unless that API learns
+ * how to evaluate their market rules. */
 export const MARKET_OPTIONS = [
   'Over 2.5 Goals',
   'Home Win (1X2)',
@@ -71,6 +66,8 @@ export const MARKET_OPTIONS = [
   'Both Teams to Score (BTTS)',
   'Asian Handicap -1.0',
 ];
+
+export const CUSTOM_MARKET_OPTION = 'Custom prediction';
 
 export const LEAGUE_OPTIONS = [
   'All Leagues',

@@ -39,7 +39,8 @@ import { SUBSCRIPTION_PLANS } from './data/predictions';
 import { trackPageView } from './lib/analytics';
 
 const PAGE_TITLES: Record<string, string> = {
-  '/': 'Falcon Forecast | Football Tips, Odds & VIP Predictions',
+  '/': 'Live Football Scores & Fixtures | Falcon Forecast',
+  '/welcome': 'Falcon Forecast | Football Tips, Odds & VIP Predictions',
   '/matches': 'Live Matches & Standings | Falcon Forecast',
   '/premier-league': 'Premier League Matches & Standings | Falcon Forecast',
   '/la-liga': 'La Liga Matches & Standings | Falcon Forecast',
@@ -82,7 +83,7 @@ export const AppContent: React.FC = () => {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>(SUBSCRIPTION_PLANS[1]);
   const location = useLocation();
-  const isLandingPage = location.pathname === '/';
+  const isLandingPage = location.pathname === '/welcome';
 
   const handleOpenCheckout = (plan?: SubscriptionPlan) => {
     if (plan) setSelectedPlan(plan);
@@ -105,7 +106,8 @@ export const AppContent: React.FC = () => {
 
         <main className={isLandingPage ? '' : 'pb-24 md:pb-0'}>
           <Routes>
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={<HomePage onOpenCheckout={handleOpenCheckout} />} />
+            <Route path="/welcome" element={<LandingPage />} />
             <Route path="/matches" element={<HomePage onOpenCheckout={handleOpenCheckout} />} />
             <Route path="/post-tip" element={<PostTipPage />} />
             <Route path="/premium-tips" element={<PremiumTipsPage onOpenCheckout={handleOpenCheckout} />} />

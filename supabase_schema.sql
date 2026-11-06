@@ -14,8 +14,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   tipster_status TEXT NOT NULL DEFAULT 'none' CHECK (tipster_status IN ('none', 'pending', 'active', 'suspended')),
   bio TEXT,
   avatar_url TEXT,
-  weekly_price NUMERIC(10,2) DEFAULT 9.99,
-  monthly_price NUMERIC(10,2) DEFAULT 29.99,
+  weekly_price NUMERIC(10,2),
+  monthly_price NUMERIC(10,2),
   win_rate NUMERIC(5,2) DEFAULT 0,
   total_tips INTEGER DEFAULT 0,
   verified BOOLEAN DEFAULT false,
@@ -259,8 +259,10 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS tipster_status TEXT NOT NULL DEFAULT 'none';
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS bio TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS weekly_price NUMERIC(10,2) DEFAULT 9.99;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS monthly_price NUMERIC(10,2) DEFAULT 29.99;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS weekly_price NUMERIC(10,2);
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS monthly_price NUMERIC(10,2);
+ALTER TABLE public.profiles ALTER COLUMN weekly_price DROP DEFAULT;
+ALTER TABLE public.profiles ALTER COLUMN monthly_price DROP DEFAULT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS win_rate NUMERIC(5,2) DEFAULT 0;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS total_tips INTEGER DEFAULT 0;
 -- Explicit won/lost counts — win_rate alone doesn't tell a subscriber how many tips that

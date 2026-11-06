@@ -104,8 +104,8 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             // 0 (a promotional free tier, or a brand-new tipster with no settled tips yet)
             // was having that overwritten by these fallback defaults everywhere this list is
             // read from (marketplace, admin revenue table, tipster dashboard).
-            weeklyPrice: p.weekly_price != null ? Number(p.weekly_price) : 500,
-            monthlyPrice: p.monthly_price != null ? Number(p.monthly_price) : 1500,
+            weeklyPrice: p.weekly_price != null ? Number(p.weekly_price) : undefined,
+            monthlyPrice: p.monthly_price != null ? Number(p.monthly_price) : undefined,
             // mpesa_phone and balance deliberately NOT mapped here — this query's RLS policy
             // ("Public tipsters and own profile viewable") lets ANYONE fetch every row with
             // role = 'tipster', not just the tipster's own. Mapping either field into this

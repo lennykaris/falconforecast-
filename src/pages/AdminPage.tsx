@@ -491,7 +491,7 @@ export const AdminPage: React.FC = () => {
                       </td>
 
                       <td className="py-3.5 px-4 text-center font-mono text-slate-500 dark:text-slate-400 text-[11px]">
-                        KSh {t.weeklyPrice || 500} / KSh {t.monthlyPrice || 1500}
+                        KSh {t.weeklyPrice ?? 'Not set'} / KSh {t.monthlyPrice ?? 'Not set'}
                       </td>
 
                       <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-900 dark:text-white">
@@ -583,12 +583,12 @@ export const AdminPage: React.FC = () => {
                         </td>
 
                         <td className="py-3.5 px-4 text-center font-mono">
-                          <span className="text-slate-500 dark:text-slate-400">KSh {t.weeklyPrice || 500}</span>
+                          <span className="text-slate-500 dark:text-slate-400">KSh {t.weeklyPrice ?? 'Not set'}</span>
                           <span className="text-[9px] text-slate-400 dark:text-slate-500 block">set by tipster</span>
                         </td>
 
                         <td className="py-3.5 px-4 text-center font-mono">
-                          <span className="text-slate-500 dark:text-slate-400">KSh {t.monthlyPrice || 1500}</span>
+                          <span className="text-slate-500 dark:text-slate-400">KSh {t.monthlyPrice ?? 'Not set'}</span>
                           <span className="text-[9px] text-slate-400 dark:text-slate-500 block">set by tipster</span>
                         </td>
 

@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
-import { SlidersHorizontal, Shield, Trophy, Info, Radio } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { Shield, Trophy, Info, Radio, Search } from 'lucide-react';
 
 import { MySubscriptions } from '../components/MySubscriptions';
 import { TopTipsters } from '../components/TopTipsters';
 import { AdvertBanner } from '../components/AdvertBanner';
+import { PredictionCard } from '../components/PredictionCard';
 import { Sidebar } from '../components/Sidebar';
 import { MatchDetailModal } from '../components/MatchDetailModal';
 import { LiveBadge } from '../components/LiveBadge';
 import { MatchesSkeleton, StandingsSkeleton } from '../components/Skeleton';
 import { fetchMatches, fetchStandings } from '../lib/matches';
+import { usePredictions } from '../context/PredictionsContext';
+import { SUBSCRIPTION_PLANS } from '../data/predictions';
 import type { Match, StandingRow } from '../types/prediction';
 
 /** Auto-refresh cadence for the fixtures list — frequent enough that a live-scores page feels
@@ -59,6 +62,9 @@ const statusLabel = (m: Match) => {
 };
 
 const isLiveStatus = (m: Match) => m.status === 'IN_PLAY' || m.status === 'PAUSED';
+const isUpcomingStatus = (m: Match) => m.status === 'SCHEDULED' || m.status === 'TIMED';
+const isFinishedStatus = (m: Match) => m.status === 'FINISHED';
+type MatchFilter = 'all' | 'live' | 'upcoming' | 'results';
 
 interface LeagueGroupData {
   league: string;
@@ -142,7 +148,8 @@ const LeagueCard: React.FC<{ group: LeagueGroupData; onSelectMatch: (id: string)
 
 export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
   const location = useLocation();
-  const [selectedLeague, setSelectedLeague] = useState('Premier League');
+  const { predictions } = usePredictions();
+  const [selectedLeague, setSelectedLeague] = useState('Favorites');
 
   const [matches, setMatches] = useState<Match[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(true);
@@ -154,14 +161,21 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
 
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [leagueSearch, setLeagueSearch] = useState('');
-  const [liveOnly, setLiveOnly] = useState(false);
+  const [matchFilter, setMatchFilter] = useState<MatchFilter>(
+    () => location.pathname === '/live-scores' ? 'live' : 'all'
+  );
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [, setTick] = useState(0); // forces the "Updated Xs ago" label to re-render each tick
   const initialLoadRef = useRef(true);
+  const latestPredictions = predictions
+    .filter(prediction => (prediction.status || 'pending') === 'pending')
+    .slice(0, 2);
+  const popularVipPlan = SUBSCRIPTION_PLANS.find(plan => plan.popular) || SUBSCRIPTION_PLANS[1];
 
   // Sync selectedLeague with URL route if user came from Navbar
   useEffect(() => {
     const path = location.pathname.toLowerCase();
+    setMatchFilter(path === '/live-scores' ? 'live' : 'all');
     if (path.includes('la-liga')) {
       setSelectedLeague('La Liga');
     } else if (path.includes('champions-league')) {
@@ -174,6 +188,19 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
       setSelectedLeague('Premier League');
     }
   }, [location.pathname]);
+
+  const matchFilterOptions: { id: MatchFilter; label: string; count: number }[] = [
+    { id: 'all', label: 'All', count: matches.length },
+    { id: 'live', label: 'Live', count: matches.filter(isLiveStatus).length },
+    { id: 'upcoming', label: 'Upcoming', count: matches.filter(isUpcomingStatus).length },
+    { id: 'results', label: 'Results', count: matches.filter(isFinishedStatus).length },
+  ];
+  const visibleMatches = matches.filter(match => {
+    if (matchFilter === 'live') return isLiveStatus(match);
+    if (matchFilter === 'upcoming') return isUpcomingStatus(match);
+    if (matchFilter === 'results') return isFinishedStatus(match);
+    return true;
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -232,8 +259,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
   const { leagueGroups, countryGroups } = (() => {
     const byLeague = new Map<string, { label: string; country: string; flag?: string; matches: Match[] }>();
     const search = leagueSearch.trim().toLowerCase();
-    for (const m of matches) {
-      if (liveOnly && !isLiveStatus(m)) continue;
+    for (const m of visibleMatches) {
       if (selectedLeague !== 'Favorites') {
         if (LEAGUE_CODE_MAP[selectedLeague] !== m.leagueCode) continue;
       } else if (search) {
@@ -288,8 +314,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
   const selectedLeagueUnsupported = selectedLeague !== 'Favorites' && !LEAGUE_CODE_MAP[selectedLeague];
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0b1320] py-6 px-4 sm:px-6 lg:px-8 transition-colors">
-      <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-6">
+    <div className="min-h-screen bg-slate-100 dark:bg-[#0b1320] py-4 px-3 sm:px-5 lg:px-6 transition-colors">
+      <div className="max-w-[1480px] mx-auto flex flex-col lg:flex-row gap-3">
 
         {/* LEFT COLUMN: League Sidebar (hidden on mobile) */}
         <div className="hidden lg:block">
@@ -300,14 +326,14 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
         </div>
 
         {/* CENTER COLUMN: Live Matches & League Standings */}
-        <main className="flex-1 min-w-0 space-y-6">
+        <main className="flex-1 min-w-0 space-y-4">
 
           {/* Header Title */}
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-                <Trophy className="w-6 h-6 text-[#00a8ff]" />
-                {selectedLeague === 'Favorites' ? 'All Leagues' : selectedLeague} Matches &amp; Teams
+                <Trophy className="w-5 h-5 text-[#00a8ff]" />
+                {selectedLeague === 'Favorites' ? 'Football Fixtures & Results' : `${selectedLeague} Fixtures`}
               </h1>
               <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                 Real fixtures, results, and league standings.
@@ -319,18 +345,31 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
               </p>
             </div>
 
-            <button
-              onClick={() => setLiveOnly(v => !v)}
-              title={liveOnly ? 'Showing live matches only — click to show all' : 'Show live matches only'}
-              className={`p-2 border rounded-lg transition-colors flex items-center gap-1.5 ${
-                liveOnly
-                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 text-emerald-600 dark:text-emerald-400'
-                  : 'bg-white dark:bg-[#111c30] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-[#00a8ff]'
-              }`}
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-              {liveOnly && <span className="text-[10px] font-bold pr-0.5 hidden sm:inline">Live only</span>}
-            </button>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide" role="tablist" aria-label="Filter fixtures">
+              {matchFilterOptions.map(option => (
+                <button
+                  key={option.id}
+                  role="tab"
+                  aria-selected={matchFilter === option.id}
+                  onClick={() => setMatchFilter(option.id)}
+                  className={`min-h-10 px-3 inline-flex items-center gap-2 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors ${
+                    matchFilter === option.id
+                      ? 'text-slate-900 dark:text-white border-[#00a8ff]'
+                      : 'text-slate-500 dark:text-slate-400 border-transparent hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  {option.id === 'live' && <span className="w-2 h-2 rounded-full bg-emerald-500" />}
+                  {option.label}
+                  <span className="text-[10px] text-slate-400 font-mono">{option.count}</span>
+                </button>
+              ))}
+            </div>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+              {visibleMatches.length} {visibleMatches.length === 1 ? 'match' : 'matches'}
+            </span>
           </div>
 
           {/* Mobile League Tabs (only shown on mobile, sidebar handles it on desktop). Live
@@ -374,12 +413,13 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
               practical way to find one without endless scrolling. */}
           {selectedLeague === 'Favorites' && (
             <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 value={leagueSearch}
                 onChange={e => setLeagueSearch(e.target.value)}
                 placeholder="Search any league or team — J1 League, Kenyan Premier League, Man City..."
-                className="w-full px-4 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#111c30] text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-[#00a8ff]"
+                className="w-full pl-9 pr-4 py-2.5 text-xs rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#111c30] text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-[#00a8ff]"
               />
             </div>
           )}
@@ -404,12 +444,29 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
               ) : matchesError ? (
                 <div className="py-16 text-center text-xs text-rose-500">{matchesError}</div>
               ) : leagueGroups.length === 0 ? (
-                <div className="py-16 text-center text-xs text-slate-400">
-                  {liveOnly
-                    ? 'No matches are live right now — try again shortly.'
+                <div className="min-h-56 bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-md px-5 py-10 flex flex-col items-center justify-center text-center">
+                  <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-3">
+                    <Radio className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                  </div>
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                    {matches.length === 0
+                      ? 'No fixtures available right now'
+                      : matchFilter === 'live'
+                    ? 'No live matches right now.'
+                    : matchFilter === 'upcoming'
+                    ? 'No upcoming fixtures found.'
+                    : matchFilter === 'results'
+                    ? 'No recent results found.'
                     : selectedLeague === 'Favorites' && leagueSearch.trim()
                     ? `No leagues or teams matching "${leagueSearch.trim()}" right now.`
                     : 'No matches found for this league right now.'}
+                  </p>
+                  <p className="max-w-xs mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Fixtures and scores update automatically. Browse the latest published predictions while you wait.
+                  </p>
+                  <Link to="/premium-tips" className="inline-flex items-center min-h-10 mt-3 px-3 text-xs font-bold text-[#0284c7] hover:underline dark:text-sky-400">
+                    View predictions
+                  </Link>
                 </div>
               ) : selectedLeague === 'Favorites' && countryGroups ? (
                 // All-Leagues view: a card per country, each containing its leagues nested
@@ -417,7 +474,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
                 countryGroups.map(cg => (
                   <div
                     key={cg.country}
-                    className="bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm"
+                    className="bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden"
                   >
                     <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2.5">
                       {cg.flag && (
@@ -442,7 +499,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
                 leagueGroups.map(group => (
                   <div
                     key={group.league}
-                    className="bg-white dark:bg-[#111c30] border border-sky-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm"
+                    className="bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden"
                   >
                     <LeagueCard group={group} onSelectMatch={setSelectedMatchId} showHeader />
                   </div>
@@ -524,6 +581,35 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
         {/* RIGHT COLUMN: Sticky Ad + Subscriptions + Top Tipsters */}
         <aside className="w-full lg:w-80 flex-shrink-0">
           <div className="sticky top-24 space-y-4">
+            <section aria-labelledby="latest-predictions-heading" className="space-y-2">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                <h2 id="latest-predictions-heading" className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-[#00a8ff]" /> Latest Predictions
+                </h2>
+                <Link to="/premium-tips" className="text-[11px] font-semibold text-[#0284c7] hover:underline dark:text-sky-400">
+                  See all
+                </Link>
+              </div>
+              {latestPredictions.length > 0 ? (
+                <div className="space-y-3">
+                  {latestPredictions.map(prediction => (
+                    <PredictionCard
+                      key={prediction.id}
+                      prediction={prediction}
+                      onUnlockClick={() => onOpenCheckout?.(popularVipPlan)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 rounded-md px-4 py-5 text-center">
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">No active predictions yet</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">New picks from tipsters will appear here.</p>
+                  <Link to="/tipsters" className="inline-flex items-center min-h-10 mt-2 text-xs font-bold text-[#0284c7] hover:underline dark:text-sky-400">
+                    Browse tipsters
+                  </Link>
+                </div>
+              )}
+            </section>
             <div className="hidden lg:block">
               <AdvertBanner sticky={false} />
             </div>

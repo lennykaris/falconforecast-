@@ -99,6 +99,31 @@ body {
   color: var(--text-primary) !important;
 }
 
+.site-chrome {
+  background-color: #12263d;
+  color: #f8fafc;
+}
+
+.site-competition-nav {
+  background-color: #1a344f;
+}
+
+html.light .site-chrome [class*="text-slate-900"],
+html.light .site-chrome [class*="text-slate-700"],
+html.light .site-chrome [class*="text-slate-600"],
+html.light .site-chrome [class*="text-slate-500"],
+html.light .site-chrome [class*="text-slate-400"],
+html.light .site-competition-nav [class*="text-slate-300"] {
+  color: #d7e2ee !important;
+}
+
+.site-chrome a:focus-visible,
+.site-chrome button:focus-visible,
+.site-competition-nav a:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
 /* ─── LIGHT MODE GLOBAL OVERRIDES ─── */
 /* These ensure every element that uses Tailwind dark classes also looks right in light mode */
 

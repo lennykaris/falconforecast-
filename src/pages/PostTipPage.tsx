@@ -4,7 +4,7 @@ import { Search, Eye, CheckCircle2, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePredictions } from '../context/PredictionsContext';
 import { fetchUpcomingMatches } from '../lib/matches';
-import { MARKET_OPTIONS } from '../data/predictions';
+import { CUSTOM_MARKET_OPTION, MARKET_OPTIONS } from '../data/predictions';
 import type { Match } from '../types/prediction';
 
 export const PostTipPage: React.FC = () => {
@@ -18,6 +18,7 @@ export const PostTipPage: React.FC = () => {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
 
   const [market, setMarket] = useState('Over 2.5 Goals');
+  const [customMarket, setCustomMarket] = useState('');
   const [odds, setOdds] = useState<string>('1.85');
   const [confidence, setConfidence] = useState(80);
   const [isFree, setIsFree] = useState(true);
@@ -53,9 +54,14 @@ export const PostTipPage: React.FC = () => {
       m.awayTeam.toLowerCase().includes(searchMatch.toLowerCase()) ||
       m.league.toLowerCase().includes(searchMatch.toLowerCase())
   );
+  const isCustomMarket = market === CUSTOM_MARKET_OPTION;
 
   const handlePublish = async () => {
     if (!selectedMatch) return;
+    if (isCustomMarket && !customMarket.trim()) {
+      setPublishError('Enter your custom prediction.');
+      return;
+    }
     setPublishing(true);
     setPublishError(null);
 
@@ -67,7 +73,7 @@ export const PostTipPage: React.FC = () => {
       kickoff: selectedMatch.kickoff,
       homeLogo: selectedMatch.homeLogo,
       awayLogo: selectedMatch.awayLogo,
-      tip: market,
+      tip: isCustomMarket ? customMarket.trim() : market,
       odds: parseFloat(odds) || 0,
       confidence,
       tier: isFree ? 'free' : 'vip',
@@ -306,8 +312,29 @@ export const PostTipPage: React.FC = () => {
                         {MARKET_OPTIONS.map(m => (
                           <option key={m} value={m}>{m}</option>
                         ))}
+                        <option value={CUSTOM_MARKET_OPTION}>{CUSTOM_MARKET_OPTION}</option>
                       </select>
                     </div>
+
+                    {isCustomMarket && (
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-1">
+                          Your prediction:
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          maxLength={120}
+                          value={customMarket}
+                          onChange={e => setCustomMarket(e.target.value)}
+                          placeholder="e.g. Both teams to score in the second half"
+                          className="w-full input-field text-xs"
+                        />
+                        <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1">
+                          Custom markets need to be settled manually.
+                        </p>
+                      </div>
+                    )}
 
                     <div>
                       <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-1">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Search, PlusCircle, User, Sun, Moon, Home, Trophy, TrendingUp, Star, ShieldCheck, LayoutDashboard, Newspaper, LogOut } from 'lucide-react';
+import { Search, PlusCircle, User, Sun, Moon, Home, Trophy, TrendingUp, Star, ShieldCheck, LayoutDashboard, Newspaper, LogOut, Radio } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { fetchMatches } from '../lib/matches';
@@ -64,10 +64,20 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
     { to: '/news', label: 'News', icon: Newspaper },
   ];
 
+  const competitionLinks = [
+    { to: '/matches', label: 'Football' },
+    { to: '/live-scores', label: 'Live Scores', live: true },
+    { to: '/premier-league', label: 'Premier League' },
+    { to: '/la-liga', label: 'La Liga' },
+    { to: '/champions-league', label: 'Champions League' },
+    { to: '/serie-a', label: 'Serie A' },
+    { to: '/bundesliga', label: 'Bundesliga' },
+  ];
+
   return (
     <>
       {/* ─── DESKTOP & TABLET TOP HEADER BAR ─── */}
-      <header className="sticky top-0 z-50 bg-white dark:bg-[#111c30] border-b border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
+      <header className="site-chrome sticky top-0 z-50 border-b border-slate-700 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 gap-4">
             
@@ -89,7 +99,7 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                 <Link
                   to="/matches"
                   className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
-                    isActive('/matches') ? 'text-[#00a8ff] bg-white dark:bg-sky-950/60 shadow-xs' : 'text-slate-700 dark:text-slate-300 hover:text-[#00a8ff]'
+                    isActive('/matches') || location.pathname === '/' ? 'text-[#38bdf8] bg-white/10' : 'text-slate-300 hover:text-white'
                   }`}
                 >
                   Home
@@ -97,7 +107,7 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                 <Link
                   to="/odds-comparison"
                   className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
-                    isActive('/odds-comparison') ? 'text-[#00a8ff] bg-white dark:bg-sky-950/60 shadow-xs' : 'text-slate-700 dark:text-slate-300 hover:text-[#00a8ff]'
+                    isActive('/odds-comparison') ? 'text-[#38bdf8] bg-white/10' : 'text-slate-300 hover:text-white'
                   }`}
                 >
                   Odds Comparison
@@ -105,7 +115,7 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                 <Link
                   to="/premium-tips"
                   className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
-                    isActive('/premium-tips') ? 'text-[#00a8ff] bg-white dark:bg-sky-950/60 shadow-xs' : 'text-slate-700 dark:text-slate-300 hover:text-[#00a8ff]'
+                    isActive('/premium-tips') ? 'text-[#38bdf8] bg-white/10' : 'text-slate-300 hover:text-white'
                   }`}
                 >
                   VIP Tips
@@ -113,7 +123,7 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                 <Link
                   to="/tipsters"
                   className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
-                    isActive('/tipsters') ? 'text-[#00a8ff] bg-white dark:bg-sky-950/60 shadow-xs' : 'text-slate-700 dark:text-slate-300 hover:text-[#00a8ff]'
+                    isActive('/tipsters') ? 'text-[#38bdf8] bg-white/10' : 'text-slate-300 hover:text-white'
                   }`}
                 >
                   Tipsters
@@ -121,7 +131,7 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                 <Link
                   to="/news"
                   className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
-                    isActive('/news') ? 'text-[#00a8ff] bg-white dark:bg-sky-950/60 shadow-xs' : 'text-slate-700 dark:text-slate-300 hover:text-[#00a8ff]'
+                    isActive('/news') ? 'text-[#38bdf8] bg-white/10' : 'text-slate-300 hover:text-white'
                   }`}
                 >
                   News
@@ -129,7 +139,7 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                 <Link
                   to="/about"
                   className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
-                    isActive('/about') ? 'text-[#00a8ff] bg-white dark:bg-sky-950/60 shadow-xs' : 'text-slate-700 dark:text-slate-300 hover:text-[#00a8ff]'
+                    isActive('/about') ? 'text-[#38bdf8] bg-white/10' : 'text-slate-300 hover:text-white'
                   }`}
                 >
                   About Us
@@ -138,7 +148,7 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                   <Link
                     to="/admin"
                     className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 whitespace-nowrap ${
-                      isActive('/admin') ? 'text-[#00a8ff] bg-white dark:bg-sky-950/60 shadow-xs' : 'text-slate-700 dark:text-slate-300 hover:text-[#00a8ff]'
+                      isActive('/admin') ? 'text-[#38bdf8] bg-white/10' : 'text-slate-300 hover:text-white'
                     }`}
                   >
                     <ShieldCheck className="w-3.5 h-3.5" />
@@ -263,6 +273,33 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
             </div>
           </div>
         </div>
+
+        <nav className="site-competition-nav border-t border-white/10" aria-label="Football competitions">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-1 overflow-x-auto scrollbar-hide">
+            {competitionLinks.map(({ to, label, live }) => {
+              const active = live
+                ? location.pathname === '/live-scores'
+                : to === '/matches'
+                  ? ['/','/matches'].includes(location.pathname)
+                  : location.pathname === to;
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  aria-current={active ? 'page' : undefined}
+                  className={`min-h-10 inline-flex items-center gap-2 px-3 text-[11px] font-semibold whitespace-nowrap border-b-2 transition-colors ${
+                    active
+                      ? 'text-white border-[#38bdf8]'
+                      : 'text-slate-300 border-transparent hover:text-white hover:border-white/40'
+                  }`}
+                >
+                  {live && <Radio className="w-3.5 h-3.5 text-emerald-400" />}
+                  {label}
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
 
         {/* ─── LIVE SCORES TICKER SUB-BAR (Auto-scrolling marquee) ─── */}
         {tickerMatches.length > 0 && (

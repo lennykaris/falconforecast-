@@ -10,13 +10,6 @@ import {
 
 const PLATFORM_CUT_PCT = 0.20;
 
-// ⚠️ TEMPORARY TESTING OVERRIDE — forces every checkout (VIP or tipster subscription) to a
-// small fixed price regardless of the real one, so live payment-flow testing on PRODUCTION
-// doesn't require spending real money at full price. This is live on production right now:
-// any real customer checking out while this is `true` pays the forced price, not the real
-// one. Flip back to `false` once production STK-push testing is done.
-const TESTING_FORCE_LOW_PRICE = true;
-
 // Server-side source of truth for VIP plan prices — matches src/data/predictions.ts.
 // Never trust a client-supplied amount for anything that moves real money.
 const VIP_PLAN_PRICES = {
@@ -82,12 +75,16 @@ export default async function handler(req, res) {
         res.status(403).json({ error: 'This tipster is not currently accepting new subscribers' });
         return;
       }
-      // != null, not `||` — a tipster who deliberately set a price of exactly 0 (e.g. a
-      // promotional free tier) was having that overridden by the 500/1500 fallback below,
-      // silently overcharging their subscribers.
-      amount = billingCycle === 'weekly'
-        ? (tipster.weekly_price != null ? Number(tipster.weekly_price) : 500)
-        : (tipster.monthly_price != null ? Number(tipster.monthly_price) : 1500);
+      if (billingCycle !== 'weekly' && billingCycle !== 'monthly') {
+        res.status(400).json({ error: 'Choose a valid billing cycle' });
+        return;
+      }
+      const configuredPrice = billingCycle === 'weekly' ? tipster.weekly_price : tipster.monthly_price;
+      amount = Number(configuredPrice);
+      if (configuredPrice == null || !Number.isFinite(amount) || amount <= 0) {
+        res.status(400).json({ error: 'This tipster has not set a price for that billing cycle' });
+        return;
+      }
       platformCut = parseFloat((amount * PLATFORM_CUT_PCT).toFixed(2));
       tipsterNet = parseFloat((amount - platformCut).toFixed(2));
       narration = `Falcon Forecast - ${tipster.name} subscription`;
@@ -103,18 +100,6 @@ export default async function handler(req, res) {
     } else {
       res.status(400).json({ error: 'Unknown payment kind' });
       return;
-    }
-
-    if (TESTING_FORCE_LOW_PRICE) {
-      // Tipster subscriptions are forced to KSh 15 instead of 5 — Safaricom's B2C payout has
-      // a documented KES 10 minimum, so the 80% net share of a KSh 5 test (KSh 4) would
-      // always fail that step regardless of credentials. 15 keeps the net share (KSh 12)
-      // clear of that floor while still being cheap to test with.
-      amount = kind === 'tipster_subscription' ? 15 : 5;
-      if (kind === 'tipster_subscription') {
-        platformCut = parseFloat((amount * PLATFORM_CUT_PCT).toFixed(2));
-        tipsterNet = parseFloat((amount - platformCut).toFixed(2));
-      }
     }
 
     const transactionId = generateTransactionId();

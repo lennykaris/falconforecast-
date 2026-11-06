@@ -9,8 +9,8 @@ export const TipsterApplyPage: React.FC = () => {
   const { applyForTipster } = useTipsters();
 
   const [bio, setBio] = useState('');
-  const [weeklyPrice, setWeeklyPrice] = useState('500');
-  const [monthlyPrice, setMonthlyPrice] = useState('1500');
+  const [weeklyPrice, setWeeklyPrice] = useState('');
+  const [monthlyPrice, setMonthlyPrice] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -148,10 +148,11 @@ export const TipsterApplyPage: React.FC = () => {
               </label>
               <input
                 type="number"
-                min={0}
+                min={100}
                 required
                 value={weeklyPrice}
                 onChange={e => setWeeklyPrice(e.target.value)}
+                placeholder="Set your weekly price"
                 className="input-field w-full rounded-xl px-4 py-3 text-xs font-mono"
               />
             </div>
@@ -161,10 +162,11 @@ export const TipsterApplyPage: React.FC = () => {
               </label>
               <input
                 type="number"
-                min={0}
+                min={200}
                 required
                 value={monthlyPrice}
                 onChange={e => setMonthlyPrice(e.target.value)}
+                placeholder="Set your monthly price"
                 className="input-field w-full rounded-xl px-4 py-3 text-xs font-mono"
               />
             </div>

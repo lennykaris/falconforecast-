@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePredictions } from '../context/PredictionsContext';
-import { MARKET_OPTIONS } from '../data/predictions';
+import { CUSTOM_MARKET_OPTION, MARKET_OPTIONS } from '../data/predictions';
 import type { Match } from '../types/prediction';
 
 interface PostOddsModalProps {
@@ -16,6 +16,7 @@ export const PostOddsModal: React.FC<PostOddsModalProps> = ({ match, onClose }) 
   const { addPrediction } = usePredictions();
 
   const [tip, setTip] = useState(MARKET_OPTIONS[0]);
+  const [customTip, setCustomTip] = useState('');
   const [odds, setOdds] = useState('1.85');
   const [confidence, setConfidence] = useState(80);
   const [isFree, setIsFree] = useState(true);
@@ -24,10 +25,11 @@ export const PostOddsModal: React.FC<PostOddsModalProps> = ({ match, onClose }) 
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!match) return null;
+  const isCustomMarket = tip === CUSTOM_MARKET_OPTION;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!tip) return;
+    if (!tip || (isCustomMarket && !customTip.trim())) return;
 
     setSubmitting(true);
     setSubmitError(null);
@@ -40,7 +42,7 @@ export const PostOddsModal: React.FC<PostOddsModalProps> = ({ match, onClose }) 
       kickoff: match.kickoff,
       homeLogo: match.homeLogo,
       awayLogo: match.awayLogo,
-      tip,
+      tip: isCustomMarket ? customTip.trim() : tip,
       odds: parseFloat(odds) || 0,
       confidence,
       tier: isFree ? 'free' : 'vip',
@@ -87,12 +89,28 @@ export const PostOddsModal: React.FC<PostOddsModalProps> = ({ match, onClose }) 
               {MARKET_OPTIONS.map(m => (
                 <option key={m} value={m}>{m}</option>
               ))}
+              <option value={CUSTOM_MARKET_OPTION}>{CUSTOM_MARKET_OPTION}</option>
             </select>
             <p className="text-[10px] text-slate-400 dark:text-slate-500">
-              Fixed markets only — this is what lets the platform automatically check the
-              result and settle your tip once the match finishes.
+              Standard markets settle automatically. Custom markets remain pending until you
+              settle them manually.
             </p>
           </div>
+
+          {isCustomMarket && (
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Your prediction</label>
+              <input
+                type="text"
+                required
+                maxLength={120}
+                value={customTip}
+                onChange={e => setCustomTip(e.target.value)}
+                placeholder="e.g. Both teams to score in the second half"
+                className="w-full bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#0EA5E9]"
+              />
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
