@@ -118,16 +118,24 @@ export async function fetchMatches({ dateFrom, dateTo } = {}) {
       dates.push(new Date(t).toISOString().slice(0, 10));
     }
 
-    const days = await Promise.all(dates.map((date) =>
-      sportsrcGet({ type: 'matches', sport: 'football', date }).catch((err) => {
-        console.error(`SportSRC matches fetch failed for ${date}:`, err);
-        return { data: [] };
-      })
-    ));
+    const days = await Promise.all(dates.map(async (date) => {
+      try {
+        return { response: await sportsrcGet({ type: 'matches', sport: 'football', date }) };
+      } catch (error) {
+        console.error(`SportSRC matches fetch failed for ${date}:`, error);
+        return { error };
+      }
+    }));
+
+    // Keep partial results when one date fails, but don't turn a bad key or outage affecting
+    // the whole requested range into a successful-looking empty fixtures list.
+    if (days.length > 0 && days.every((day) => day.error)) {
+      throw days[0].error;
+    }
 
     const matches = [];
-    for (const day of days) {
-      for (const leagueBlock of day.data || []) {
+    for (const result of days) {
+      for (const leagueBlock of result.response?.data || []) {
         const leagueName = leagueBlock.league?.name;
         const country = leagueBlock.league?.country;
         const countryFlag = leagueBlock.league?.flag;

@@ -2,10 +2,13 @@ import { useRef, useState } from 'react';
 import { startKentapayCollect, awaitPaymentResolution } from '../lib/payments';
 
 interface PaymentFlowParams {
-  kind: 'vip_subscription' | 'tipster_subscription';
+  kind: 'vip_subscription' | 'tipster_subscription' | 'tipster_application';
   tipsterId?: string;
   planId?: string;
   billingCycle?: 'weekly' | 'monthly';
+  bio?: string;
+  weeklyPrice?: number;
+  monthlyPrice?: number;
   phone: string;
 }
 

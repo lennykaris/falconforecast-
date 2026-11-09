@@ -1,10 +1,13 @@
 import { supabase } from './supabase';
 
 interface CollectParams {
-  kind: 'tipster_subscription' | 'vip_subscription';
+  kind: 'tipster_subscription' | 'vip_subscription' | 'tipster_application';
   tipsterId?: string;
   planId?: string;
   billingCycle?: 'weekly' | 'monthly';
+  bio?: string;
+  weeklyPrice?: number;
+  monthlyPrice?: number;
   phone: string;
 }
 

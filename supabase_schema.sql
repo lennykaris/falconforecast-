@@ -436,13 +436,9 @@ CREATE POLICY "Tipsters and admins insert predictions"
     public.is_admin()
   );
 
--- 6b. The self-update policy on profiles blocked users from tampering with their own
--- `role`, but not `tipster_status` or `verified` — meaning a user could self-grant
--- active/verified tipster status via a raw client call, bypassing admin approval entirely.
--- Now: a user's own update may only leave tipster_status unchanged, or move it to
--- 'pending' (the apply-to-become-a-tipster action) — never straight to 'active', and
--- `verified` can never be self-set. Admins are unaffected (they use the separate
--- "Admins can update any profile" policy, which has no such restriction).
+-- 6b. Users cannot change their own role, verification, or tipster status. Tipster
+-- applications are created by the payment resolver only after a confirmed application fee;
+-- admins are unaffected (they use the separate unrestricted update policy).
 --
 -- 6f. Also pins `plan` and `vip_expires_at` — previously omitted here entirely, which let
 -- any logged-in user grant themselves permanent VIP with a single raw
@@ -466,10 +462,7 @@ CREATE POLICY "Users can update own basic profile"
     plan = (public.get_profile()).plan AND
     vip_expires_at IS NOT DISTINCT FROM (public.get_profile()).vip_expires_at AND
     balance IS NOT DISTINCT FROM (public.get_profile()).balance AND
-    (
-      tipster_status = (public.get_profile()).tipster_status
-      OR tipster_status = 'pending'
-    )
+    tipster_status = (public.get_profile()).tipster_status
   );
 
 -- =====================================================================================
@@ -618,13 +611,16 @@ CREATE TABLE IF NOT EXISTS public.payments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   reference TEXT UNIQUE NOT NULL,
   type TEXT NOT NULL CHECK (type IN ('collect', 'disburse')),
-  kind TEXT NOT NULL CHECK (kind IN ('tipster_subscription', 'vip_subscription', 'tipster_payout')),
+  kind TEXT NOT NULL CHECK (kind IN ('tipster_subscription', 'vip_subscription', 'tipster_payout', 'tipster_application')),
   user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   tipster_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   subscription_id UUID REFERENCES public.tipster_subscriptions(id) ON DELETE SET NULL,
   related_payment_id UUID REFERENCES public.payments(id) ON DELETE SET NULL,
   billing_cycle TEXT CHECK (billing_cycle IN ('weekly', 'monthly')),
   plan_id TEXT,
+  application_bio TEXT,
+  application_weekly_price NUMERIC(10,2),
+  application_monthly_price NUMERIC(10,2),
   amount NUMERIC(10,2) NOT NULL,
   platform_cut NUMERIC(10,2),
   tipster_net NUMERIC(10,2),
@@ -641,6 +637,18 @@ CREATE TABLE IF NOT EXISTS public.payments (
 
 -- Idempotent for anyone who already ran this file back when the table had no cloud_packet_id.
 ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS cloud_packet_id TEXT;
+ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS application_bio TEXT;
+ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS application_weekly_price NUMERIC(10,2);
+ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS application_monthly_price NUMERIC(10,2);
+
+-- Update the original kind constraint for existing installations as well as fresh databases.
+ALTER TABLE public.payments DROP CONSTRAINT IF EXISTS payments_kind_check;
+ALTER TABLE public.payments ADD CONSTRAINT payments_kind_check
+  CHECK (kind IN ('tipster_subscription', 'vip_subscription', 'tipster_payout', 'tipster_application'));
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_one_pending_tipster_application
+  ON public.payments(user_id)
+  WHERE kind = 'tipster_application' AND status = 'PENDING';
 
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 
@@ -896,4 +904,3 @@ BEGIN
   RETURN affected > 0;
 END;
 $$;
-

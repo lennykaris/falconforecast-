@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, Clock, ShieldCheck, Star } from 'lucide-react';
+import { CheckCircle2, Clock, ShieldCheck, Smartphone } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useTipsters } from '../context/TipstersContext';
+import { usePaymentFlow } from '../hooks/usePaymentFlow';
+import { PaymentPendingView } from '../components/PaymentPendingView';
 
 export const TipsterApplyPage: React.FC = () => {
   const { user, isLoggedIn, isTipster, isAdmin } = useAuth();
-  const { applyForTipster } = useTipsters();
+  const { payState, payError, submit, reset } = usePaymentFlow();
 
   const [bio, setBio] = useState('');
   const [weeklyPrice, setWeeklyPrice] = useState('');
   const [monthlyPrice, setMonthlyPrice] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [phone, setPhone] = useState('');
   const [submitted, setSubmitted] = useState(false);
-  const [submitError, setSubmitError] = useState('');
 
   if (!isLoggedIn || !user) {
     return (
@@ -85,17 +85,26 @@ export const TipsterApplyPage: React.FC = () => {
     );
   }
 
+  if (payState === 'pending') {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-5" style={{ backgroundColor: 'var(--bg-base)' }}>
+        <div className="max-w-sm w-full rounded-2xl bet-card">
+          <PaymentPendingView amountLabel="KSh 500" onCancel={reset} />
+        </div>
+      </div>
+    );
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
-    setSubmitError('');
-    const { error } = await applyForTipster(user, bio, Number(weeklyPrice) || 0, Number(monthlyPrice) || 0);
-    setSubmitting(false);
-    if (error) {
-      setSubmitError(error);
-      return;
-    }
-    setSubmitted(true);
+    const success = await submit({
+      kind: 'tipster_application',
+      phone,
+      bio: bio.trim(),
+      weeklyPrice: Number(weeklyPrice),
+      monthlyPrice: Number(monthlyPrice),
+    });
+    if (success) setSubmitted(true);
   };
 
   const perks = [
@@ -103,6 +112,7 @@ export const TipsterApplyPage: React.FC = () => {
     'Set your own weekly & monthly subscription pricing',
     'Keep 80% of every subscription — Falcon Forecast takes 20%',
     'Build a public track record with win-rate stats',
+    'Pay a KSh 500 application fee by M-Pesa',
   ];
 
   return (
@@ -129,6 +139,21 @@ export const TipsterApplyPage: React.FC = () => {
         <form onSubmit={handleSubmit} className="rounded-2xl p-6 bet-card space-y-4">
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold uppercase tracking-widest block" style={{ color: 'var(--text-secondary)' }}>
+              M-Pesa Phone Number
+            </label>
+            <input
+              type="tel"
+              autoComplete="tel"
+              required
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              placeholder="0712345678"
+              className="input-field w-full rounded-xl px-4 py-3 text-xs"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold uppercase tracking-widest block" style={{ color: 'var(--text-secondary)' }}>
               Bio
             </label>
             <textarea
@@ -136,6 +161,7 @@ export const TipsterApplyPage: React.FC = () => {
               rows={4}
               value={bio}
               onChange={e => setBio(e.target.value)}
+              maxLength={2000}
               placeholder="Tell subscribers about your expertise — leagues you follow, your approach to analysis, track record..."
               className="input-field w-full rounded-xl px-4 py-3 text-xs"
             />
@@ -172,21 +198,20 @@ export const TipsterApplyPage: React.FC = () => {
             </div>
           </div>
 
-          {submitError && (
-            <p className="text-center text-xs font-semibold text-rose-500">{submitError}</p>
+          {payError && (
+            <p className="text-center text-xs font-semibold text-rose-500">{payError}</p>
           )}
 
           <button
             type="submit"
-            disabled={submitting}
             className="w-full py-3.5 text-xs font-bold uppercase tracking-wider text-slate-950 rounded-xl transition-all hover:brightness-110 disabled:opacity-50 flex items-center justify-center gap-2"
             style={{ backgroundColor: 'var(--brand)' }}
           >
-            <Star className="w-3.5 h-3.5" />
-            {submitting ? 'Submitting...' : 'Submit Application'}
+            <Smartphone className="w-3.5 h-3.5" />
+            Pay KSh 500 & Apply
           </button>
           <p className="text-center text-[11px]" style={{ color: 'var(--text-muted)' }}>
-            An admin will review your application before your tipster panel unlocks.
+            An M-Pesa prompt will be sent to your phone. Your application is submitted after payment is confirmed, then reviewed by an admin.
           </p>
         </form>
       </div>

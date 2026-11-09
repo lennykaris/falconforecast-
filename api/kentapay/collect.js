@@ -17,6 +17,7 @@ const VIP_PLAN_PRICES = {
   monthly_vip: 1500,
   annual_vip: 9999,
 };
+const TIPSTER_APPLICATION_FEE = 500;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -39,7 +40,16 @@ export default async function handler(req, res) {
       return;
     }
 
-    const { kind, tipsterId, planId, billingCycle, phone } = req.body || {};
+    const {
+      kind,
+      tipsterId,
+      planId,
+      billingCycle,
+      phone,
+      bio,
+      weeklyPrice,
+      monthlyPrice,
+    } = req.body || {};
 
     if (!phone || !kind) {
       res.status(400).json({ error: 'Missing required fields' });
@@ -53,6 +63,7 @@ export default async function handler(req, res) {
     }
 
     let amount, platformCut = null, tipsterNet = null, narration, accountReference;
+    let applicationBio = null, applicationWeeklyPrice = null, applicationMonthlyPrice = null;
 
     if (kind === 'tipster_subscription') {
       if (!tipsterId || !billingCycle) {
@@ -97,6 +108,52 @@ export default async function handler(req, res) {
       }
       narration = 'Falcon Forecast - VIP subscription';
       accountReference = 'FFVIP';
+    } else if (kind === 'tipster_application') {
+      applicationBio = typeof bio === 'string' ? bio.trim() : '';
+      applicationWeeklyPrice = Number(weeklyPrice);
+      applicationMonthlyPrice = Number(monthlyPrice);
+      if (!applicationBio || applicationBio.length > 2000) {
+        res.status(400).json({ error: 'Enter a bio of up to 2,000 characters' });
+        return;
+      }
+      if (!Number.isInteger(applicationWeeklyPrice) || applicationWeeklyPrice < 100
+        || !Number.isInteger(applicationMonthlyPrice) || applicationMonthlyPrice < 200) {
+        res.status(400).json({ error: 'Weekly price must be at least KSh 100 and monthly price at least KSh 200' });
+        return;
+      }
+
+      const { data: applicant, error: applicantErr } = await supabase
+        .from('profiles')
+        .select('role, tipster_status')
+        .eq('id', userId)
+        .maybeSingle();
+      if (applicantErr) throw applicantErr;
+      if (!applicant || applicant.role !== 'user') {
+        res.status(403).json({ error: 'Only regular user accounts can apply to become a tipster' });
+        return;
+      }
+      if (applicant.tipster_status !== 'none') {
+        res.status(409).json({ error: 'You already have a tipster application or account' });
+        return;
+      }
+
+      const { data: pendingApplication, error: pendingErr } = await supabase
+        .from('payments')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('kind', 'tipster_application')
+        .eq('status', 'PENDING')
+        .limit(1)
+        .maybeSingle();
+      if (pendingErr) throw pendingErr;
+      if (pendingApplication) {
+        res.status(409).json({ error: 'Your application payment is still processing. Please wait for confirmation before trying again.' });
+        return;
+      }
+
+      amount = TIPSTER_APPLICATION_FEE;
+      narration = 'Falcon Forecast - tipster application';
+      accountReference = 'FFTIPAPP';
     } else {
       res.status(400).json({ error: 'Unknown payment kind' });
       return;
@@ -112,12 +169,19 @@ export default async function handler(req, res) {
       tipster_id: tipsterId || null,
       billing_cycle: kind === 'tipster_subscription' ? billingCycle : null,
       plan_id: kind === 'vip_subscription' ? planId : null,
+      application_bio: applicationBio,
+      application_weekly_price: applicationWeeklyPrice,
+      application_monthly_price: applicationMonthlyPrice,
       amount,
       platform_cut: platformCut,
       tipster_net: tipsterNet,
       phone: normalizedPhone,
       status: 'PENDING',
     }]);
+    if (insertErr?.code === '23505' && kind === 'tipster_application') {
+      res.status(409).json({ error: 'Your application payment is already processing. Please wait for confirmation before trying again.' });
+      return;
+    }
     if (insertErr) throw insertErr;
 
     try {

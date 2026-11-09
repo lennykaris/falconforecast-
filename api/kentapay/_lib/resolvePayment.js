@@ -184,6 +184,54 @@ export async function resolvePayment(supabase, payment, { success, receiptNumber
 
     // VIP subscriptions aren't split with any tipster — the full amount is platform revenue.
     await creditPlatformAdmin(supabase, payment.amount);
+  } else if (payment.kind === 'tipster_application') {
+    if (!payment.user_id || !payment.application_bio
+      || !Number.isInteger(Number(payment.application_weekly_price))
+      || !Number.isInteger(Number(payment.application_monthly_price))) {
+      throw new Error(`Tipster application payment ${payment.id} is missing application details`);
+    }
+
+    const { data: applicant, error: applicantErr } = await supabase
+      .from('profiles')
+      .select('role, tipster_status')
+      .eq('id', payment.user_id)
+      .maybeSingle();
+    if (applicantErr) throw applicantErr;
+    if (!applicant) throw new Error(`Tipster application profile not found for payment ${payment.id}`);
+
+    if (applicant.role === 'user' && applicant.tipster_status === 'none') {
+      const { data: updatedProfile, error: profileErr } = await supabase
+        .from('profiles')
+        .update({
+          tipster_status: 'pending',
+          bio: payment.application_bio,
+          weekly_price: payment.application_weekly_price,
+          monthly_price: payment.application_monthly_price,
+        })
+        .eq('id', payment.user_id)
+        .eq('role', 'user')
+        .eq('tipster_status', 'none')
+        .select('id')
+        .maybeSingle();
+      if (profileErr) throw profileErr;
+      if (!updatedProfile) {
+        const { data: currentProfile, error: currentErr } = await supabase
+          .from('profiles')
+          .select('tipster_status')
+          .eq('id', payment.user_id)
+          .maybeSingle();
+        if (currentErr) throw currentErr;
+        if (currentProfile?.tipster_status !== 'pending') {
+          throw new Error(`Could not create tipster application for payment ${payment.id}`);
+        }
+      }
+    }
+
+    await claimPayment(supabase, payment.id, {
+      status: 'COMPLETE',
+      receipt_number: receiptNumber || null,
+      updated_at: new Date().toISOString(),
+    });
   } else {
     // Unknown kind — still claim COMPLETE so the row doesn't stay PENDING forever, but leave
     // a clear trail since nothing was actually granted.

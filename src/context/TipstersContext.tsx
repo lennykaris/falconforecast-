@@ -21,7 +21,6 @@ interface TipstersContextType {
   /** Called by the tipster themselves — admins cannot change another tipster's prices */
   updateOwnPricing: (tipsterId: string, weeklyPrice: number, monthlyPrice: number) => void;
   updateMpesaPhone: (tipsterId: string, mpesaPhone: string) => void;
-  applyForTipster: (user: User, bio: string, weeklyPrice: number, monthlyPrice: number) => Promise<{ error: string | null }>;
   isSubscribedToTipster: (userId: string, tipsterId: string) => boolean;
   getMySubscriptions: (tipsterId: string) => TipsterSubscription[];
   getTipsterRevenue: (tipsterId: string) => { gross: number; platformCut: number; net: number };
@@ -253,42 +252,6 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
   };
 
-  const applyForTipster = async (user: User, bio: string, weeklyPrice: number, monthlyPrice: number) => {
-    // role deliberately stays 'user' here — only tipster_status moves to 'pending'. The
-    // "Users can update own basic profile" RLS policy explicitly requires role to stay
-    // unchanged on a self-update (to stop anyone self-granting tipster/admin access), so a
-    // write that also tried to flip role here would be silently rejected: no error thrown,
-    // zero rows actually changed. Only approveTipster (an admin-only write, different RLS
-    // policy) sets role: 'tipster', at actual approval time.
-    const newTipster: User = {
-      ...user,
-      tipsterStatus: 'pending',
-      bio,
-      weeklyPrice,
-      monthlyPrice,
-      // A brand-new applicant has settled zero tips — a hardcoded 70% here (or the DB
-      // column's old 75.0 default) showed a fake, unearned track record before they'd ever
-      // posted a single tip.
-      winRate: 0,
-      totalTips: 0,
-      tipsWon: 0,
-      tipsLost: 0,
-      subscribersCount: 0,
-      verified: false,
-    };
-
-    const error = await updateProfileRow(user.id, {
-      tipster_status: 'pending',
-      bio,
-      weekly_price: weeklyPrice,
-      monthly_price: monthlyPrice,
-    });
-    if (error) return { error };
-
-    setTipsters(prev => [newTipster, ...prev.filter(t => t.id !== user.id)]);
-    return { error: null };
-  };
-
   const isSubscribedToTipster = (userId: string, tipsterId: string) => {
     return subscriptions.some(
       s => s.userId === userId && s.tipsterId === tipsterId && isSubscriptionActive(s)
@@ -322,7 +285,6 @@ export const TipstersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         suspendTipster,
         updateOwnPricing,
         updateMpesaPhone,
-        applyForTipster,
         isSubscribedToTipster,
         getMySubscriptions,
         getTipsterRevenue,

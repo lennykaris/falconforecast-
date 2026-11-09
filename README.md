@@ -9,6 +9,7 @@ Built with **Vite + React 19 + TypeScript + Tailwind CSS v4**, backed by **Supab
 - **Real fixtures & results** (`/matches` and league routes) — live via a SportSRC proxy, including real scores and league standings.
 - **Free & VIP tips** (`/tips`, `/premium-tips`, `/vip`) — platform picks gated by a sitewide VIP subscription; tipster picks gated per-tipster (pay that specific tipster to unlock their premium tips, or they can mark a tip free).
 - **Tipster marketplace** (`/tipsters`) — browse verified tipsters, subscribe weekly/monthly.
+- **Paid tipster applications** (`/apply-tipster`) — pay a KSh 500 application fee by M-Pesa; applications are created only after payment confirmation.
 - **Betting site directory** (`/bookmakers`) — direct links to selected external sportsbooks; no affiliate rankings or bonus claims.
 - **Community match predictions** — signed-in users vote home/draw/away; match details show aggregate percentages without exposing individual votes.
 - **Tipster dashboard** (`/tipster-dashboard`) — post odds on real upcoming fixtures, manage pricing, view real subscribers and revenue.
@@ -41,4 +42,6 @@ Built with **Vite + React 19 + TypeScript + Tailwind CSS v4**, backed by **Supab
 
 ## Deploying
 
-Deploys to Vercel on push to `main`. `SPORTSRC_API_KEY` must be set in the Vercel project's Environment Variables (Production + Preview) separately from `.env` — it's intentionally not committed to the repo since this is a public GitHub repository.
+Deploys to Vercel on push to `main`. `SPORTSRC_API_KEY` must be set in the Vercel project's Environment Variables (Production + Preview) separately from `.env` — it's intentionally not committed to the repo since this is a public GitHub repository. The SportSRC V2 key is only used by server-side API routes and is never exposed in the browser bundle.
+
+After pulling schema changes, re-run `supabase_schema.sql` in the Supabase SQL Editor to add the tipster application payment fields and enforce payment-confirmed applications.
