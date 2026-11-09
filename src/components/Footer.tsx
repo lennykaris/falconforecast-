@@ -37,6 +37,21 @@ export const Footer: React.FC = () => {
             Affiliates
           </Link>
         </div>
+
+        <nav aria-label="Social media" className="flex flex-wrap items-center justify-center gap-4 font-semibold">
+          <a href="https://x.com/falconforecasts" target="_blank" rel="noopener noreferrer" className="hover:text-[#00a8ff] transition-colors">
+            X
+          </a>
+          <a href="https://www.instagram.com/falconforecasts/" target="_blank" rel="noopener noreferrer" className="hover:text-[#00a8ff] transition-colors">
+            Instagram
+          </a>
+          <a href="https://www.tiktok.com/@falconforecast" target="_blank" rel="noopener noreferrer" className="hover:text-[#00a8ff] transition-colors">
+            TikTok
+          </a>
+          <a href="https://www.facebook.com/share/1CFs3c4hKp/" target="_blank" rel="noopener noreferrer" className="hover:text-[#00a8ff] transition-colors">
+            Facebook
+          </a>
+        </nav>
       </div>
     </footer>
   );

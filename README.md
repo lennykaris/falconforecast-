@@ -30,6 +30,13 @@ Built with **Vite + React 19 + TypeScript + Tailwind CSS v4**, backed by **Supab
 - **Match/league data**: SportSRC, proxied server-side via `api/matches.js` / `api/standings.js` (Vercel serverless functions; mirrored for local dev in `vite.config.ts`)
 - **State**: React Context (`AuthContext`, `PredictionsContext`, `TipstersContext`, `BetSlipContext`) backed by Supabase, with a localStorage cache layer for fast first paint
 
+## Social media
+
+- [X](https://x.com/falconforecasts)
+- [Instagram](https://www.instagram.com/falconforecasts/)
+- [TikTok](https://www.tiktok.com/@falconforecast)
+- [Facebook](https://www.facebook.com/share/1CFs3c4hKp/)
+
 ## Local development
 
 1. Copy `.env.example` to `.env` and fill in `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_GOOGLE_CLIENT_ID`, and `SPORTSRC_API_KEY` (the last one is server-side only — no `VITE_` prefix, so it's never bundled into the client).
