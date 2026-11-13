@@ -31,6 +31,7 @@ const mapProfileRow = (p: any): User => ({
   tipsWon: p.tips_won,
   tipsLost: p.tips_lost,
   verified: p.verified,
+  canManageNews: p.can_manage_news === true,
   subscribedAt: p.subscribed_at,
   vipExpiresAt: p.vip_expires_at,
   createdAt: p.created_at,
@@ -83,6 +84,7 @@ export const AdminPage: React.FC = () => {
   // "Public tipsters and own profile viewable" in supabase_schema.sql.
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [usersError, setUsersError] = useState<string | null>(null);
+  const [newsPermissionError, setNewsPermissionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -94,6 +96,23 @@ export const AdminPage: React.FC = () => {
       setAllUsers((data || []).map(mapProfileRow));
     });
   }, [isAdmin]);
+
+  const setNewsEditorAccess = async (target: User, enabled: boolean) => {
+    setNewsPermissionError(null);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ can_manage_news: enabled })
+      .eq('id', target.id)
+      .select('id')
+      .single();
+    if (error) {
+      setNewsPermissionError(error.message);
+      return;
+    }
+    setAllUsers(users => users.map(current =>
+      current.id === target.id ? { ...current, canManageNews: enabled } : current
+    ));
+  };
 
   // Payments have no admin UI at all otherwise — a stuck PENDING row or a failed automatic
   // tipster payout is currently only discoverable by querying Supabase directly. RLS's
@@ -642,9 +661,12 @@ export const AdminPage: React.FC = () => {
       {activeTab === 'users' && (
         <div className="space-y-4">
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Overview of all registered users, their roles, plans, and subscription status.
+            Overview of all registered users, their roles, plans, and subscription status. Grant News Editor access to trusted users who should publish and manage articles.
           </p>
 
+          {newsPermissionError && (
+            <p className="text-xs font-semibold text-rose-500 dark:text-rose-400">Could not update News Editor access: {newsPermissionError}</p>
+          )}
           {usersError && (
             <p className="text-xs font-semibold text-rose-500 dark:text-rose-400">
               Failed to load users: {usersError}. This usually means your own profiles.role isn't
@@ -662,6 +684,7 @@ export const AdminPage: React.FC = () => {
                     <th className="py-3.5 px-4 text-center">Role</th>
                     <th className="py-3.5 px-4 text-center">Plan</th>
                     <th className="py-3.5 px-4 text-center">Tipster Status</th>
+                    <th className="py-3.5 px-4 text-center">News Editor</th>
                     <th className="py-3.5 px-4 text-right">Joined</th>
                   </tr>
                 </thead>
@@ -708,6 +731,19 @@ export const AdminPage: React.FC = () => {
                         ) : (
                           <span className="text-[10px] text-slate-400 dark:text-slate-500">—</span>
                         )}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-center">
+                        <label className="inline-flex items-center gap-2 text-[10px] font-semibold">
+                          <input
+                            type="checkbox"
+                            checked={u.canManageNews === true}
+                            onChange={event => setNewsEditorAccess(u, event.target.checked)}
+                            aria-label={`Grant News Editor access to ${u.name}`}
+                            className="accent-[#0EA5E9]"
+                          />
+                          {u.canManageNews ? 'Enabled' : 'Off'}
+                        </label>
                       </td>
 
                       <td className="py-3.5 px-4 text-right font-mono text-slate-500 dark:text-slate-400 text-[10px]">

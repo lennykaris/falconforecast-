@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, Newspaper, Search, RefreshCw, ExternalLink, Flame, ShieldAlert, Tag, Clock } from 'lucide-react';
+import { Globe, Newspaper, Search, RefreshCw, ExternalLink, Tag, Clock, Plus, Pencil, Trash2, X, Upload } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 
 interface NewsArticle {
   id: string;
@@ -11,7 +13,29 @@ interface NewsArticle {
   region: 'kenya' | 'world';
   category: string;
   thumbnail?: string;
+  content?: string;
+  imagePath?: string;
+  externalUrl?: string;
+  isEditorial?: boolean;
+  published?: boolean;
 }
+
+const mapEditorialArticle = (row: Record<string, any>): NewsArticle => ({
+  id: row.id,
+  title: row.title,
+  description: row.summary || row.content.slice(0, 180),
+  link: row.external_url || '',
+  pubDate: row.published_at || row.created_at,
+  source: row.source || 'Falcon Forecast',
+  region: row.region,
+  category: row.category,
+  thumbnail: row.image_url || undefined,
+  content: row.content,
+  imagePath: row.image_path || undefined,
+  externalUrl: row.external_url || undefined,
+  isEditorial: true,
+  published: row.published,
+});
 
 const FALLBACK_NEWS: NewsArticle[] = [
   {
@@ -89,10 +113,166 @@ const RSS_SOURCES = [
 ];
 
 export const NewsPage: React.FC = () => {
+  const { user } = useAuth();
+  const canManageNews = user?.role === 'admin' || user?.canManageNews === true;
   const [articles, setArticles] = useState<NewsArticle[]>(FALLBACK_NEWS);
+  const [editorialArticles, setEditorialArticles] = useState<NewsArticle[]>([]);
+  const [editorialError, setEditorialError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'kenya' | 'world'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editingArticle, setEditingArticle] = useState<NewsArticle | null>(null);
+  const [readingArticle, setReadingArticle] = useState<NewsArticle | null>(null);
+  const [articleTitle, setArticleTitle] = useState('');
+  const [articleSummary, setArticleSummary] = useState('');
+  const [articleContent, setArticleContent] = useState('');
+  const [articleCategory, setArticleCategory] = useState('');
+  const [articleRegion, setArticleRegion] = useState<'kenya' | 'world'>('kenya');
+  const [articleSource, setArticleSource] = useState('Falcon Forecast');
+  const [articleExternalUrl, setArticleExternalUrl] = useState('');
+  const [articlePublished, setArticlePublished] = useState(true);
+  const [articleImage, setArticleImage] = useState<File | null>(null);
+  const [savingArticle, setSavingArticle] = useState(false);
+
+  const loadEditorialArticles = async () => {
+    const { data, error } = await supabase
+      .from('news_articles')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      setEditorialError(error.message);
+      return;
+    }
+    setEditorialError(null);
+    setEditorialArticles((data || []).map(mapEditorialArticle));
+  };
+
+  useEffect(() => {
+    loadEditorialArticles();
+  }, [canManageNews]);
+
+  const resetArticleForm = () => {
+    setEditingArticle(null);
+    setArticleTitle('');
+    setArticleSummary('');
+    setArticleContent('');
+    setArticleCategory('');
+    setArticleRegion('kenya');
+    setArticleSource('Falcon Forecast');
+    setArticleExternalUrl('');
+    setArticlePublished(true);
+    setArticleImage(null);
+  };
+
+  const startEditingArticle = (article?: NewsArticle) => {
+    if (article) {
+      setEditingArticle(article);
+      setArticleTitle(article.title);
+      setArticleSummary(article.description);
+      setArticleContent(article.content || '');
+      setArticleCategory(article.category);
+      setArticleRegion(article.region);
+      setArticleSource(article.source);
+      setArticleExternalUrl(article.externalUrl || '');
+      setArticlePublished(article.published === true);
+      setArticleImage(null);
+    } else {
+      resetArticleForm();
+    }
+    setEditorOpen(true);
+  };
+
+  const handleSaveArticle = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!user || !canManageNews) return;
+    if (!articleTitle.trim() || !articleContent.trim()) {
+      setEditorialError('Article title and full information are required.');
+      return;
+    }
+    if (articleImage && (!articleImage.type.startsWith('image/') || articleImage.size > 5 * 1024 * 1024)) {
+      setEditorialError('Choose an image file smaller than 5 MB.');
+      return;
+    }
+
+    setSavingArticle(true);
+    setEditorialError(null);
+    let uploadedPath: string | undefined;
+    try {
+      let imageUrl = editingArticle?.thumbnail || null;
+      let imagePath = editingArticle?.imagePath || null;
+      if (articleImage) {
+        const safeName = articleImage.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+        uploadedPath = `${user.id}/${crypto.randomUUID()}-${safeName}`;
+        const { error: uploadError } = await supabase.storage
+          .from('news-images')
+          .upload(uploadedPath, articleImage, { contentType: articleImage.type });
+        if (uploadError) throw uploadError;
+        const { data } = supabase.storage.from('news-images').getPublicUrl(uploadedPath);
+        imageUrl = data.publicUrl;
+        imagePath = uploadedPath;
+      }
+
+      const payload = {
+        title: articleTitle.trim(),
+        summary: articleSummary.trim(),
+        content: articleContent.trim(),
+        category: articleCategory.trim() || 'General',
+        region: articleRegion,
+        source: articleSource.trim() || 'Falcon Forecast',
+        external_url: articleExternalUrl.trim() || null,
+        image_url: imageUrl,
+        image_path: imagePath,
+        author_id: user.id,
+        published: articlePublished,
+        published_at: articlePublished
+          ? editingArticle?.published ? editingArticle.pubDate : new Date().toISOString()
+          : null,
+        updated_at: new Date().toISOString(),
+      };
+      const { error: saveError } = editingArticle
+        ? await supabase.from('news_articles').update(payload).eq('id', editingArticle.id).select('id').single()
+        : await supabase.from('news_articles').insert(payload).select('id').single();
+      if (saveError) throw saveError;
+
+      let cleanupWarning: string | null = null;
+      if (uploadedPath && editingArticle?.imagePath && editingArticle.imagePath !== uploadedPath) {
+        const { error: removeError } = await supabase.storage.from('news-images').remove([editingArticle.imagePath]);
+        if (removeError) cleanupWarning = `Article saved, but its previous image could not be removed: ${removeError.message}`;
+      }
+      await loadEditorialArticles();
+      resetArticleForm();
+      setEditorOpen(false);
+      if (cleanupWarning) setEditorialError(cleanupWarning);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to save the article.';
+      if (uploadedPath) {
+        const { error: cleanupError } = await supabase.storage.from('news-images').remove([uploadedPath]);
+        setEditorialError(cleanupError
+          ? `${message} Uploaded image cleanup also failed: ${cleanupError.message}`
+          : message);
+      } else {
+        setEditorialError(message);
+      }
+    } finally {
+      setSavingArticle(false);
+    }
+  };
+
+  const handleDeleteArticle = async (article: NewsArticle) => {
+    if (!window.confirm(`Delete "${article.title}"? This cannot be undone.`)) return;
+    setEditorialError(null);
+    const { error } = await supabase.from('news_articles').delete().eq('id', article.id);
+    if (error) {
+      setEditorialError(error.message);
+      return;
+    }
+    setEditorialArticles(current => current.filter(item => item.id !== article.id));
+    if (article.imagePath) {
+      const { error: imageError } = await supabase.storage.from('news-images').remove([article.imagePath]);
+      if (imageError) setEditorialError(`Article deleted, but its image could not be removed: ${imageError.message}`);
+    }
+  };
 
   const fetchRssFeeds = async () => {
     setLoading(true);
@@ -145,7 +325,8 @@ export const NewsPage: React.FC = () => {
     fetchRssFeeds();
   }, []);
 
-  const filteredArticles = articles.filter(art => {
+  const allArticles = [...editorialArticles, ...articles];
+  const filteredArticles = allArticles.filter(art => {
     const matchesTab = activeTab === 'all' || art.region === activeTab;
     const matchesSearch =
       art.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -186,16 +367,95 @@ export const NewsPage: React.FC = () => {
             </p>
           </div>
 
-          <button
-            onClick={fetchRssFeeds}
-            disabled={loading}
-            className="px-4 py-2.5 bg-[#00a8ff] hover:bg-[#0090e0] text-white text-xs font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg active:scale-95 disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            <span>{loading ? 'Fetching RSS...' : 'Refresh News Feed'}</span>
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {canManageNews && (
+              <button
+                onClick={() => startEditingArticle()}
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Write Article</span>
+              </button>
+            )}
+            <button
+              onClick={fetchRssFeeds}
+              disabled={loading}
+              className="px-4 py-2.5 bg-[#00a8ff] hover:bg-[#0090e0] text-white text-xs font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg active:scale-95 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <span>{loading ? 'Fetching RSS...' : 'Refresh News Feed'}</span>
+            </button>
+          </div>
         </div>
       </section>
+
+      {editorialError && (
+        <p role="alert" className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 text-xs font-semibold">
+          {editorialError}
+        </p>
+      )}
+
+      {editorOpen && canManageNews && (
+        <form onSubmit={handleSaveArticle} className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+              {editingArticle ? 'Edit article' : 'Write a news article'}
+            </h2>
+            <button type="button" onClick={() => { setEditorOpen(false); resetArticleForm(); }} aria-label="Close editor" className="p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 sm:col-span-2">
+              Headline
+              <input required maxLength={180} value={articleTitle} onChange={e => setArticleTitle(e.target.value)} className="mt-1 w-full input-field text-xs" />
+            </label>
+            <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 sm:col-span-2">
+              Short summary
+              <textarea rows={2} maxLength={500} value={articleSummary} onChange={e => setArticleSummary(e.target.value)} className="mt-1 w-full input-field text-xs" />
+            </label>
+            <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 sm:col-span-2">
+              Article information
+              <textarea required rows={7} value={articleContent} onChange={e => setArticleContent(e.target.value)} className="mt-1 w-full input-field text-xs" />
+            </label>
+            <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+              Category
+              <input value={articleCategory} onChange={e => setArticleCategory(e.target.value)} placeholder="e.g. Premier League" className="mt-1 w-full input-field text-xs" />
+            </label>
+            <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+              Region
+              <select value={articleRegion} onChange={e => setArticleRegion(e.target.value as 'kenya' | 'world')} className="mt-1 w-full input-field text-xs">
+                <option value="kenya">Kenya</option>
+                <option value="world">Worldwide</option>
+              </select>
+            </label>
+            <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+              Source / author
+              <input value={articleSource} onChange={e => setArticleSource(e.target.value)} className="mt-1 w-full input-field text-xs" />
+            </label>
+            <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+              Optional external link
+              <input type="url" value={articleExternalUrl} onChange={e => setArticleExternalUrl(e.target.value)} placeholder="https://" className="mt-1 w-full input-field text-xs" />
+            </label>
+            <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 sm:col-span-2">
+              Article photo (up to 5 MB)
+              <span className="mt-1 flex items-center gap-2">
+                <Upload className="w-4 h-4" />
+                <input type="file" accept="image/*" onChange={e => setArticleImage(e.target.files?.[0] || null)} className="w-full text-xs" />
+              </span>
+            </label>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <input type="checkbox" checked={articlePublished} onChange={e => setArticlePublished(e.target.checked)} className="accent-[#00a8ff]" />
+              Publish now
+            </label>
+            <button disabled={savingArticle} className="px-5 py-2.5 bg-[#00a8ff] text-white text-xs font-bold rounded-xl disabled:opacity-50">
+              {savingArticle ? 'Saving...' : editingArticle ? 'Save changes' : 'Save article'}
+            </button>
+          </div>
+        </form>
+      )}
 
       {/* Filter Tabs & Search Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -274,6 +534,9 @@ export const NewsPage: React.FC = () => {
                   }`}>
                     {art.region === 'kenya' ? '🇰🇪 Kenya Sports' : '🌍 Worldwide'}
                   </span>
+                  {art.isEditorial && !art.published && (
+                    <span className="px-2 py-1 rounded-lg bg-amber-500 text-white text-[10px] font-bold">DRAFT</span>
+                  )}
                 </div>
 
                 <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-slate-300 font-mono flex items-center gap-1">
@@ -303,20 +566,59 @@ export const NewsPage: React.FC = () => {
             </div>
 
             {/* Read Article CTA Footer */}
-            <div className="p-4 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40">
-              <a
-                href={art.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full py-2 px-3 bg-white dark:bg-slate-800 hover:bg-[#00a8ff] hover:text-white border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-xs"
-              >
-                <span>Read Full Story</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40 flex gap-2">
+              {art.isEditorial ? (
+                <button
+                  onClick={() => setReadingArticle(art)}
+                  className="flex-1 py-2 px-3 bg-white dark:bg-slate-800 hover:bg-[#00a8ff] hover:text-white border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-xs"
+                >
+                  Read Full Story
+                </button>
+              ) : (
+                <a
+                  href={art.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 py-2 px-3 bg-white dark:bg-slate-800 hover:bg-[#00a8ff] hover:text-white border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-xs"
+                >
+                  <span>Read Full Story</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
+              {canManageNews && art.isEditorial && (
+                <>
+                  <button onClick={() => startEditingArticle(art)} title="Edit article" aria-label="Edit article" className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => handleDeleteArticle(art)} title="Delete article" aria-label="Delete article" className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-rose-600">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </>
+              )}
             </div>
           </article>
         ))}
       </div>
+      {filteredArticles.length === 0 && (
+        <p className="py-12 text-center text-sm text-slate-500">No news articles match your filters.</p>
+      )}
+
+      {readingArticle && (
+        <div className="fixed inset-0 z-[60] bg-slate-950/70 backdrop-blur-sm p-4 flex items-center justify-center" onClick={() => setReadingArticle(null)}>
+          <article className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-[#111c30] rounded-2xl shadow-2xl" onClick={event => event.stopPropagation()}>
+            <div className="flex justify-end p-3">
+              <button onClick={() => setReadingArticle(null)} aria-label="Close article" className="p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+            {readingArticle.thumbnail && <img src={readingArticle.thumbnail} alt="" className="w-full max-h-80 object-cover" />}
+            <div className="p-6 space-y-4">
+              <p className="text-xs font-bold text-[#00a8ff]">{readingArticle.category} · {readingArticle.source}</p>
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white">{readingArticle.title}</h2>
+              <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">{readingArticle.content}</p>
+              {readingArticle.externalUrl && <a href={readingArticle.externalUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-bold text-[#00a8ff]">Source <ExternalLink className="w-4 h-4" /></a>}
+            </div>
+          </article>
+        </div>
+      )}
     </div>
   );
 };

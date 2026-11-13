@@ -12,10 +12,15 @@ export const PostTipPage: React.FC = () => {
   const { addPrediction } = usePredictions();
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [searchMatch, setSearchMatch] = useState('');
+  const [matchSource, setMatchSource] = useState<'fixtures' | 'manual'>('fixtures');
   const [matches, setMatches] = useState<Match[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(true);
   const [matchesError, setMatchesError] = useState<string | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [manualLeague, setManualLeague] = useState('');
+  const [manualHomeTeam, setManualHomeTeam] = useState('');
+  const [manualAwayTeam, setManualAwayTeam] = useState('');
+  const [manualKickoff, setManualKickoff] = useState('');
 
   const [market, setMarket] = useState('Over 2.5 Goals');
   const [customMarket, setCustomMarket] = useState('');
@@ -57,22 +62,40 @@ export const PostTipPage: React.FC = () => {
   const isCustomMarket = market === CUSTOM_MARKET_OPTION;
 
   const handlePublish = async () => {
-    if (!selectedMatch) return;
+    const match = matchSource === 'manual'
+      ? {
+          league: manualLeague.trim(),
+          homeTeam: manualHomeTeam.trim(),
+          awayTeam: manualAwayTeam.trim(),
+          kickoff: manualKickoff ? new Date(manualKickoff).toISOString() : '',
+        }
+      : selectedMatch;
+    if (!match) {
+      setPublishError('Select a fixture or enter match details manually.');
+      return;
+    }
+    if (matchSource === 'manual' && (!match.league || !match.homeTeam || !match.awayTeam || !match.kickoff)) {
+      setPublishError('Enter the competition, both teams, and kickoff time.');
+      return;
+    }
     if (isCustomMarket && !customMarket.trim()) {
       setPublishError('Enter your custom prediction.');
+      return;
+    }
+    if (!Number.isFinite(Number(odds)) || Number(odds) < 1) {
+      setPublishError('Enter valid decimal odds of at least 1.00.');
       return;
     }
     setPublishing(true);
     setPublishError(null);
 
     const { error } = await addPrediction({
-      matchId: selectedMatch.id,
-      league: selectedMatch.league,
-      homeTeam: selectedMatch.homeTeam,
-      awayTeam: selectedMatch.awayTeam,
-      kickoff: selectedMatch.kickoff,
-      homeLogo: selectedMatch.homeLogo,
-      awayLogo: selectedMatch.awayLogo,
+      ...(matchSource === 'fixtures' && selectedMatch ? { matchId: selectedMatch.id } : {}),
+      league: match.league,
+      homeTeam: match.homeTeam,
+      awayTeam: match.awayTeam,
+      kickoff: match.kickoff,
+      ...('homeLogo' in match ? { homeLogo: match.homeLogo, awayLogo: match.awayLogo } : {}),
       tip: isCustomMarket ? customMarket.trim() : market,
       odds: parseFloat(odds) || 0,
       confidence,
@@ -211,7 +234,7 @@ export const PostTipPage: React.FC = () => {
               <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">Tip Published Successfully!</h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                Your prediction for {selectedMatch ? `${selectedMatch.homeTeam} vs ${selectedMatch.awayTeam}` : 'this match'} has been submitted and is now live on Falcon Forecast.
+              Your prediction has been submitted and is now live on Falcon Forecast.
               </p>
               <button
                 onClick={() => {
@@ -229,63 +252,104 @@ export const PostTipPage: React.FC = () => {
               {/* STEP 1: SELECT MATCH */}
               {currentStep === 1 && (
                 <div className="space-y-4">
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">Select Match</h3>
-
-                  <div className="relative">
-                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Search teams, leagues, or tournaments..."
-                      value={searchMatch}
-                      onChange={e => setSearchMatch(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 text-xs input-field"
-                    />
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">Choose Match Details</h3>
+                    <div className="flex gap-2">
+                      {(['fixtures', 'manual'] as const).map(source => (
+                        <button
+                          key={source}
+                          type="button"
+                          onClick={() => setMatchSource(source)}
+                          className={`px-3 py-2 rounded-lg text-xs font-bold border ${
+                            matchSource === source
+                              ? 'bg-[#00a8ff] text-white border-[#00a8ff]'
+                              : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                          }`}
+                        >
+                          {source === 'fixtures' ? 'Choose fixture' : 'Enter manually'}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="space-y-2 pt-2">
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      Upcoming Fixtures
-                    </p>
-                    {matchesLoading ? (
-                      <p className="text-xs text-slate-400 py-4 text-center">Loading fixtures...</p>
-                    ) : matchesError ? (
-                      <p className="text-xs text-rose-500 py-4 text-center">{matchesError}</p>
-                    ) : filteredMatches.length === 0 ? (
-                      <p className="text-xs text-slate-400 py-4 text-center">No matches found.</p>
-                    ) : (
-                      <div className="max-h-80 overflow-y-auto space-y-2">
-                        {filteredMatches.map(m => (
-                          <label
-                            key={m.id}
-                            className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                              selectedMatch?.id === m.id
-                                ? 'border-[#00a8ff] bg-blue-50/50 dark:bg-sky-950/40'
-                                : 'border-slate-200 dark:border-slate-800 hover:border-slate-300'
-                            }`}
-                          >
-                            <input
-                              type="radio"
-                              name="matchSelect"
-                              checked={selectedMatch?.id === m.id}
-                              onChange={() => setSelectedMatch(m)}
-                              className="accent-[#00a8ff]"
-                            />
-                            <div>
-                              <p className="text-[10px] text-slate-400 font-semibold">
-                                {m.league} • {formatKickoff(m.kickoff)}
-                              </p>
-                              <p className="text-xs font-bold text-slate-900 dark:text-white">{m.homeTeam} vs {m.awayTeam}</p>
-                            </div>
-                          </label>
-                        ))}
+                  {matchSource === 'manual' ? (
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                        League or event
+                        <input required value={manualLeague} onChange={e => setManualLeague(e.target.value)} placeholder="e.g. Premier League" className="mt-1 w-full input-field text-xs" />
+                      </label>
+                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                        Home / first selection
+                        <input required value={manualHomeTeam} onChange={e => setManualHomeTeam(e.target.value)} placeholder="Team or event name" className="mt-1 w-full input-field text-xs" />
+                      </label>
+                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                        Away / second selection
+                        <input required value={manualAwayTeam} onChange={e => setManualAwayTeam(e.target.value)} placeholder="Opponent or selection" className="mt-1 w-full input-field text-xs" />
+                      </label>
+                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                        Date and time
+                        <input required type="datetime-local" value={manualKickoff} onChange={e => setManualKickoff(e.target.value)} className="mt-1 w-full input-field text-xs" />
+                      </label>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="relative">
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="Search teams, leagues, or tournaments..."
+                          value={searchMatch}
+                          onChange={e => setSearchMatch(e.target.value)}
+                          className="w-full pl-9 pr-3 py-2 text-xs input-field"
+                        />
                       </div>
-                    )}
-                  </div>
+
+                      <div className="space-y-2 pt-2">
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          Upcoming Fixtures
+                        </p>
+                        {matchesLoading ? (
+                          <p className="text-xs text-slate-400 py-4 text-center">Loading fixtures...</p>
+                        ) : matchesError ? (
+                          <p className="text-xs text-rose-500 py-4 text-center">{matchesError}</p>
+                        ) : filteredMatches.length === 0 ? (
+                          <p className="text-xs text-slate-400 py-4 text-center">No matches found.</p>
+                        ) : (
+                          <div className="max-h-80 overflow-y-auto space-y-2">
+                            {filteredMatches.map(m => (
+                              <label
+                                key={m.id}
+                                className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                                  selectedMatch?.id === m.id
+                                    ? 'border-[#00a8ff] bg-blue-50/50 dark:bg-sky-950/40'
+                                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                                }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name="matchSelect"
+                                  checked={selectedMatch?.id === m.id}
+                                  onChange={() => setSelectedMatch(m)}
+                                  className="accent-[#00a8ff]"
+                                />
+                                <div>
+                                  <p className="text-[10px] text-slate-400 font-semibold">
+                                    {m.league} • {formatKickoff(m.kickoff)}
+                                  </p>
+                                  <p className="text-xs font-bold text-slate-900 dark:text-white">{m.homeTeam} vs {m.awayTeam}</p>
+                                </div>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
 
                   <div className="pt-4 flex justify-end">
                     <button
                       onClick={() => setCurrentStep(2)}
-                      disabled={!selectedMatch}
+                      disabled={matchSource === 'fixtures' ? !selectedMatch : !manualLeague || !manualHomeTeam || !manualAwayTeam || !manualKickoff}
                       className="px-6 py-2 bg-[#00a8ff] hover:bg-[#0090e0] text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50"
                     >
                       Next Step
@@ -488,9 +552,11 @@ export const PostTipPage: React.FC = () => {
 
               {/* Match Header */}
               <div>
-                <p className="text-[10px] text-slate-400 font-semibold">{selectedMatch?.league || 'No match selected'}</p>
+                <p className="text-[10px] text-slate-400 font-semibold">{matchSource === 'manual' ? manualLeague || 'Manual event' : selectedMatch?.league || 'No match selected'}</p>
                 <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                  {selectedMatch ? `${selectedMatch.homeTeam} vs ${selectedMatch.awayTeam}` : '—'}
+                  {matchSource === 'manual'
+                    ? `${manualHomeTeam || 'First selection'} vs ${manualAwayTeam || 'Second selection'}`
+                    : selectedMatch ? `${selectedMatch.homeTeam} vs ${selectedMatch.awayTeam}` : 'Choose or enter a match'}
                 </h4>
               </div>
 

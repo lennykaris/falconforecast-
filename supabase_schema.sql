@@ -904,3 +904,95 @@ BEGIN
   RETURN affected > 0;
 END;
 $$;
+
+-- =====================================================================================
+-- 18. EDITABLE NEWS / BLOG — admins can assign the separate can_manage_news capability
+-- to trusted users. The capability is enforced in RLS and cannot be self-granted.
+-- =====================================================================================
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS can_manage_news BOOLEAN NOT NULL DEFAULT false;
+
+CREATE OR REPLACE FUNCTION public.can_manage_news(uid UUID DEFAULT auth.uid())
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+STABLE
+AS $$
+  SELECT COALESCE((
+    SELECT role = 'admin' OR can_manage_news
+    FROM public.profiles
+    WHERE id = uid
+  ), false);
+$$;
+
+DROP POLICY IF EXISTS "Users can update own basic profile" ON public.profiles;
+CREATE POLICY "Users can update own basic profile"
+  ON public.profiles FOR UPDATE
+  USING (auth.uid() = id)
+  WITH CHECK (
+    auth.uid() = id AND
+    role = (public.get_profile()).role AND
+    verified = (public.get_profile()).verified AND
+    plan = (public.get_profile()).plan AND
+    vip_expires_at IS NOT DISTINCT FROM (public.get_profile()).vip_expires_at AND
+    balance IS NOT DISTINCT FROM (public.get_profile()).balance AND
+    tipster_status = (public.get_profile()).tipster_status AND
+    can_manage_news = (public.get_profile()).can_manage_news
+  );
+
+CREATE TABLE IF NOT EXISTS public.news_articles (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  title TEXT NOT NULL,
+  summary TEXT NOT NULL DEFAULT '',
+  content TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'General',
+  region TEXT NOT NULL DEFAULT 'world' CHECK (region IN ('kenya', 'world')),
+  image_url TEXT,
+  image_path TEXT,
+  source TEXT NOT NULL DEFAULT 'Falcon Forecast',
+  external_url TEXT,
+  author_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  published BOOLEAN NOT NULL DEFAULT false,
+  published_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.news_articles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Published news is public and editors can view all" ON public.news_articles;
+DROP POLICY IF EXISTS "News editors can insert articles" ON public.news_articles;
+DROP POLICY IF EXISTS "News editors can update articles" ON public.news_articles;
+DROP POLICY IF EXISTS "News editors can delete articles" ON public.news_articles;
+CREATE POLICY "Published news is public and editors can view all"
+  ON public.news_articles FOR SELECT
+  USING (published OR public.can_manage_news());
+CREATE POLICY "News editors can insert articles"
+  ON public.news_articles FOR INSERT
+  WITH CHECK (public.can_manage_news() AND (author_id IS NULL OR author_id = auth.uid()));
+CREATE POLICY "News editors can update articles"
+  ON public.news_articles FOR UPDATE
+  USING (public.can_manage_news())
+  WITH CHECK (public.can_manage_news());
+CREATE POLICY "News editors can delete articles"
+  ON public.news_articles FOR DELETE
+  USING (public.can_manage_news());
+GRANT SELECT ON public.news_articles TO anon, authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.news_articles TO authenticated;
+CREATE INDEX IF NOT EXISTS idx_news_articles_published
+  ON public.news_articles(published, published_at DESC);
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('news-images', 'news-images', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DROP POLICY IF EXISTS "Public news images are viewable" ON storage.objects;
+DROP POLICY IF EXISTS "News editors manage news images" ON storage.objects;
+CREATE POLICY "Public news images are viewable"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'news-images');
+CREATE POLICY "News editors manage news images"
+  ON storage.objects FOR ALL
+  TO authenticated
+  USING (bucket_id = 'news-images' AND public.can_manage_news())
+  WITH CHECK (bucket_id = 'news-images' AND public.can_manage_news());

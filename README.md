@@ -52,3 +52,5 @@ Built with **Vite + React 19 + TypeScript + Tailwind CSS v4**, backed by **Supab
 Deploys to Vercel on push to `main`. `SPORTSRC_API_KEY` must be set in the Vercel project's Environment Variables (Production + Preview) separately from `.env` — it's intentionally not committed to the repo since this is a public GitHub repository. The SportSRC V2 key is only used by server-side API routes and is never exposed in the browser bundle.
 
 After pulling schema changes, re-run `supabase_schema.sql` in the Supabase SQL Editor to add the tipster application payment fields and enforce payment-confirmed applications.
+
+The same schema also creates the editable News/Blog table and public `news-images` storage bucket. After applying it, admins can grant News Editor access from Admin → All Users; editors can create, edit, publish, and delete articles on `/news`.

@@ -57,6 +57,7 @@ export interface User {
   avgRating?: number;
   reviewCount?: number;
   verified?: boolean;
+  canManageNews?: boolean;
   subscribedTipsterIds?: string[];
   subscribedAt?: string;
   vipExpiresAt?: string;

@@ -38,18 +38,18 @@ export const Footer: React.FC = () => {
           </Link>
         </div>
 
-        <nav aria-label="Social media" className="flex flex-wrap items-center justify-center gap-4 font-semibold">
-          <a href="https://x.com/falconforecasts" target="_blank" rel="noopener noreferrer" className="hover:text-[#00a8ff] transition-colors">
-            X
+        <nav aria-label="Social media" className="flex flex-wrap items-center justify-center gap-2 font-semibold">
+          <a href="https://x.com/falconforecasts" target="_blank" rel="noopener noreferrer" aria-label="Falcon Forecast on X" className="inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:text-[#00a8ff] hover:border-[#00a8ff] transition-colors">
+            <span aria-hidden="true" className="font-black">X</span> X
           </a>
-          <a href="https://www.instagram.com/falconforecasts/" target="_blank" rel="noopener noreferrer" className="hover:text-[#00a8ff] transition-colors">
-            Instagram
+          <a href="https://www.instagram.com/falconforecasts/" target="_blank" rel="noopener noreferrer" aria-label="Falcon Forecast on Instagram" className="inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:text-[#00a8ff] hover:border-[#00a8ff] transition-colors">
+            <span aria-hidden="true" className="font-black">IG</span> Instagram
           </a>
-          <a href="https://www.tiktok.com/@falconforecast" target="_blank" rel="noopener noreferrer" className="hover:text-[#00a8ff] transition-colors">
-            TikTok
+          <a href="https://www.tiktok.com/@falconforecast" target="_blank" rel="noopener noreferrer" aria-label="Falcon Forecast on TikTok" className="inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:text-[#00a8ff] hover:border-[#00a8ff] transition-colors">
+            <span aria-hidden="true" className="font-black">♪</span> TikTok
           </a>
-          <a href="https://www.facebook.com/share/1CFs3c4hKp/" target="_blank" rel="noopener noreferrer" className="hover:text-[#00a8ff] transition-colors">
-            Facebook
+          <a href="https://www.facebook.com/share/1CFs3c4hKp/" target="_blank" rel="noopener noreferrer" aria-label="Falcon Forecast on Facebook" className="inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:text-[#00a8ff] hover:border-[#00a8ff] transition-colors">
+            <span aria-hidden="true" className="font-black">f</span> Facebook
           </a>
         </nav>
       </div>

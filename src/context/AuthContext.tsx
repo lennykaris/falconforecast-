@@ -50,6 +50,7 @@ const buildUser = (sbUser: SupabaseAuthUser, profile: Record<string, any> | null
     tipsWon: profile?.tips_won,
     tipsLost: profile?.tips_lost,
     verified: profile?.verified,
+    canManageNews: profile?.can_manage_news === true,
     subscribedAt: profile?.subscribed_at || sbUser.created_at,
     vipExpiresAt: profile?.vip_expires_at,
   };

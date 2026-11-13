@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Search, PlusCircle, User, Sun, Moon, Home, Trophy, TrendingUp, Star, ShieldCheck, LayoutDashboard, Newspaper, LogOut, Radio } from 'lucide-react';
+import { Search, PlusCircle, User, Sun, Moon, Home, Trophy, TrendingUp, Star, ShieldCheck, LayoutDashboard, Newspaper, LogOut, Radio, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { fetchMatches } from '../lib/matches';
@@ -67,12 +67,14 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
   const competitionLinks = [
     { to: '/matches', label: 'Football' },
     { to: '/live-scores', label: 'Live Scores', live: true },
+    { to: '/bookmakers', label: 'Betting Sites' },
+  ];
+  const leagueLinks = [
     { to: '/premier-league', label: 'Premier League' },
     { to: '/la-liga', label: 'La Liga' },
     { to: '/champions-league', label: 'Champions League' },
     { to: '/serie-a', label: 'Serie A' },
     { to: '/bundesliga', label: 'Bundesliga' },
-    { to: '/bookmakers', label: 'Betting Sites' },
   ];
 
   return (
@@ -307,6 +309,28 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                 </Link>
               );
             })}
+            <details className="relative flex-shrink-0">
+              <summary className="min-h-10 inline-flex items-center gap-2 px-3 text-[11px] font-semibold text-slate-300 hover:text-white cursor-pointer list-none border-b-2 border-transparent">
+                Leagues
+                <ChevronDown className="w-3.5 h-3.5" />
+              </summary>
+              <div className="absolute left-0 top-full z-50 min-w-48 py-1 bg-slate-900 border border-slate-700 rounded-xl shadow-xl">
+                {leagueLinks.map(({ to, label }) => (
+                  <Link
+                    key={to}
+                    to={to}
+                    aria-current={location.pathname === to ? 'page' : undefined}
+                    className={`block px-4 py-2.5 text-xs font-semibold transition-colors ${
+                      location.pathname === to
+                        ? 'text-sky-400 bg-white/10'
+                        : 'text-slate-300 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </div>
+            </details>
           </div>
         </nav>
 
