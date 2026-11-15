@@ -82,10 +82,10 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
       {/* ─── DESKTOP & TABLET TOP HEADER BAR ─── */}
       <header className="site-chrome sticky top-0 z-50 border-b border-slate-700 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 gap-4">
+          <div className="flex items-center justify-between h-16 gap-4 max-md:h-auto max-md:min-h-16 max-md:flex-wrap max-md:gap-y-2 max-md:py-2">
             
             {/* Logo & Main Nav */}
-            <div className="flex items-center gap-4 xl:gap-8 min-w-0">
+            <div className="flex items-center gap-4 xl:gap-8 min-w-0 max-md:w-full">
               <Link to="/" className="flex items-center gap-1 group select-none flex-shrink-0">
                 <span className="font-black italic text-xl tracking-wider uppercase font-sans whitespace-nowrap">
                   <span className="text-[#00a8ff]">FALCON</span>
@@ -175,7 +175,7 @@ export const Navbar: React.FC<{ onOpenCheckout?: () => void }> = () => {
                 the page. overflow-x-auto is the same safety net; the real fix is making each
                 button collapse to icon-only at narrow widths below, so it rarely needs to
                 actually scroll. */}
-            <div className="flex items-center gap-2 xl:gap-3 flex-shrink-0 overflow-x-auto scrollbar-hide">
+            <div className="flex items-center gap-2 xl:gap-3 flex-shrink-0 overflow-x-auto scrollbar-hide max-md:w-full max-md:justify-end">
               <div className="relative hidden md:block" ref={searchRef}>
                 <button
                   onClick={() => setSearchOpen(v => !v)}

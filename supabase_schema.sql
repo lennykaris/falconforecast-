@@ -364,26 +364,32 @@ CREATE POLICY "Free predictions viewable by anyone"
   ON public.predictions FOR SELECT 
   USING (tier = 'free');
 
--- VIP predictions viewable by subscribers of that tipster or global VIP / Admin users.
--- The plan IN (...) clause used to unlock this permanently once granted — plan alone never
--- expires on its own, so this now also requires vip_expires_at to still be in the future
--- (mirrors the same fix to isVip in src/context/AuthContext.tsx).
+-- Platform VIP unlocks platform-owned picks only. Tipster VIP picks require their own
+-- active tipster subscription; settled past picks are public for performance transparency.
 CREATE POLICY "VIP predictions viewable by subscribers or admins"
   ON public.predictions FOR SELECT
   USING (
     tier = 'free' OR
-    EXISTS (
-      SELECT 1 FROM public.tipster_subscriptions ts
-      WHERE ts.user_id = auth.uid()
-      AND ts.tipster_id = predictions.tipster_id
-      AND ts.status = 'active'
-      AND ts.expires_at > now()
-    ) OR
     public.is_admin() OR
-    (
-      (public.get_profile()).plan IN ('weekly_pass', 'monthly_vip', 'annual_vip') AND
-      (public.get_profile()).vip_expires_at > now()
-    )
+    (tier = 'vip' AND (
+      (
+        tipster_id IS NULL AND
+        (public.get_profile()).plan IN ('weekly_pass', 'monthly_vip', 'annual_vip') AND
+        (public.get_profile()).vip_expires_at > now()
+      ) OR
+      (
+        tipster_id IS NOT NULL AND (
+          EXISTS (
+            SELECT 1 FROM public.tipster_subscriptions ts
+            WHERE ts.user_id = auth.uid()
+            AND ts.tipster_id = predictions.tipster_id
+            AND ts.status = 'active'
+            AND ts.expires_at > now()
+          ) OR
+          (status IN ('won', 'lost', 'void') AND match_time::timestamptz < now())
+        )
+      )
+    ))
   );
 
 -- Active tipsters and admins can publish predictions

@@ -25,7 +25,10 @@ const COMPETITIONS = [
 ];
 
 function findCompetition(leagueName, country) {
-  return COMPETITIONS.find((c) => c.country === country && c.match(leagueName || ''));
+  const normalizedCountry = (country || '').trim().toLowerCase();
+  return COMPETITIONS.find((c) =>
+    c.country.toLowerCase() === normalizedCountry && c.match(leagueName || '')
+  );
 }
 
 // A stable-enough code for a league we don't have a curated COMPETITIONS entry for — every
@@ -136,8 +139,8 @@ export async function fetchMatches({ dateFrom, dateTo } = {}) {
     const matches = [];
     for (const result of days) {
       for (const leagueBlock of result.response?.data || []) {
-        const leagueName = leagueBlock.league?.name;
-        const country = leagueBlock.league?.country;
+        const leagueName = leagueBlock.league?.name?.trim();
+        const country = leagueBlock.league?.country?.trim() || undefined;
         const countryFlag = leagueBlock.league?.flag;
         const competition = findCompetition(leagueName, country);
         const leagueCode = competition ? competition.code : slugifyLeague(leagueName, country);
@@ -148,7 +151,7 @@ export async function fetchMatches({ dateFrom, dateTo } = {}) {
             id: String(m.id),
             league: leagueName || leagueCode,
             leagueCode,
-            country: country || undefined,
+            country: competition?.country || country,
             countryFlag: countryFlag || undefined,
             homeTeam: m.teams?.home?.name || 'TBD',
             awayTeam: m.teams?.away?.name || 'TBD',

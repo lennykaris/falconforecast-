@@ -337,7 +337,7 @@ export const TipstersPage: React.FC = () => {
                       {subscribed ? (
                         <div className="w-full py-3 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold text-xs uppercase tracking-wider rounded-xl border border-emerald-300 dark:border-emerald-700 text-center flex items-center justify-center space-x-1.5">
                           <UserCheck className="w-4 h-4" />
-                          <span>Subscribed — VIP Unlocked</span>
+                          <span>Tipster Picks Unlocked</span>
                         </div>
                       ) : (
                         <button
@@ -539,7 +539,7 @@ export const TipstersPage: React.FC = () => {
                     <img src={viewingTipsterTips.avatarUrl} alt={viewingTipsterTips.name} className="w-9 h-9 rounded-full object-cover" />
                     <div>
                       <h3 className="text-sm font-bold text-slate-900 dark:text-white">{viewingTipsterTips.name}'s Tips</h3>
-                      <p className="text-[10px] text-slate-400 dark:text-slate-500">{tipsterTips.length} posted</p>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500">{tipsterTips.length} tips available to review</p>
                     </div>
                   </div>
                   <button
@@ -551,9 +551,12 @@ export const TipstersPage: React.FC = () => {
                 </div>
 
                 <div className="p-6 overflow-y-auto">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                    Review settled picks and results before subscribing. Upcoming VIP picks remain exclusive to that tipster's subscribers.
+                  </p>
                   {tipsterTips.length === 0 ? (
                     <p className="text-center text-xs text-slate-400 dark:text-slate-500 py-10">
-                      No tips posted yet.
+                      No tips available to review yet. Settled picks appear here so you can check a tipster's history before subscribing.
                     </p>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

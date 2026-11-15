@@ -194,10 +194,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isLoggedIn = !!user;
   const isAdmin = user?.role === 'admin';
   const isTipster = user?.role === 'tipster';
-  // Mirrors the "VIP predictions viewable by subscribers or admins" RLS policy in
-  // supabase_schema.sql — plan alone used to grant VIP forever, since nothing ever reset it
-  // back to 'free' once vip_expires_at passed. A weekly_pass buyer kept full VIP access
-  // permanently from one KSh 500 payment.
+  // Mirrors the platform-owned VIP predictions check in the RLS policy in supabase_schema.sql.
+  // Plan alone must not grant access forever after vip_expires_at passes.
   const hasUnexpiredVip =
     (user?.plan === 'weekly_pass' || user?.plan === 'monthly_vip' || user?.plan === 'annual_vip') &&
     !!user?.vipExpiresAt &&

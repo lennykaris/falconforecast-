@@ -11,9 +11,9 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     price: 'KSh 500',
     rawPrice: 500,
     period: '/week',
-    description: 'Falcon Forecast\'s platform-wide VIP — unlocks official picks from our admin team plus every tipster\'s VIP picks.',
+    description: 'Falcon Forecast\'s platform-wide VIP — unlocks official picks from our admin team.',
     features: [
-      'Access to all VIP Predictions',
+      'Access to platform VIP predictions',
       'Daily 85%+ Confidence Picks',
       'Detailed Tactical & xG Analyses',
       'Instant Email & App Alerts',
@@ -26,7 +26,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     price: 'KSh 1,500',
     rawPrice: 1500,
     period: '/month',
-    description: 'Our most popular platform-wide VIP tier — official admin-posted picks plus every tipster\'s VIP picks, paid to Falcon Forecast directly.',
+    description: 'Our most popular platform-wide VIP tier — official admin-posted picks, paid to Falcon Forecast directly.',
     features: [
       'Everything in 7-Day Pass',
       'Exclusive High-Odds VIP Value Accumulators',
@@ -43,7 +43,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     price: 'KSh 9,999',
     rawPrice: 9999,
     period: '/year',
-    description: 'Maximum value, all year — Falcon Forecast\'s full platform-wide VIP: admin-posted picks plus every tipster\'s VIP picks.',
+    description: 'Maximum value, all year — Falcon Forecast\'s full platform-wide VIP for admin-posted picks.',
     features: [
       'Everything in Pro Predictor',
       'Full Season Coverage (All Competitions)',

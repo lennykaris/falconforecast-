@@ -24,16 +24,18 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({ prediction, onUn
   const isPlatformTip = !prediction.tipsterId || prediction.isPlatformTip || prediction.tipsterName === 'Falcon Forecast Platform';
   const isOwnTip = !!user && user.id === prediction.tipsterId;
 
-  // Platform picks stay gated by the site-wide VIP subscription. A tipster's own premium tip
-  // is gated per-tipster: locked unless this user has paid that specific tipster — but a
-  // global VIP-plan subscriber is also entitled to it (matching the RLS SELECT policy in
-  // supabase_schema.sql, which ORs the sitewide plan check into every tipster's VIP rows too,
-  // not just platform ones) — isVip was missing from this branch entirely.
+  // Platform picks use the site-wide VIP subscription. Upcoming tipster picks require that
+  // tipster's subscription; settled tipster picks are public so visitors can review history.
+  const isPublicSettledTipsterTip =
+    new Date(prediction.kickoff).getTime() < Date.now() &&
+    !isPlatformTip &&
+    ['won', 'lost', 'void'].includes(prediction.status || '');
   const isLocked = prediction.tier !== 'vip'
     ? false
     : isPlatformTip
       ? !isVip
-      : !isAdmin && !isOwnTip && !isVip && !(user && isSubscribedToTipster(user.id, prediction.tipsterId!));
+      : !isAdmin && !isOwnTip && !isPublicSettledTipsterTip &&
+        !(user && isSubscribedToTipster(user.id, prediction.tipsterId!));
 
   const formatKickoff = (dateString: string) => {
     try {

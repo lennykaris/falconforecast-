@@ -44,7 +44,7 @@ export const MySubscriptions: React.FC<MySubscriptionsProps> = ({ onUpgrade }) =
   })();
 
   const proFeatures = [
-    'All VIP Predictions daily',
+    'All platform VIP predictions daily',
     '85%+ Confidence picks',
     'Tipster signal alerts',
     'Priority support',
@@ -154,7 +154,7 @@ export const MySubscriptions: React.FC<MySubscriptionsProps> = ({ onUpgrade }) =
             ))}
             <p className="text-[10px] text-slate-400 leading-relaxed pt-1">
               VIP is a <strong className="font-semibold text-slate-500 dark:text-slate-300">platform-wide</strong> subscription —
-              paid to Falcon Forecast, not a tipster. It unlocks our official admin-posted picks and every tipster's VIP picks.
+              paid to Falcon Forecast, not a tipster. It unlocks our official admin-posted picks; tipster VIP picks require a separate subscription.
             </p>
           </div>
         )}

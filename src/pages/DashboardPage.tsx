@@ -19,15 +19,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onOpenCheckout }) 
   const { subscriptions } = useTipsters();
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
-  const vipPredictions = predictions.filter(p => p.tier === 'vip');
+  const vipPredictions = predictions.filter(p => p.tier === 'vip' && (!p.tipsterId || p.isPlatformTip));
   const popularPlan = SUBSCRIPTION_PLANS.find(p => p.popular) || SUBSCRIPTION_PLANS[1];
 
-  // "VIP Picks" below is every VIP prediction site-wide — platform picks AND every tipster's
-  // premium ones mixed together — so a subscriber had no way to see just the tips from the
-  // specific tipster(s) they actually pay, short of scrolling the whole feed hoping to spot
-  // them. MyTipsterSubscriptions only ever showed subscription status/expiry, never the tips
-  // themselves. Only counts currently-active subscriptions — an expired one shouldn't keep
-  // surfacing that tipster's tips here.
+  // Only counts currently-active subscriptions — an expired one shouldn't keep surfacing
+  // that tipster's tips here.
   const mySubscribedTipsterIds = new Set(
     subscriptions.filter(s => s.userId === user?.id && isSubscriptionActive(s)).map(s => s.tipsterId)
   );
@@ -212,8 +208,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onOpenCheckout }) 
               </h2>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
                 {isVip
-                  ? 'Official admin-posted picks plus every tipster\'s VIP picks, unlocked by your platform subscription.'
-                  : 'Our platform-wide VIP subscription unlocks admin-posted picks plus every tipster\'s VIP picks.'}
+                  ? 'Official admin-posted picks, unlocked by your platform subscription.'
+                  : 'Our platform-wide VIP subscription unlocks official admin-posted picks. Tipster VIP picks require a separate subscription.'}
               </p>
             </div>
             {!isVip && (

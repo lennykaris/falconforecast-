@@ -13,7 +13,7 @@ export const PremiumTipsPage: React.FC<PremiumTipsPageProps> = ({ onOpenCheckout
   const { predictions } = usePredictions();
   const [selectedLeague, setSelectedLeague] = useState('All Leagues');
 
-  const vipPredictions = predictions.filter(p => p.tier === 'vip');
+  const vipPredictions = predictions.filter(p => p.tier === 'vip' && (!p.tipsterId || p.isPlatformTip));
   const filtered = vipPredictions.filter(
     p => selectedLeague === 'All Leagues' || p.league === selectedLeague
   );
@@ -34,9 +34,8 @@ export const PremiumTipsPage: React.FC<PremiumTipsPageProps> = ({ onOpenCheckout
               Premium Tips
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xl leading-relaxed mt-0.5">
-              High-confidence picks from our platform and verified tipsters. Free tips are unlocked
-              by default — premium tips unlock with a platform VIP subscription or a subscription to
-              that specific tipster.
+              Official high-confidence picks from Falcon Forecast. Platform VIP unlocks these picks;
+              each tipster's VIP picks require a separate subscription to that tipster.
             </p>
           </div>
         </div>

@@ -267,7 +267,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
         if (!haystack.includes(search)) continue;
       }
       const key = m.leagueCode || m.league;
-      if (!byLeague.has(key)) byLeague.set(key, { label: m.league, country: m.country || 'Other', flag: m.countryFlag, matches: [] });
+      if (!byLeague.has(key)) byLeague.set(key, { label: m.league, country: m.country?.trim() || 'Other', flag: m.countryFlag, matches: [] });
       byLeague.get(key)!.matches.push(m);
     }
 
