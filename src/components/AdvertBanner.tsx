@@ -91,7 +91,7 @@ export const AdvertBanner: React.FC<AdvertBannerProps> = ({ sticky = true }) => 
           Reach 50K+ active sports fans
         </p>
         <a
-          href="mailto:ads@falconforecast.com"
+          href="mailto:falconforecasts@gmail.com"
           className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-[#00a8ff] hover:underline"
         >
           Contact us <ExternalLink className="w-3 h-3" />
@@ -185,7 +185,7 @@ export const AdvertBanner: React.FC<AdvertBannerProps> = ({ sticky = true }) => 
         <div className="border-t border-slate-200/60 dark:border-slate-800/40 bg-white/50 dark:bg-slate-800/20 px-3 py-1.5 flex items-center justify-between">
           <p className="text-[9px] text-slate-400">Want to advertise here?</p>
           <a
-            href="mailto:ads@falconforecast.com"
+            href="mailto:falconforecasts@gmail.com"
             className="text-[9px] font-bold text-[#00a8ff] hover:underline flex items-center gap-0.5"
           >
             Contact us <ExternalLink className="w-2.5 h-2.5" />

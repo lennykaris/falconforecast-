@@ -53,7 +53,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeLeague = 'Premier League
             escape hatch instead of a dead duplicate. */}
         <div className="pt-3 border-t border-slate-100 dark:border-slate-800 mt-3">
           <a
-            href="mailto:info@FalconForecast.com?subject=League%20request"
+            href="mailto:falconforecasts@gmail.com?subject=League%20request"
             className="w-full py-2 px-3 text-[11px] font-semibold text-slate-500 dark:text-slate-400 hover:text-[#00a8ff] dark:hover:text-sky-400 flex items-center justify-center gap-1.5 transition-colors"
           >
             <Mail className="w-3.5 h-3.5" />

@@ -189,20 +189,12 @@ export const RefundPolicyPage: React.FC = () => {
           
           <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
             <a
-              href="mailto:info@FalconForecast.com"
+              href="mailto:falconforecasts@gmail.com"
               className="px-5 py-2.5 rounded-xl border text-xs font-bold transition-all hover:bg-sky-500/10 flex items-center gap-2"
               style={{ borderColor: 'var(--brand)', color: 'var(--brand)' }}
             >
               <Mail className="w-4 h-4" />
-              info@FalconForecast.com
-            </a>
-            <a
-              href="mailto:Falcon Forecast@gmail.com"
-              className="px-5 py-2.5 rounded-xl border text-xs font-bold transition-all hover:bg-sky-500/10 flex items-center gap-2"
-              style={{ borderColor: 'var(--brand)', color: 'var(--brand)' }}
-            >
-              <Mail className="w-4 h-4" />
-              Falcon Forecast@gmail.com
+              falconforecasts@gmail.com
             </a>
           </div>
         </section>

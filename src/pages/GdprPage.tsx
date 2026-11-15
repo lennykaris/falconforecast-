@@ -175,7 +175,7 @@ export const GdprPage: React.FC = () => {
             </ul>
             <div className="pt-2 flex items-center gap-2 text-xs font-semibold" style={{ color: 'var(--brand)' }}>
               <Mail className="w-4 h-4" />
-              <span>Contact: info@FalconForecast.com</span>
+              <span>Contact: falconforecasts@gmail.com</span>
             </div>
           </section>
         </div>
