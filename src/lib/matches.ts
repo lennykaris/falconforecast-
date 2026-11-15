@@ -36,6 +36,17 @@ export async function fetchStandings(competitionCode: string): Promise<StandingR
   return data.standings || [];
 }
 
+/** Fetches the table for the competition a match belongs to, avoiding hard-coded IDs that
+ * can resolve to a different league in the upstream provider. */
+export async function fetchStandingsByMatchId(matchId: string): Promise<StandingRow[]> {
+  const res = await fetch(`/api/standings?matchId=${encodeURIComponent(matchId)}`);
+  const data = await res.json().catch(() => ({ standings: [] }));
+  if (!res.ok) {
+    throw new Error(data?.error || 'Failed to load standings');
+  }
+  return data.standings || [];
+}
+
 /** Fetches one match's full detail — live stats (possession, shots, corners, cards, fouls...)
  * and the incidents timeline (goals, cards, subs) — for the match detail modal. */
 export async function fetchMatchDetail(id: string): Promise<MatchDetail> {

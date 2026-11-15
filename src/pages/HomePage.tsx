@@ -10,7 +10,7 @@ import { Sidebar } from '../components/Sidebar';
 import { MatchDetailModal } from '../components/MatchDetailModal';
 import { LiveBadge } from '../components/LiveBadge';
 import { MatchesSkeleton, StandingsSkeleton } from '../components/Skeleton';
-import { fetchMatches, fetchStandings } from '../lib/matches';
+import { fetchMatches, fetchStandingsByMatchId } from '../lib/matches';
 import { usePredictions } from '../context/PredictionsContext';
 import { SUBSCRIPTION_PLANS } from '../data/predictions';
 import type { Match, StandingRow } from '../types/prediction';
@@ -240,17 +240,20 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
 
   useEffect(() => {
     const code = LEAGUE_CODE_MAP[selectedLeague];
-    if (!code) {
+    const leagueMatch = matches.find(match => match.leagueCode === code);
+    if (!code || !leagueMatch) {
       setStandings([]);
+      setStandingsError(null);
+      setStandingsLoading(false);
       return;
     }
     setStandingsLoading(true);
     setStandingsError(null);
-    fetchStandings(code)
+    fetchStandingsByMatchId(leagueMatch.id)
       .then(setStandings)
       .catch(e => setStandingsError(e instanceof Error ? e.message : 'Failed to load standings'))
       .finally(() => setStandingsLoading(false));
-  }, [selectedLeague]);
+  }, [selectedLeague, matches]);
 
   // "Favorites" is really "All Leagues" here (see Sidebar's "View All Leagues" button) — every
   // league SportSRC returns fixtures for, not just the curated popular set below. Grouped by
@@ -459,7 +462,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
                     ? 'No recent results found.'
                     : selectedLeague === 'Favorites' && leagueSearch.trim()
                     ? `No leagues or teams matching "${leagueSearch.trim()}" right now.`
-                    : 'No matches found for this league right now.'}
+                    : `No ${selectedLeague} fixtures were returned in the current data window.`}
                   </p>
                   <p className="max-w-xs mt-1 text-xs text-slate-500 dark:text-slate-400">
                     Fixtures and scores update automatically. Browse the latest published predictions while you wait.
@@ -523,7 +526,9 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
               ) : standingsError ? (
                 <div className="py-8 text-center text-xs text-rose-500">{standingsError}</div>
               ) : standings.length === 0 ? (
-                <div className="py-8 text-center text-xs text-slate-400">No standings available yet this season.</div>
+                <div className="py-8 text-center text-xs text-slate-400">
+                  No standings available from the current fixture data for this league.
+                </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
