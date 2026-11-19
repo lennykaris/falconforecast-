@@ -1,194 +1,178 @@
-import React, { useState, useEffect } from 'react';
-import { X, Megaphone, ExternalLink, ChevronRight, Pause, Play } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { CheckCircle2, ChevronRight, ExternalLink, Megaphone, Pause, Play, Star, X } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { useTipsters } from '../context/TipstersContext';
+import type { Advertisement } from '../types/advertisement';
 
 interface AdvertBannerProps {
   sticky?: boolean;
 }
 
-const ADS = [
-  {
-    id: 1,
-    brand: 'BetKing',
-    initial: 'B',
-    tagline: 'Africa\'s #1 Sportsbook',
-    cta: 'Get 200% Bonus',
-    href: '#',
-    badge: 'SPONSORED',
-    gradient: 'from-amber-500 to-orange-500',
-    textColor: 'text-amber-600 dark:text-amber-400',
-    bg: 'bg-amber-50/90 dark:bg-amber-950/40',
-    border: 'border-amber-200 dark:border-amber-800/50',
-    description: 'Deposit KSh 500 and get KSh 1,000 free on your first bet.',
-  },
-  {
-    id: 2,
-    brand: 'SportyBet',
-    initial: 'S',
-    tagline: 'Fastest Cashouts & Highest Odds',
-    cta: 'Claim KSh 1,500 Gift',
-    href: '#',
-    badge: 'FEATURED SPONSOR',
-    gradient: 'from-red-500 to-rose-600',
-    textColor: 'text-rose-600 dark:text-rose-400',
-    bg: 'bg-rose-50/90 dark:bg-rose-950/40',
-    border: 'border-rose-200 dark:border-rose-800/50',
-    description: 'Instant payouts with zero fees & instant accumulator boosts up to 1000%.',
-  },
-  {
-    id: 3,
-    brand: '1xBet',
-    initial: '1X',
-    tagline: '1,000+ Markets & Live Streaming',
-    cta: 'Register & Win Big',
-    href: '#',
-    badge: 'OFFICIAL PARTNER',
-    gradient: 'from-sky-500 to-blue-600',
-    textColor: 'text-sky-600 dark:text-sky-400',
-    bg: 'bg-sky-50/90 dark:bg-sky-950/40',
-    border: 'border-sky-200 dark:border-sky-800/50',
-    description: 'Watch live matches for free and enjoy top market odds worldwide.',
-  },
-  {
-    id: 4,
-    brand: 'SofaAnalytics',
-    initial: 'SA',
-    tagline: 'Pro xG Heatmaps & Live Stats',
-    cta: 'Try Pro 7 Days Free',
-    href: '#',
-    badge: 'DATA PARTNER',
-    gradient: 'from-emerald-500 to-teal-600',
-    textColor: 'text-emerald-600 dark:text-emerald-400',
-    bg: 'bg-emerald-50/90 dark:bg-emerald-950/40',
-    border: 'border-emerald-200 dark:border-emerald-800/50',
-    description: 'Track real-time momentum graphs & expected goals for all live games.',
-  },
-];
-
 export const AdvertBanner: React.FC<AdvertBannerProps> = ({ sticky = true }) => {
+  const { tipsters } = useTipsters();
+  const [advertisements, setAdvertisements] = useState<Advertisement[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
-  // Auto-rotate every 3 seconds (3000ms) unless paused or dismissed
   useEffect(() => {
-    if (dismissed || isPaused) return;
+    let active = true;
+    const loadAdvertisements = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('advertisements')
+          .select('*')
+          .eq('active', true)
+          .order('sort_order', { ascending: true })
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        if (!active) return;
+        setAdvertisements((data || []).map((row: Record<string, any>) => ({
+          id: row.id,
+          advertiser_type: row.advertiser_type,
+          name: row.name,
+          tagline: row.tagline,
+          description: row.description,
+          cta: row.cta,
+          target_url: row.target_url,
+          image_url: row.image_url,
+          image_path: row.image_path,
+          tipster_id: row.tipster_id,
+          active: row.active,
+          sort_order: row.sort_order,
+        })));
+      } catch (error) {
+        if (active) console.error('Failed to load advertisements:', error);
+      }
+    };
+    loadAdvertisements();
+    return () => { active = false; };
+  }, []);
 
+  useEffect(() => {
+    if (dismissed || isPaused || advertisements.length < 2) return;
     const timer = setInterval(() => {
-      setCurrentIndex((prevIndex) => (prevIndex + 1) % ADS.length);
-    }, 3000);
-
+      setCurrentIndex(index => (index + 1) % advertisements.length);
+    }, 5000);
     return () => clearInterval(timer);
-  }, [dismissed, isPaused]);
+  }, [advertisements.length, dismissed, isPaused]);
 
-  const ad = ADS[currentIndex];
+  const ad = advertisements[currentIndex];
+  const featuredTipster = ad?.tipster_id ? tipsters.find(t => t.id === ad.tipster_id) : undefined;
 
-  if (dismissed) {
+  if (dismissed || !ad) {
     return (
       <div className="bg-white dark:bg-[#111c30] border border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4 text-center">
         <Megaphone className="w-5 h-5 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
-        <p className="text-[10px] text-slate-400 font-medium">Advertise here</p>
-        <p className="text-[10px] text-slate-300 dark:text-slate-600">
-          Reach 50K+ active sports fans
+        <p className="text-[10px] text-slate-400 font-medium">
+          {dismissed ? 'Advert hidden' : 'Advertise here'}
         </p>
-        <a
-          href="mailto:falconforecasts@gmail.com"
-          className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-[#00a8ff] hover:underline"
-        >
-          Contact us <ExternalLink className="w-3 h-3" />
-        </a>
+        {!dismissed && (
+          <>
+            <p className="text-[10px] text-slate-300 dark:text-slate-600">Promote your business or tipster profile</p>
+            <a href="mailto:falconforecasts@gmail.com" className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-[#00a8ff] hover:underline">
+              Contact us <ExternalLink className="w-3 h-3" />
+            </a>
+          </>
+        )}
       </div>
     );
   }
+
+  const isInternalLink = ad.target_url.startsWith('/');
+  const adLabel = ad.advertiser_type === 'tipster'
+    ? 'FEATURED TIPSTER'
+    : ad.advertiser_type === 'bookmaker'
+      ? 'BOOKMAKER'
+      : 'BUSINESS PARTNER';
 
   return (
     <div className={sticky ? 'sticky top-24' : ''}>
       <div
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
-        className={`relative rounded-xl border overflow-hidden shadow-sm transition-all duration-500 ${ad.bg} ${ad.border}`}
+        className="relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-all dark:border-slate-800 dark:bg-[#111c30]"
       >
-        {/* Top Header: Badge, Dot Indicators & Dismiss button */}
         <div className="flex items-center justify-between px-3 pt-2.5 pb-1">
           <div className="flex items-center gap-2">
             <span className="text-[9px] font-extrabold tracking-widest text-slate-400 uppercase">
-              {ad.badge}
+              {adLabel}
             </span>
+            {ad.advertiser_type === 'tipster' && <Star className="h-3 w-3 fill-amber-400 text-amber-400" />}
             {isPaused && (
-              <span className="flex items-center gap-0.5 text-[8px] font-bold text-amber-500 bg-amber-100 dark:bg-amber-900/40 px-1.5 py-0.2 rounded">
-                <Pause className="w-2 h-2" /> Paused
+              <span className="flex items-center gap-0.5 rounded bg-amber-100 px-1.5 py-0.5 text-[8px] font-bold text-amber-600 dark:bg-amber-900/40">
+                <Pause className="h-2 w-2" /> Paused
               </span>
             )}
           </div>
-
           <div className="flex items-center gap-2">
-            {/* Carousel Dot Indicators */}
-            <div className="flex items-center gap-1">
-              {ADS.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setCurrentIndex(idx)}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    idx === currentIndex
-                      ? 'w-4 bg-[#00a8ff]'
-                      : 'w-1.5 bg-slate-300 dark:bg-slate-700 hover:bg-slate-400'
-                  }`}
-                  title={`Go to ad ${idx + 1}`}
-                />
-              ))}
-            </div>
-
-            <button
-              onClick={() => setDismissed(true)}
-              className="text-slate-300 hover:text-slate-500 transition-colors p-0.5"
-              title="Dismiss ad"
-            >
-              <X className="w-3.5 h-3.5" />
+            {advertisements.length > 1 && (
+              <div className="flex items-center gap-1">
+                {advertisements.map((item, index) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setCurrentIndex(index)}
+                    aria-label={`Show advert ${index + 1}`}
+                    className={`h-1.5 rounded-full transition-all ${index === currentIndex ? 'w-4 bg-[#00a8ff]' : 'w-1.5 bg-slate-300 dark:bg-slate-700'}`}
+                  />
+                ))}
+              </div>
+            )}
+            {advertisements.length > 1 && (
+              <button onClick={() => setIsPaused(value => !value)} aria-label={isPaused ? 'Resume adverts' : 'Pause adverts'} className="p-0.5 text-slate-400">
+                {isPaused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
+              </button>
+            )}
+            <button onClick={() => setDismissed(true)} aria-label="Dismiss advert" title="Dismiss advert" className="p-0.5 text-slate-300 transition-colors hover:text-slate-500">
+              <X className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
 
-        {/* Ad content with transition effect */}
-        <div key={ad.id} className="px-3 pb-3 space-y-2.5 animate-fadeIn">
-          {/* Brand header */}
+        <div key={ad.id} className="space-y-2.5 px-3 pb-3">
           <div className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${ad.gradient} flex items-center justify-center flex-shrink-0 shadow-sm`}>
-              <span className="text-white font-extrabold text-xs font-mono">{ad.initial}</span>
-            </div>
-            <div>
-              <p className="text-xs font-extrabold text-slate-900 dark:text-white">{ad.brand}</p>
+            {ad.image_url || featuredTipster?.avatarUrl ? (
+              <img
+                src={ad.image_url || featuredTipster?.avatarUrl}
+                alt=""
+                className="h-9 w-9 flex-shrink-0 rounded-lg border border-slate-200 object-cover dark:border-slate-700"
+              />
+            ) : (
+              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500 to-blue-700 text-sm font-black text-white">
+                {ad.name.slice(0, 2).toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="truncate text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-1">
+                {ad.name}
+                {ad.advertiser_type === 'tipster' && featuredTipster?.verified && <CheckCircle2 className="h-3 w-3 text-[#00a8ff]" />}
+              </p>
               <p className="text-[10px] text-slate-500 dark:text-slate-400">{ad.tagline}</p>
             </div>
           </div>
 
-          {/* Description */}
-          <p className={`text-[11px] font-semibold leading-relaxed min-h-[32px] ${ad.textColor}`}>
+          <p className="min-h-8 text-[11px] font-semibold leading-relaxed text-slate-600 dark:text-slate-300">
             {ad.description}
           </p>
 
-          {/* CTA Button */}
           <a
-            href={ad.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`w-full py-2 bg-gradient-to-r ${ad.gradient} text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity shadow-sm active:scale-[0.99]`}
+            href={ad.target_url}
+            target={isInternalLink ? undefined : '_blank'}
+            rel={isInternalLink ? undefined : 'noopener noreferrer'}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-sky-500 to-blue-600 py-2 text-xs font-bold text-white shadow-sm transition-opacity hover:opacity-90"
           >
-            {ad.cta} <ChevronRight className="w-3.5 h-3.5" />
+            {ad.cta} <ChevronRight className="h-3.5 w-3.5" />
           </a>
 
-          {/* T&C note */}
-          <p className="text-[9px] text-slate-400 text-center leading-tight">
-            18+ · T&Cs apply · Gamble responsibly
-          </p>
+          {ad.advertiser_type === 'bookmaker' && (
+            <p className="text-center text-[9px] leading-tight text-slate-400">18+ · T&Cs apply · Gamble responsibly</p>
+          )}
         </div>
 
-        {/* Footer: "Advertise with us" */}
-        <div className="border-t border-slate-200/60 dark:border-slate-800/40 bg-white/50 dark:bg-slate-800/20 px-3 py-1.5 flex items-center justify-between">
+        <div className="flex items-center justify-between border-t border-slate-200/60 bg-slate-50/60 px-3 py-1.5 dark:border-slate-800/40 dark:bg-slate-800/20">
           <p className="text-[9px] text-slate-400">Want to advertise here?</p>
-          <a
-            href="mailto:falconforecasts@gmail.com"
-            className="text-[9px] font-bold text-[#00a8ff] hover:underline flex items-center gap-0.5"
-          >
-            Contact us <ExternalLink className="w-2.5 h-2.5" />
+          <a href="mailto:falconforecasts@gmail.com" className="flex items-center gap-0.5 text-[9px] font-bold text-[#00a8ff] hover:underline">
+            Contact us <ExternalLink className="h-2.5 w-2.5" />
           </a>
         </div>
       </div>

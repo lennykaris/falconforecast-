@@ -15,6 +15,7 @@ export interface Prediction {
   analysis?: string;
   status?: 'pending' | 'won' | 'lost' | 'void';
   result?: string;
+  previewOnly?: boolean;
   tipsterId?: string;
   tipsterName?: string;
   tipsterAvatar?: string;

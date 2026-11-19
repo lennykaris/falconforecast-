@@ -7,15 +7,16 @@ Built with **Vite + React 19 + TypeScript + Tailwind CSS v4**, backed by **Supab
 ## Features
 
 - **Real fixtures & results** (`/matches` and league routes) — live via a SportSRC proxy, including real scores and league standings.
-- **Free & VIP tips** (`/tips`, `/premium-tips`, `/vip`) — platform picks gated by a sitewide VIP subscription; tipster picks gated per-tipster (pay that specific tipster to unlock their premium tips, or they can mark a tip free).
+- **Free & VIP tips** (`/tips`, `/premium-tips`, `/vip`) — free picks are public; active platform VIP picks are subscriber-only, with settled outcomes visible in the public track record for three days.
 - **Tipster marketplace** (`/tipsters`) — browse verified tipsters, subscribe weekly/monthly.
 - **Paid tipster applications** (`/apply-tipster`) — pay a KSh 500 application fee by M-Pesa; applications are created only after payment confirmation.
 - **Betting site directory** (`/bookmakers`) — direct links to selected external sportsbooks; no affiliate rankings or bonus claims.
 - **Community match predictions** — signed-in users vote home/draw/away; match details show aggregate percentages without exposing individual votes.
 - **Tipster dashboard** (`/tipster-dashboard`) — post odds on real upcoming fixtures, manage pricing, view real subscribers and revenue.
-- **Admin panel** (`/admin`, admin-only) — approve/suspend tipsters, manage predictions, view platform-wide revenue.
+- **Admin panel** (`/admin`, admin-only) — approve/suspend tipsters, manage prediction outcomes, edit platform VIP prices, manage bookmaker/business ads and featured tipsters, and view platform-wide revenue.
 - **Google sign-in** via Supabase's hosted OAuth flow, plus email/password auth with password reset.
-- **Match comments** — real, persisted discussion threads per prediction, with per-user likes.
+- **News** (`/news`) — manually authored articles with images and shareable links that return readers to the article on Falcon Forecast.
+- **Match comments** — persisted discussion threads per prediction, with per-user likes.
 - **PWA** — installable, service worker, plus a Capacitor config for wrapping as a native app.
 
 ## Not yet built
@@ -28,7 +29,7 @@ Built with **Vite + React 19 + TypeScript + Tailwind CSS v4**, backed by **Supab
 - **Frontend**: Vite, React 19, TypeScript, React Router v7, Tailwind CSS v4, Lucide icons
 - **Backend**: Supabase (Postgres, Auth, RLS, SECURITY DEFINER RPCs for safe public aggregates)
 - **Match/league data**: SportSRC, proxied server-side via `api/matches.js` / `api/standings.js` (Vercel serverless functions; mirrored for local dev in `vite.config.ts`)
-- **State**: React Context (`AuthContext`, `PredictionsContext`, `TipstersContext`, `BetSlipContext`) backed by Supabase, with a localStorage cache layer for fast first paint
+- **State**: React Context (`AuthContext`, `PredictionsContext`, `TipstersContext`, `BetSlipContext`) backed by Supabase; protected prediction details are not persisted to localStorage
 
 ## Social media
 
@@ -51,6 +52,6 @@ Built with **Vite + React 19 + TypeScript + Tailwind CSS v4**, backed by **Supab
 
 Deploys to Vercel on push to `main`. `SPORTSRC_API_KEY` must be set in the Vercel project's Environment Variables (Production + Preview) separately from `.env` — it's intentionally not committed to the repo since this is a public GitHub repository. The SportSRC V2 key is only used by server-side API routes and is never exposed in the browser bundle.
 
-After pulling schema changes, re-run `supabase_schema.sql` in the Supabase SQL Editor to add the tipster application payment fields and enforce payment-confirmed applications.
+After pulling schema changes, re-run `supabase_schema.sql` in the Supabase SQL Editor to create the editable VIP price and advertising tables, apply prediction visibility/history rules, and grant the comment permissions used by the discussion UI.
 
-The same schema also creates the editable News/Blog table and public `news-images` storage bucket. After applying it, admins can grant News Editor access from Admin → All Users; editors can create, edit, publish, and delete articles on `/news`.
+The same schema also creates the editable News/Blog table and public `news-images` storage bucket. After applying it, admins can grant News Editor access from Admin → All Users; editors can create, edit, publish, and delete articles on `/news`. It also creates the public `advert-images` bucket for uploaded ad photos and logos.

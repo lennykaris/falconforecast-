@@ -1,19 +1,24 @@
 import React, { useState } from 'react';
 import { usePredictions } from '../context/PredictionsContext';
 import { PredictionCard } from '../components/PredictionCard';
-import { LEAGUE_OPTIONS, SUBSCRIPTION_PLANS } from '../data/predictions';
+import { LEAGUE_OPTIONS } from '../data/predictions';
 import type { SubscriptionPlan } from '../types/prediction';
+import { usePlatformPricing } from '../context/PlatformPricingContext';
 
 interface FreeTipsPageProps {
   onOpenCheckout: (plan: SubscriptionPlan) => void;
 }
 
 export const FreeTipsPage: React.FC<FreeTipsPageProps> = ({ onOpenCheckout }) => {
-  const { predictions } = usePredictions();
+  const { plans } = usePlatformPricing();
+  const { predictions, error: predictionsError } = usePredictions();
   const [selectedLeague, setSelectedLeague] = useState('All Leagues');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const freePredictions = predictions.filter(p => p.tier === 'free');
+  const historyStart = Date.now() - 3 * 24 * 60 * 60 * 1000;
+  const freePredictions = predictions.filter(
+    p => p.tier === 'free' && new Date(p.kickoff).getTime() >= historyStart
+  );
 
   const filteredPredictions = freePredictions.filter(p => {
     const matchesLeague = selectedLeague === 'All Leagues' || p.league === selectedLeague;
@@ -24,7 +29,7 @@ export const FreeTipsPage: React.FC<FreeTipsPageProps> = ({ onOpenCheckout }) =>
     return matchesLeague && matchesSearch;
   });
 
-  const popularPlan = SUBSCRIPTION_PLANS.find(p => p.popular) || SUBSCRIPTION_PLANS[1];
+  const popularPlan = plans.find(p => p.popular) || plans[1];
 
   return (
     <div
@@ -45,6 +50,12 @@ export const FreeTipsPage: React.FC<FreeTipsPageProps> = ({ onOpenCheckout }) =>
             Daily Free Tips
           </h1>
         </div>
+
+        {predictionsError && (
+          <p role="alert" className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+            Could not load predictions: {predictionsError}
+          </p>
+        )}
 
         {/* Filters */}
         <div

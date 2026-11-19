@@ -43,55 +43,66 @@ export const MatchCommentsModal: React.FC<MatchCommentsModalProps> = ({ isOpen, 
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [posting, setPosting] = useState(false);
+  const [commentsError, setCommentsError] = useState<string | null>(null);
+  const [likingId, setLikingId] = useState<string | null>(null);
+  const predictionId = prediction?.id;
+  const userId = user?.id;
 
   useEffect(() => {
-    if (!isOpen || !prediction) return;
+    if (!isOpen || !predictionId) return;
 
     let cancelled = false;
     setLoading(true);
+    setCommentsError(null);
 
     async function load() {
-      const { data: commentRows, error } = await supabase
-        .from('comments')
-        .select('*')
-        .eq('prediction_id', prediction!.id)
-        .order('created_at', { ascending: false });
+      try {
+        const { data: commentRows, error } = await supabase
+          .from('comments')
+          .select('*')
+          .eq('prediction_id', predictionId)
+          .order('created_at', { ascending: false });
 
-      if (error || !commentRows) {
+        if (error) throw error;
+        const rows = commentRows || [];
+        const commentIds = rows.map((c: any) => c.id);
+        const { data: likeRows, error: likesError } = commentIds.length
+          ? await supabase.from('comment_likes').select('comment_id, user_id').in('comment_id', commentIds)
+          : { data: [] as any[], error: null };
+        if (likesError) throw likesError;
+        if (cancelled) return;
+
+        const likesByComment = new Map<string, number>();
+        const likedByMe = new Set<string>();
+        (likeRows || []).forEach((l: any) => {
+          likesByComment.set(l.comment_id, (likesByComment.get(l.comment_id) || 0) + 1);
+          if (userId && l.user_id === userId) likedByMe.add(l.comment_id);
+        });
+
+        setComments(rows.map((c: any) => ({
+          id: c.id,
+          userId: c.user_id,
+          userName: c.user_name,
+          userRole: c.user_role,
+          content: c.content,
+          createdAt: c.created_at,
+          likes: likesByComment.get(c.id) || 0,
+          isLiked: likedByMe.has(c.id),
+        })));
+      } catch (error) {
+        if (!cancelled) {
+          const message = error instanceof Error ? error.message : 'Could not load the discussion.';
+          console.error('Failed to load match discussion:', error);
+          setCommentsError(message);
+        }
+      } finally {
         if (!cancelled) setLoading(false);
-        return;
       }
-
-      const commentIds = commentRows.map((c: any) => c.id);
-      const { data: likeRows } = commentIds.length
-        ? await supabase.from('comment_likes').select('comment_id, user_id').in('comment_id', commentIds)
-        : { data: [] as any[] };
-
-      if (cancelled) return;
-
-      const likesByComment = new Map<string, number>();
-      const likedByMe = new Set<string>();
-      (likeRows || []).forEach((l: any) => {
-        likesByComment.set(l.comment_id, (likesByComment.get(l.comment_id) || 0) + 1);
-        if (user && l.user_id === user.id) likedByMe.add(l.comment_id);
-      });
-
-      setComments(commentRows.map((c: any) => ({
-        id: c.id,
-        userId: c.user_id,
-        userName: c.user_name,
-        userRole: c.user_role,
-        content: c.content,
-        createdAt: c.created_at,
-        likes: likesByComment.get(c.id) || 0,
-        isLiked: likedByMe.has(c.id),
-      })));
-      setLoading(false);
     }
 
     load();
     return () => { cancelled = true; };
-  }, [isOpen, prediction?.id, user?.id]);
+  }, [isOpen, predictionId, userId]);
 
   if (!isOpen || !prediction) return null;
 
@@ -100,40 +111,48 @@ export const MatchCommentsModal: React.FC<MatchCommentsModalProps> = ({ isOpen, 
     if (!newComment.trim() || !user) return;
 
     setPosting(true);
-    const { data, error } = await supabase
-      .from('comments')
-      .insert([{
-        prediction_id: prediction.id,
-        user_id: user.id,
-        user_name: user.name,
-        user_role: user.role,
-        content: newComment.trim(),
-      }])
-      .select()
-      .single();
-    setPosting(false);
+    setCommentsError(null);
+    try {
+      const { data, error } = await supabase
+        .from('comments')
+        .insert([{
+          prediction_id: prediction.id,
+          user_id: user.id,
+          user_name: user.name,
+          user_role: user.role,
+          content: newComment.trim(),
+        }])
+        .select()
+        .single();
 
-    if (error || !data) return;
+      if (error || !data) {
+        const message = error?.message || 'Could not post your comment.';
+        console.error('Failed to post match comment:', error || message);
+        setCommentsError(message);
+        return;
+      }
 
-    setComments(prev => [{
-      id: data.id,
-      userId: data.user_id,
-      userName: data.user_name,
-      userRole: data.user_role,
-      content: data.content,
-      createdAt: data.created_at,
-      likes: 0,
-      isLiked: false,
-    }, ...prev]);
-    setNewComment('');
+      setComments(prev => [{
+        id: data.id,
+        userId: data.user_id,
+        userName: data.user_name,
+        userRole: data.user_role,
+        content: data.content,
+        createdAt: data.created_at,
+        likes: 0,
+        isLiked: false,
+      }, ...prev]);
+      setNewComment('');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not post your comment.';
+      console.error('Failed to post match comment:', error);
+      setCommentsError(message);
+    } finally {
+      setPosting(false);
+    }
   };
 
-  // likingId guards against a fast double-click firing two toggles off the same stale
-  // `wasLiked` value before either completes — the comment_likes primary key (comment_id,
-  // user_id) rejects the second write, and since that error was never checked, the UI kept
-  // showing 2 added likes while the DB only had 1, correcting itself only on next reload.
-  const [likingId, setLikingId] = useState<string | null>(null);
-
+  // Avoid concurrent toggles against the same comment while its write is in flight.
   const handleToggleLike = async (comment: CommentItem) => {
     if (!user || likingId === comment.id) return;
     setLikingId(comment.id);
@@ -144,20 +163,23 @@ export const MatchCommentsModal: React.FC<MatchCommentsModalProps> = ({ isOpen, 
       : c
     ));
 
-    const { error } = wasLiked
-      ? await supabase.from('comment_likes').delete().eq('comment_id', comment.id).eq('user_id', user.id)
-      : await supabase.from('comment_likes').insert([{ comment_id: comment.id, user_id: user.id }]);
-
-    if (error) {
+    try {
+      const { error } = wasLiked
+        ? await supabase.from('comment_likes').delete().eq('comment_id', comment.id).eq('user_id', user.id)
+        : await supabase.from('comment_likes').insert([{ comment_id: comment.id, user_id: user.id }]);
+      if (error) throw error;
+    } catch (error) {
       // The write was rejected — revert the optimistic change instead of leaving the UI
       // showing a like/unlike that never actually happened.
       console.error('Failed to toggle comment like:', error);
+      setCommentsError(error instanceof Error ? error.message : 'Could not update your like.');
       setComments(prev => prev.map(c => c.id === comment.id
         ? { ...c, isLiked: wasLiked, likes: wasLiked ? c.likes + 1 : c.likes - 1 }
         : c
       ));
+    } finally {
+      setLikingId(null);
     }
-    setLikingId(null);
   };
 
   return (
@@ -194,7 +216,7 @@ export const MatchCommentsModal: React.FC<MatchCommentsModalProps> = ({ isOpen, 
         <div className="bg-sky-500/5 px-4 py-2.5 border-b border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between text-xs">
           <div className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
             <Flame className="w-3.5 h-3.5 text-amber-500" />
-            <span>Pick: <strong className="text-[#00a8ff]">{prediction.tip}</strong></span>
+            <span>Pick: <strong className="text-[#00a8ff]">{prediction.previewOnly ? 'Premium selection hidden' : prediction.tip}</strong></span>
           </div>
           <div className="font-bold text-slate-900 dark:text-white">
             Odds: <span className="text-emerald-500">{prediction.odds.toFixed(2)}</span>
@@ -203,6 +225,9 @@ export const MatchCommentsModal: React.FC<MatchCommentsModalProps> = ({ isOpen, 
 
         {/* Comments Feed List */}
         <div className="p-4 flex-1 overflow-y-auto space-y-3.5 divide-y divide-slate-100 dark:divide-slate-800/50">
+          {commentsError && (
+            <p role="alert" className="text-xs text-rose-600 dark:text-rose-400">{commentsError}</p>
+          )}
           {loading ? (
             <p className="text-xs text-slate-400 text-center py-6">Loading comments...</p>
           ) : comments.length === 0 ? (
@@ -254,6 +279,7 @@ export const MatchCommentsModal: React.FC<MatchCommentsModalProps> = ({ isOpen, 
             <form onSubmit={handlePostComment} className="flex items-center gap-2">
               <input
                 type="text"
+                maxLength={500}
                 placeholder="Write your match opinion or xG analysis..."
                 value={newComment}
                 onChange={e => setNewComment(e.target.value)}

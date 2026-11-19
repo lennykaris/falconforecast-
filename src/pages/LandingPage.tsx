@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useTipsters } from '../context/TipstersContext';
-import { SUBSCRIPTION_PLANS } from '../data/predictions';
+import { usePlatformPricing } from '../context/PlatformPricingContext';
 import { fetchMatches } from '../lib/matches';
 import { supabase } from '../lib/supabase';
 import { ConvertedPrice } from '../components/ConvertedPrice';
@@ -236,6 +236,7 @@ const HeroFrameSequence: React.FC = () => {
 };
 
 export const LandingPage: React.FC = () => {
+  const { plans } = usePlatformPricing();
   const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrollPct, setScrollPct] = useState(0);
@@ -293,7 +294,7 @@ export const LandingPage: React.FC = () => {
       .catch(() => setTickerScores([]));
   }, []);
 
-  const previewPlans = SUBSCRIPTION_PLANS.slice(0, 3);
+  const previewPlans = plans.slice(0, 3);
 
   return (
     <div style={{ backgroundColor: 'var(--bg-base)' }}>

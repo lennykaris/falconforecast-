@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, Newspaper, Search, RefreshCw, ExternalLink, Tag, Clock, Plus, Pencil, Trash2, X, Upload } from 'lucide-react';
+import { Globe, Newspaper, Search, ExternalLink, Tag, Clock, Plus, Pencil, Trash2, X, Upload, Share2 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -7,7 +8,6 @@ interface NewsArticle {
   id: string;
   title: string;
   description: string;
-  link: string;
   pubDate: string;
   source: string;
   region: 'kenya' | 'world';
@@ -24,7 +24,6 @@ const mapEditorialArticle = (row: Record<string, any>): NewsArticle => ({
   id: row.id,
   title: row.title,
   description: row.summary || row.content.slice(0, 180),
-  link: row.external_url || '',
   pubDate: row.published_at || row.created_at,
   source: row.source || 'Falcon Forecast',
   region: row.region,
@@ -37,88 +36,14 @@ const mapEditorialArticle = (row: Record<string, any>): NewsArticle => ({
   published: row.published,
 });
 
-const FALLBACK_NEWS: NewsArticle[] = [
-  {
-    id: 'kenya-1',
-    title: 'Harambee Stars Target Crucial Victory in AFCON Qualifiers Ahead of Nairobi Fixture',
-    description: 'Kenya national football team head coach expresses high confidence following intense training sessions in Kasarani Stadium as FKF Premier League top scorers join the starting lineup.',
-    link: 'https://www.capitalfm.co.ke/sports/',
-    pubDate: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
-    source: 'Capital FM Sports Kenya',
-    region: 'kenya',
-    category: 'Harambee Stars',
-    thumbnail: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    id: 'kenya-2',
-    title: 'FKF Premier League Title Race Heats Up as Gor Mahia and AFC Leopards Lock Horns',
-    description: 'The Mashemeji Derby rivalry reaches fever pitch this weekend with both historic Kenyan clubs neck and neck at the top of the standings.',
-    link: 'https://nation.africa/kenya/sports',
-    pubDate: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-    source: 'Nation Media Sports',
-    region: 'kenya',
-    category: 'FKF Premier League',
-    thumbnail: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    id: 'world-1',
-    title: 'Champions League Quarter-Final Draw: Blockbuster European Clashes Confirmed',
-    description: 'Real Madrid set to face Manchester City in a titanic clash while Bayern Munich prepare for high-octane showdown against Arsenal.',
-    link: 'https://feeds.bbci.co.uk/sport/football',
-    pubDate: new Date(Date.now() - 1 * 3600 * 1000).toISOString(),
-    source: 'BBC Sport World',
-    region: 'world',
-    category: 'Champions League',
-    thumbnail: 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    id: 'world-2',
-    title: 'Premier League Transfer Deadline Shock: £90M Bid Submitted for Star Forward',
-    description: 'Top European clubs race against the clock to finalize record-breaking summer window transfers before midnight deadline.',
-    link: 'https://www.skysports.com/football',
-    pubDate: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
-    source: 'Sky Sports',
-    region: 'world',
-    category: 'Transfers',
-    thumbnail: 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    id: 'kenya-3',
-    title: 'Kenyan Athletics Superstars Set New World Records at Diamond League Meeting',
-    description: 'Sensational performances in the 1500m and 5000m events secure podium sweep for Kenyan middle-distance runners in Paris.',
-    link: 'https://www.standardmedia.co.ke/sports',
-    pubDate: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
-    source: 'Standard Sports Kenya',
-    region: 'kenya',
-    category: 'Athletics',
-    thumbnail: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    id: 'world-3',
-    title: 'Tactical Masterclass: How Expected Goals (xG) is Revolutionizing Modern Football Analysis',
-    description: 'An in-depth breakdown of how top analytics platforms use Poisson distribution algorithms to predict match outcomes and odds value.',
-    link: 'https://www.espn.com/soccer/',
-    pubDate: new Date(Date.now() - 8 * 3600 * 1000).toISOString(),
-    source: 'ESPN Sports',
-    region: 'world',
-    category: 'Analytics',
-    thumbnail: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=600&q=80',
-  },
-];
-
-const RSS_SOURCES = [
-  { name: 'BBC Football', url: 'https://feeds.bbci.co.uk/sport/football/rss.xml', region: 'world', category: 'Worldwide Football' },
-  { name: 'Sky Sports', url: 'https://www.skysports.com/rss/12040', region: 'world', category: 'Global Football' },
-  { name: 'Capital FM Kenya', url: 'https://www.capitalfm.co.ke/sports/feed/', region: 'kenya', category: 'Kenya Sports' },
-];
-
 export const NewsPage: React.FC = () => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const canManageNews = user?.role === 'admin' || user?.canManageNews === true;
-  const [articles, setArticles] = useState<NewsArticle[]>(FALLBACK_NEWS);
   const [editorialArticles, setEditorialArticles] = useState<NewsArticle[]>([]);
   const [editorialError, setEditorialError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'kenya' | 'world'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [editorOpen, setEditorOpen] = useState(false);
@@ -136,21 +61,33 @@ export const NewsPage: React.FC = () => {
   const [savingArticle, setSavingArticle] = useState(false);
 
   const loadEditorialArticles = async () => {
-    const { data, error } = await supabase
-      .from('news_articles')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) {
-      setEditorialError(error.message);
-      return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('news_articles')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setEditorialError(null);
+      setEditorialArticles((data || []).map(mapEditorialArticle));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to load articles.';
+      console.error('Failed to load editorial articles:', error);
+      setEditorialError(message);
+    } finally {
+      setLoading(false);
     }
-    setEditorialError(null);
-    setEditorialArticles((data || []).map(mapEditorialArticle));
   };
 
   useEffect(() => {
     loadEditorialArticles();
   }, [canManageNews]);
+
+  useEffect(() => {
+    const articleId = searchParams.get('article');
+    const article = editorialArticles.find(item => item.id === articleId);
+    if (article) setReadingArticle(article);
+  }, [editorialArticles, searchParams]);
 
   const resetArticleForm = () => {
     setEditingArticle(null);
@@ -274,58 +211,33 @@ export const NewsPage: React.FC = () => {
     }
   };
 
-  const fetchRssFeeds = async () => {
-    setLoading(true);
+  const handleShareArticle = async (article: NewsArticle) => {
+    const url = new URL('/news', window.location.origin);
+    url.searchParams.set('article', article.id);
+    setShareMessage(null);
     try {
-      const fetchedArticles: NewsArticle[] = [];
-
-      for (const rss of RSS_SOURCES) {
-        try {
-          const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rss.url)}`;
-          const response = await fetch(apiUrl);
-          const data = await response.json();
-
-          if (data.status === 'ok' && data.items && data.items.length > 0) {
-            data.items.slice(0, 5).forEach((item: any, idx: number) => {
-              // Extract snippet
-              const cleanDesc = item.description
-                ? item.description.replace(/<[^>]*>?/gm, '').slice(0, 180) + '...'
-                : 'Latest live sports news breaking updates.';
-
-              fetchedArticles.push({
-                id: `rss-${rss.region}-${idx}-${Date.now()}`,
-                title: item.title,
-                description: cleanDesc,
-                link: item.link,
-                pubDate: item.pubDate || new Date().toISOString(),
-                source: rss.name,
-                region: rss.region as 'kenya' | 'world',
-                category: rss.category,
-                thumbnail: item.thumbnail || item.enclosure?.link,
-              });
-            });
-          }
-        } catch (e) {
-          console.warn(`Failed fetching RSS feed for ${rss.name}:`, e);
-        }
+      if (navigator.share) {
+        await navigator.share({ title: article.title, text: article.description, url: url.toString() });
+      } else {
+        await navigator.clipboard.writeText(url.toString());
+        setShareMessage('Article link copied. Share it on your social channels.');
       }
-
-      if (fetchedArticles.length > 0) {
-        // Merge with fallback to ensure rich feed
-        setArticles([...fetchedArticles, ...FALLBACK_NEWS]);
-      }
-    } catch (err) {
-      console.warn('RSS fetch error, using cached fallback news:', err);
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return;
+      setShareMessage(error instanceof Error ? `Could not share article: ${error.message}` : 'Could not share article.');
     }
   };
 
-  useEffect(() => {
-    fetchRssFeeds();
-  }, []);
+  const closeReadingArticle = () => {
+    setReadingArticle(null);
+    if (searchParams.has('article')) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('article');
+      setSearchParams(nextParams, { replace: true });
+    }
+  };
 
-  const allArticles = [...editorialArticles, ...articles];
+  const allArticles = editorialArticles;
   const filteredArticles = allArticles.filter(art => {
     const matchesTab = activeTab === 'all' || art.region === activeTab;
     const matchesSearch =
@@ -357,13 +269,13 @@ export const NewsPage: React.FC = () => {
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/20 border border-sky-400/30 text-sky-300 text-xs font-bold uppercase tracking-wider">
               <Newspaper className="w-3.5 h-3.5 text-[#00a8ff]" />
-              Live Sports RSS Wire
+              Falcon Forecast Editorial
             </div>
             <h1 className="text-3xl sm:text-5xl font-black font-display italic tracking-tight">
               Sports News World & Kenya
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              Real-time sports headlines powered by direct RSS feeds from Kenya (FKF League, Harambee Stars, Athletics) and Worldwide (Premier League, UCL, Transfers).
+              Original sports news and analysis, written and published by our editorial team.
             </p>
           </div>
 
@@ -377,14 +289,6 @@ export const NewsPage: React.FC = () => {
                 <span>Write Article</span>
               </button>
             )}
-            <button
-              onClick={fetchRssFeeds}
-              disabled={loading}
-              className="px-4 py-2.5 bg-[#00a8ff] hover:bg-[#0090e0] text-white text-xs font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg active:scale-95 disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              <span>{loading ? 'Fetching RSS...' : 'Refresh News Feed'}</span>
-            </button>
           </div>
         </div>
       </section>
@@ -434,7 +338,7 @@ export const NewsPage: React.FC = () => {
               <input value={articleSource} onChange={e => setArticleSource(e.target.value)} className="mt-1 w-full input-field text-xs" />
             </label>
             <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-              Optional external link
+              Optional reference/source link
               <input type="url" value={articleExternalUrl} onChange={e => setArticleExternalUrl(e.target.value)} placeholder="https://" className="mt-1 w-full input-field text-xs" />
             </label>
             <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 sm:col-span-2">
@@ -567,25 +471,23 @@ export const NewsPage: React.FC = () => {
 
             {/* Read Article CTA Footer */}
             <div className="p-4 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40 flex gap-2">
-              {art.isEditorial ? (
+              <button
+                onClick={() => setReadingArticle(art)}
+                className="flex-1 py-2 px-3 bg-white dark:bg-slate-800 hover:bg-[#00a8ff] hover:text-white border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-xs"
+              >
+                Read Full Story
+              </button>
+              {art.published && (
                 <button
-                  onClick={() => setReadingArticle(art)}
-                  className="flex-1 py-2 px-3 bg-white dark:bg-slate-800 hover:bg-[#00a8ff] hover:text-white border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-xs"
+                  onClick={() => handleShareArticle(art)}
+                  title="Share article link"
+                  aria-label={`Share ${art.title}`}
+                  className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
                 >
-                  Read Full Story
+                  <Share2 className="w-4 h-4" />
                 </button>
-              ) : (
-                <a
-                  href={art.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 py-2 px-3 bg-white dark:bg-slate-800 hover:bg-[#00a8ff] hover:text-white border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-xs"
-                >
-                  <span>Read Full Story</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
               )}
-              {canManageNews && art.isEditorial && (
+              {canManageNews && (
                 <>
                   <button onClick={() => startEditingArticle(art)} title="Edit article" aria-label="Edit article" className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
                     <Pencil className="w-4 h-4" />
@@ -599,15 +501,20 @@ export const NewsPage: React.FC = () => {
           </article>
         ))}
       </div>
+      {shareMessage && (
+        <p role="status" className="text-center text-xs text-slate-500 dark:text-slate-400">{shareMessage}</p>
+      )}
       {filteredArticles.length === 0 && (
-        <p className="py-12 text-center text-sm text-slate-500">No news articles match your filters.</p>
+        <p className="py-12 text-center text-sm text-slate-500">
+          {loading ? 'Loading articles...' : 'No news articles match your filters.'}
+        </p>
       )}
 
       {readingArticle && (
-        <div className="fixed inset-0 z-[60] bg-slate-950/70 backdrop-blur-sm p-4 flex items-center justify-center" onClick={() => setReadingArticle(null)}>
+        <div className="fixed inset-0 z-[60] bg-slate-950/70 backdrop-blur-sm p-4 flex items-center justify-center" onClick={closeReadingArticle}>
           <article className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-[#111c30] rounded-2xl shadow-2xl" onClick={event => event.stopPropagation()}>
             <div className="flex justify-end p-3">
-              <button onClick={() => setReadingArticle(null)} aria-label="Close article" className="p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white"><X className="w-5 h-5" /></button>
+              <button onClick={closeReadingArticle} aria-label="Close article" className="p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white"><X className="w-5 h-5" /></button>
             </div>
             {readingArticle.thumbnail && <img src={readingArticle.thumbnail} alt="" className="w-full max-h-80 object-cover" />}
             <div className="p-6 space-y-4">

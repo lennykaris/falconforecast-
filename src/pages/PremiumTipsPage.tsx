@@ -2,22 +2,29 @@ import React, { useState } from 'react';
 import { Crown } from 'lucide-react';
 import { usePredictions } from '../context/PredictionsContext';
 import { PredictionCard } from '../components/PredictionCard';
-import { LEAGUE_OPTIONS, SUBSCRIPTION_PLANS } from '../data/predictions';
+import { LEAGUE_OPTIONS } from '../data/predictions';
 import type { SubscriptionPlan } from '../types/prediction';
+import { usePlatformPricing } from '../context/PlatformPricingContext';
 
 interface PremiumTipsPageProps {
   onOpenCheckout?: (plan?: SubscriptionPlan) => void;
 }
 
 export const PremiumTipsPage: React.FC<PremiumTipsPageProps> = ({ onOpenCheckout }) => {
-  const { predictions } = usePredictions();
+  const { plans } = usePlatformPricing();
+  const { predictions, error: predictionsError } = usePredictions();
   const [selectedLeague, setSelectedLeague] = useState('All Leagues');
 
-  const vipPredictions = predictions.filter(p => p.tier === 'vip' && (!p.tipsterId || p.isPlatformTip));
+  const historyStart = Date.now() - 3 * 24 * 60 * 60 * 1000;
+  const vipPredictions = predictions.filter(
+    p => p.tier === 'vip' &&
+      (!p.tipsterId || p.isPlatformTip) &&
+      new Date(p.kickoff).getTime() >= historyStart
+  );
   const filtered = vipPredictions.filter(
     p => selectedLeague === 'All Leagues' || p.league === selectedLeague
   );
-  const popularPlan = SUBSCRIPTION_PLANS.find(p => p.popular) || SUBSCRIPTION_PLANS[1];
+  const popularPlan = plans.find(p => p.popular) || plans[1];
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0b1320] py-6 px-4 sm:px-6 lg:px-8 transition-colors">
@@ -39,6 +46,12 @@ export const PremiumTipsPage: React.FC<PremiumTipsPageProps> = ({ onOpenCheckout
             </p>
           </div>
         </div>
+
+        {predictionsError && (
+          <p role="alert" className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+            Could not load predictions: {predictionsError}
+          </p>
+        )}
 
         {/* League filter */}
         <div className="flex flex-wrap gap-1.5">

@@ -10,7 +10,7 @@ import {
   Zap,
 } from 'lucide-react';
 import type { SubscriptionPlan } from '../types/prediction';
-import { SUBSCRIPTION_PLANS } from '../data/predictions';
+import { usePlatformPricing } from '../context/PlatformPricingContext';
 import { useAuth } from '../context/AuthContext';
 import { usePaymentFlow } from '../hooks/usePaymentFlow';
 import { PaymentPendingView } from './PaymentPendingView';
@@ -28,6 +28,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   onClose,
   selectedPlan,
 }) => {
+  const { plans, loading: pricingLoading, error: pricingError } = usePlatformPricing();
   const { refetchUser } = useAuth();
   const navigate = useNavigate();
   const { payState, payError, submit, reset } = usePaymentFlow();
@@ -53,7 +54,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   const handleSubmitPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phoneNumber.trim()) return;
+    if (!phoneNumber.trim() || pricingLoading || pricingError) return;
 
     const success = await submit({ kind: 'vip_subscription', planId: plan.id, phone: phoneNumber });
     if (success) {
@@ -115,7 +116,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 from was locked in for the whole checkout, so a user who wanted monthly instead
                 of weekly had to close the modal and go find a different button. */}
             <div className="grid grid-cols-3 gap-2">
-              {SUBSCRIPTION_PLANS.map(p => (
+              {plans.map(p => (
                 <button
                   key={p.id}
                   type="button"
@@ -167,6 +168,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
             {/* M-Pesa Checkout Form */}
             <form onSubmit={handleSubmitPayment} className="space-y-4">
+              {pricingError && (
+                <p role="alert" className="text-xs font-semibold text-rose-600">
+                  VIP pricing is unavailable: {pricingError}
+                </p>
+              )}
               <div className="space-y-3 p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl">
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
@@ -193,7 +199,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <div className="pt-2">
                 <button
                   type="submit"
-                  disabled={!phoneNumber.trim()}
+                  disabled={!phoneNumber.trim() || pricingLoading || !!pricingError}
                   className="w-full py-3.5 bg-[#0EA5E9] hover:bg-sky-600 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 disabled:opacity-60"
                 >
                   <Lock className="w-4 h-4" />

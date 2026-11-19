@@ -362,23 +362,40 @@ DROP POLICY IF EXISTS "Tipsters update own predictions, admins update any" ON pu
 -- Anyone can view free predictions
 CREATE POLICY "Free predictions viewable by anyone" 
   ON public.predictions FOR SELECT 
-  USING (tier = 'free');
+  USING (
+    public.is_admin() OR
+    (
+      tier = 'free' AND
+      (
+        tipster_id = auth.uid() OR
+        match_time::timestamptz >= now() - interval '3 days'
+      )
+    )
+  );
 
 -- Platform VIP unlocks platform-owned picks only. Tipster VIP picks require their own
--- active tipster subscription; settled past picks are public for performance transparency.
+-- active tipster subscription; settled picks are public for three days for performance history.
 CREATE POLICY "VIP predictions viewable by subscribers or admins"
   ON public.predictions FOR SELECT
   USING (
-    tier = 'free' OR
     public.is_admin() OR
     (tier = 'vip' AND (
       (
         tipster_id IS NULL AND
-        (public.get_profile()).plan IN ('weekly_pass', 'monthly_vip', 'annual_vip') AND
-        (public.get_profile()).vip_expires_at > now()
+        (
+          (
+            (public.get_profile()).plan IN ('weekly_pass', 'monthly_vip', 'annual_vip') AND
+            (public.get_profile()).vip_expires_at > now()
+          ) OR
+          (
+            status IN ('won', 'lost', 'void') AND
+            match_time::timestamptz BETWEEN now() - interval '3 days' AND now()
+          )
+        )
       ) OR
       (
         tipster_id IS NOT NULL AND (
+          tipster_id = auth.uid() OR
           EXISTS (
             SELECT 1 FROM public.tipster_subscriptions ts
             WHERE ts.user_id = auth.uid()
@@ -386,7 +403,10 @@ CREATE POLICY "VIP predictions viewable by subscribers or admins"
             AND ts.status = 'active'
             AND ts.expires_at > now()
           ) OR
-          (status IN ('won', 'lost', 'void') AND match_time::timestamptz < now())
+          (
+            status IN ('won', 'lost', 'void') AND
+            match_time::timestamptz BETWEEN now() - interval '3 days' AND now()
+          )
         )
       )
     ))
@@ -535,6 +555,8 @@ CREATE POLICY "Users remove own likes"
 
 CREATE INDEX IF NOT EXISTS idx_comments_prediction ON public.comments(prediction_id);
 CREATE INDEX IF NOT EXISTS idx_comment_likes_comment ON public.comment_likes(comment_id);
+GRANT SELECT ON public.comments, public.comment_likes TO anon, authenticated;
+GRANT INSERT, DELETE ON public.comments, public.comment_likes TO authenticated;
 
 -- =====================================================================================
 -- 7a. COMMUNITY MATCH PREDICTIONS — one private vote per signed-in user and match; only
@@ -1002,3 +1024,110 @@ CREATE POLICY "News editors manage news images"
   TO authenticated
   USING (bucket_id = 'news-images' AND public.can_manage_news())
   WITH CHECK (bucket_id = 'news-images' AND public.can_manage_news());
+
+-- =====================================================================================
+-- 19. PLATFORM VIP PRICES — editable by admins, public for display, and read by the
+-- payment API as its server-side source of truth.
+-- =====================================================================================
+CREATE TABLE IF NOT EXISTS public.platform_vip_prices (
+  plan_id TEXT PRIMARY KEY CHECK (plan_id IN ('weekly_pass', 'monthly_vip', 'annual_vip')),
+  price INTEGER NOT NULL CHECK (price > 0),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+INSERT INTO public.platform_vip_prices (plan_id, price) VALUES
+  ('weekly_pass', 500),
+  ('monthly_vip', 1500),
+  ('annual_vip', 9999)
+ON CONFLICT (plan_id) DO NOTHING;
+
+ALTER TABLE public.platform_vip_prices ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "VIP prices are public" ON public.platform_vip_prices;
+DROP POLICY IF EXISTS "Admins manage VIP prices" ON public.platform_vip_prices;
+CREATE POLICY "VIP prices are public"
+  ON public.platform_vip_prices FOR SELECT
+  USING (true);
+CREATE POLICY "Admins manage VIP prices"
+  ON public.platform_vip_prices FOR ALL
+  TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+GRANT SELECT ON public.platform_vip_prices TO anon, authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.platform_vip_prices TO authenticated;
+
+CREATE OR REPLACE VIEW public.public_vip_prediction_previews
+WITH (security_barrier = true)
+AS
+SELECT
+  id,
+  league,
+  home_team,
+  away_team,
+  match_time,
+  home_flag,
+  away_flag,
+  confidence,
+  status,
+  result
+FROM public.predictions
+WHERE tier = 'vip'
+  AND tipster_id IS NULL
+  AND match_time::timestamptz >= now() - interval '3 days';
+GRANT SELECT ON public.public_vip_prediction_previews TO anon, authenticated;
+
+-- =====================================================================================
+-- 20. MANAGED ADVERTISING — admin-created bookmaker/business campaigns and featured
+-- tipster placements with uploaded images.
+-- =====================================================================================
+CREATE TABLE IF NOT EXISTS public.advertisements (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  advertiser_type TEXT NOT NULL CHECK (advertiser_type IN ('bookmaker', 'business', 'tipster')),
+  name TEXT NOT NULL,
+  tagline TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  cta TEXT NOT NULL DEFAULT 'Learn more',
+  target_url TEXT NOT NULL,
+  image_url TEXT,
+  image_path TEXT,
+  tipster_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  active BOOLEAN NOT NULL DEFAULT true,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, now()),
+  CHECK (
+    (advertiser_type = 'tipster' AND tipster_id IS NOT NULL) OR
+    (advertiser_type <> 'tipster' AND tipster_id IS NULL)
+  )
+);
+
+ALTER TABLE public.advertisements ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Active advertisements are public" ON public.advertisements;
+DROP POLICY IF EXISTS "Admins manage advertisements" ON public.advertisements;
+CREATE POLICY "Active advertisements are public"
+  ON public.advertisements FOR SELECT
+  USING (active OR public.is_admin());
+CREATE POLICY "Admins manage advertisements"
+  ON public.advertisements FOR ALL
+  TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+GRANT SELECT ON public.advertisements TO anon, authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.advertisements TO authenticated;
+CREATE INDEX IF NOT EXISTS idx_advertisements_active_order
+  ON public.advertisements(active, sort_order, created_at DESC);
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('advert-images', 'advert-images', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DROP POLICY IF EXISTS "Public advertisement images are viewable" ON storage.objects;
+DROP POLICY IF EXISTS "Admins manage advertisement images" ON storage.objects;
+CREATE POLICY "Public advertisement images are viewable"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'advert-images');
+CREATE POLICY "Admins manage advertisement images"
+  ON storage.objects FOR ALL
+  TO authenticated
+  USING (bucket_id = 'advert-images' AND public.is_admin())
+  WITH CHECK (bucket_id = 'advert-images' AND public.is_admin());

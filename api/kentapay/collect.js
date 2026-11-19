@@ -10,13 +10,7 @@ import {
 
 const PLATFORM_CUT_PCT = 0.20;
 
-// Server-side source of truth for VIP plan prices — matches src/data/predictions.ts.
-// Never trust a client-supplied amount for anything that moves real money.
-const VIP_PLAN_PRICES = {
-  weekly_pass: 500,
-  monthly_vip: 1500,
-  annual_vip: 9999,
-};
+const VIP_PLAN_IDS = new Set(['weekly_pass', 'monthly_vip', 'annual_vip']);
 const TIPSTER_APPLICATION_FEE = 500;
 
 export default async function handler(req, res) {
@@ -101,10 +95,19 @@ export default async function handler(req, res) {
       narration = `Falcon Forecast - ${tipster.name} subscription`;
       accountReference = 'FFTIPSTER';
     } else if (kind === 'vip_subscription') {
-      amount = VIP_PLAN_PRICES[planId];
-      if (!amount) {
+      if (!VIP_PLAN_IDS.has(planId)) {
         res.status(400).json({ error: 'Unknown plan' });
         return;
+      }
+      const { data: vipPlan, error: vipPlanError } = await supabase
+        .from('platform_vip_prices')
+        .select('price')
+        .eq('plan_id', planId)
+        .maybeSingle();
+      if (vipPlanError) throw vipPlanError;
+      amount = Number(vipPlan?.price);
+      if (!Number.isSafeInteger(amount) || amount <= 0) {
+        throw new Error(`VIP plan price is unavailable for ${planId}`);
       }
       narration = 'Falcon Forecast - VIP subscription';
       accountReference = 'FFVIP';

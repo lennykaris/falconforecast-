@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ShieldCheck, Plus, Layers,
+  ShieldCheck, Plus, Layers, Pencil, X, Megaphone,
   Users, UserCheck, UserX, DollarSign,
   TrendingUp, Star, AlertCircle, BarChart3, ArrowUpRight, CheckCircle2, Lock, Wallet, Zap
 } from 'lucide-react';
@@ -9,8 +9,10 @@ import { usePredictions } from '../context/PredictionsContext';
 import { useTipsters, PLATFORM_CUT_PCT, isSubscriptionActive } from '../context/TipstersContext';
 import { AdminTable } from '../components/AdminTable';
 import { AddPredictionModal } from '../components/AddPredictionModal';
+import { AdminAdvertisements } from '../components/AdminAdvertisements';
 import { WithdrawModal } from '../components/WithdrawModal';
 import { useAuth } from '../context/AuthContext';
+import { usePlatformPricing } from '../context/PlatformPricingContext';
 import { supabase } from '../lib/supabase';
 import type { User } from '../types/prediction';
 
@@ -37,7 +39,7 @@ const mapProfileRow = (p: any): User => ({
   createdAt: p.created_at,
 });
 
-type AdminTab = 'predictions' | 'revenue' | 'tipsters' | 'users' | 'payments';
+type AdminTab = 'predictions' | 'pricing' | 'advertisements' | 'revenue' | 'tipsters' | 'users' | 'payments';
 
 interface PaymentRow {
   id: string;
@@ -64,11 +66,16 @@ const mapPaymentRow = (p: any): PaymentRow => ({
 });
 
 export const AdminPage: React.FC = () => {
-  const { predictions } = usePredictions();
+  const { predictions, error: predictionsError } = usePredictions();
   const { tipsters, approveTipster, suspendTipster, subscriptions, updateMpesaPhone } = useTipsters();
   const { user, isAdmin, refetchUser } = useAuth();
+  const { plans, loading: pricingLoading, error: pricingError, updatePrice } = usePlatformPricing();
 
   const [activeTab, setActiveTab] = useState<AdminTab>('predictions');
+  const [editingPricePlan, setEditingPricePlan] = useState<string | null>(null);
+  const [priceInput, setPriceInput] = useState('');
+  const [priceActionError, setPriceActionError] = useState<string | null>(null);
+  const [savingPricePlan, setSavingPricePlan] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   // Admins have nowhere else to set their own payout number — tipsters do it under My
@@ -205,6 +212,8 @@ export const AdminPage: React.FC = () => {
 
   const TABS: { key: AdminTab; label: string; icon: React.ElementType; count?: number }[] = [
     { key: 'predictions', label: 'Predictions CMS', icon: Layers, count: totalPredictions },
+    { key: 'pricing', label: 'VIP Pricing', icon: DollarSign },
+    { key: 'advertisements', label: 'Advertisements', icon: Megaphone },
     { key: 'revenue', label: 'Revenue', icon: BarChart3, count: undefined },
     { key: 'tipsters', label: 'Tipsters', icon: Star, count: tipsters.length },
     { key: 'users', label: 'All Users', icon: Users, count: allUsers.length },
@@ -222,6 +231,18 @@ export const AdminPage: React.FC = () => {
     if (role === 'admin') return 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 border-purple-300 dark:border-purple-800';
     if (role === 'tipster') return 'bg-sky-50 dark:bg-sky-950/40 text-[#0EA5E9] border-sky-200 dark:border-sky-800';
     return 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800';
+  };
+
+  const saveVipPrice = async (planId: string) => {
+    setPriceActionError(null);
+    setSavingPricePlan(planId);
+    const error = await updatePrice(planId, Number(priceInput));
+    setSavingPricePlan(null);
+    if (error) {
+      setPriceActionError(error.message);
+      return;
+    }
+    setEditingPricePlan(null);
   };
 
   // Guard: this panel exposes platform revenue and every tipster's earnings — RLS blocks
@@ -275,6 +296,11 @@ export const AdminPage: React.FC = () => {
       </div>
 
       {/* Platform Metrics Cards */}
+      {predictionsError && (
+        <p role="alert" className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+          Could not load predictions: {predictionsError}
+        </p>
+      )}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-5 rounded-2xl bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
@@ -362,6 +388,83 @@ export const AdminPage: React.FC = () => {
       {activeTab === 'predictions' && (
         <AdminTable onOpenAddModal={() => setIsAddModalOpen(true)} />
       )}
+
+      {activeTab === 'pricing' && (
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-lg font-black text-slate-900 dark:text-white">Platform VIP prices</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Update platform-wide Premium plan prices. The price shown at checkout and charged by M-Pesa use this value.
+            </p>
+          </div>
+          {(pricingError || priceActionError) && (
+            <p role="alert" className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+              {priceActionError || `Could not load VIP prices: ${pricingError}`}
+            </p>
+          )}
+          <div className="grid gap-4 md:grid-cols-3">
+            {plans.map(plan => (
+              <div key={plan.id} className="p-5 rounded-2xl bg-white dark:bg-[#111c30] border border-slate-200 dark:border-slate-800 space-y-4">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{plan.period.replace('/', '')}</p>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white mt-1">{plan.name}</h3>
+                </div>
+                {editingPricePlan === plan.id ? (
+                  <div className="flex items-center gap-2">
+                    <label className="flex-1">
+                      <span className="sr-only">Price in Kenyan shillings</span>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={priceInput}
+                        onChange={event => setPriceInput(event.target.value)}
+                        className="w-full input-field text-sm"
+                      />
+                    </label>
+                    <button
+                      onClick={() => saveVipPrice(plan.id)}
+                      disabled={savingPricePlan === plan.id || pricingLoading || !!pricingError}
+                      className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 disabled:opacity-50"
+                      aria-label={`Save ${plan.name} price`}
+                      title="Save price"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setEditingPricePlan(null)}
+                      className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500"
+                      aria-label="Cancel price edit"
+                      title="Cancel"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xl font-black font-mono text-slate-900 dark:text-white">{plan.price}</span>
+                    <button
+                      disabled={pricingLoading || !!pricingError}
+                      onClick={() => {
+                        setPriceActionError(null);
+                        setEditingPricePlan(plan.id);
+                        setPriceInput(String(plan.rawPrice));
+                      }}
+                      className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-[#0EA5E9]"
+                      aria-label={`Edit ${plan.name} price`}
+                      title="Edit VIP price"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {activeTab === 'advertisements' && <AdminAdvertisements />}
 
       {/* Tab: Platform Revenue & Sources */}
       {activeTab === 'revenue' && (

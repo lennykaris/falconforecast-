@@ -69,7 +69,7 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
     setEditingId(null);
   };
 
-  const handleStatusChange = async (id: string, status: 'pending' | 'won' | 'lost' | 'void') => {
+  const handleStatusChange = async (id: string, status: NonNullable<Prediction['status']>) => {
     setActionError('');
     const { error } = await updatePrediction(id, { status });
     if (error) setActionError(error.message);
@@ -226,7 +226,12 @@ export const AdminTable: React.FC<AdminTableProps> = ({ onOpenAddModal }) => {
                       <td className="py-3.5 px-4 text-center">
                         <select
                           value={currentStatus}
-                          onChange={e => handleStatusChange(p.id, e.target.value as any)}
+                          onChange={e => {
+                            const status = e.target.value;
+                            if (status === 'pending' || status === 'won' || status === 'lost' || status === 'void') {
+                              handleStatusChange(p.id, status);
+                            }
+                          }}
                           className={`text-[11px] font-bold rounded-lg px-2.5 py-1 border transition-colors cursor-pointer ${
                             currentStatus === 'won'
                               ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800'

@@ -12,7 +12,7 @@ import { LiveBadge } from '../components/LiveBadge';
 import { MatchesSkeleton, StandingsSkeleton } from '../components/Skeleton';
 import { fetchMatches, fetchStandingsByMatchId } from '../lib/matches';
 import { usePredictions } from '../context/PredictionsContext';
-import { SUBSCRIPTION_PLANS } from '../data/predictions';
+import { usePlatformPricing } from '../context/PlatformPricingContext';
 import type { Match, StandingRow } from '../types/prediction';
 
 /** Auto-refresh cadence for the fixtures list — frequent enough that a live-scores page feels
@@ -147,6 +147,7 @@ const LeagueCard: React.FC<{ group: LeagueGroupData; onSelectMatch: (id: string)
 );
 
 export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
+  const { plans } = usePlatformPricing();
   const location = useLocation();
   const { predictions } = usePredictions();
   const [selectedLeague, setSelectedLeague] = useState('Favorites');
@@ -170,7 +171,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenCheckout }) => {
   const latestPredictions = predictions
     .filter(prediction => (prediction.status || 'pending') === 'pending')
     .slice(0, 2);
-  const popularVipPlan = SUBSCRIPTION_PLANS.find(plan => plan.popular) || SUBSCRIPTION_PLANS[1];
+  const popularVipPlan = plans.find(plan => plan.popular) || plans[1];
 
   // Sync selectedLeague with URL route if user came from Navbar
   useEffect(() => {

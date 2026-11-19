@@ -27,15 +27,19 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({ prediction, onUn
   // Platform picks use the site-wide VIP subscription. Upcoming tipster picks require that
   // tipster's subscription; settled tipster picks are public so visitors can review history.
   const isPublicSettledTipsterTip =
-    new Date(prediction.kickoff).getTime() < Date.now() &&
+    Date.now() - new Date(prediction.kickoff).getTime() <= 3 * 24 * 60 * 60 * 1000 &&
     !isPlatformTip &&
     ['won', 'lost', 'void'].includes(prediction.status || '');
-  const isLocked = prediction.tier !== 'vip'
+  const isPublicSettledPlatformTip =
+    isPlatformTip &&
+    Date.now() - new Date(prediction.kickoff).getTime() <= 3 * 24 * 60 * 60 * 1000 &&
+    ['won', 'lost', 'void'].includes(prediction.status || '');
+  const isLocked = prediction.previewOnly || (prediction.tier !== 'vip'
     ? false
     : isPlatformTip
-      ? !isVip
+      ? !isVip && !isAdmin && !isPublicSettledPlatformTip
       : !isAdmin && !isOwnTip && !isPublicSettledTipsterTip &&
-        !(user && isSubscribedToTipster(user.id, prediction.tipsterId!));
+        !(user && isSubscribedToTipster(user.id, prediction.tipsterId!)));
 
   const formatKickoff = (dateString: string) => {
     try {

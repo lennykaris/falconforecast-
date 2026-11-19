@@ -7,20 +7,21 @@ import { useTipsters, isSubscriptionActive } from '../context/TipstersContext';
 import { PredictionCard } from '../components/PredictionCard';
 import { MyTipsterSubscriptions } from '../components/MyTipsterSubscriptions';
 import type { SubscriptionPlan } from '../types/prediction';
-import { SUBSCRIPTION_PLANS } from '../data/predictions';
+import { usePlatformPricing } from '../context/PlatformPricingContext';
 
 interface DashboardPageProps {
   onOpenCheckout: (plan: SubscriptionPlan) => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({ onOpenCheckout }) => {
+  const { plans } = usePlatformPricing();
   const { user, isLoggedIn, isVip } = useAuth();
-  const { predictions } = usePredictions();
+  const { predictions, error: predictionsError } = usePredictions();
   const { subscriptions } = useTipsters();
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
   const vipPredictions = predictions.filter(p => p.tier === 'vip' && (!p.tipsterId || p.isPlatformTip));
-  const popularPlan = SUBSCRIPTION_PLANS.find(p => p.popular) || SUBSCRIPTION_PLANS[1];
+  const popularPlan = plans.find(p => p.popular) || plans[1];
 
   // Only counts currently-active subscriptions — an expired one shouldn't keep surfacing
   // that tipster's tips here.
@@ -109,6 +110,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onOpenCheckout }) 
             )}
           </div>
         </div>
+
+        {predictionsError && (
+          <p role="alert" className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+            Could not load predictions: {predictionsError}
+          </p>
+        )}
 
         {/* Overview Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">

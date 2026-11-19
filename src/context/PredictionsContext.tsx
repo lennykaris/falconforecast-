@@ -1,20 +1,18 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import type { Prediction } from '../types/prediction';
 import { INITIAL_PREDICTIONS } from '../data/predictions';
 import { supabase } from '../lib/supabase';
+import { useAuth } from './AuthContext';
 
 interface PredictionsContextType {
   predictions: Prediction[];
+  error: string | null;
   addPrediction: (newPred: Omit<Prediction, 'id'>) => Promise<{ error: Error | null }>;
   updatePrediction: (id: string, updated: Partial<Prediction>) => Promise<{ error: Error | null }>;
   deletePrediction: (id: string) => Promise<{ error: Error | null }>;
   toggleTier: (id: string) => Promise<{ error: Error | null } | undefined>;
   refetchPredictions: () => Promise<void>;
 }
-
-const STORAGE_KEY = 'falconforecast_predictions_data';
-const CACHE_TIME_KEY = 'falconforecast_predictions_cache_time';
-const CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes cache TTL to prevent egress spam
 
 const PredictionsContext = createContext<PredictionsContextType | undefined>(undefined);
 
@@ -62,49 +60,74 @@ const toRow = (p: Partial<Prediction>) => {
 };
 
 export const PredictionsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [predictions, setPredictions] = useState<Prediction[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Failed to parse predictions from local storage', e);
-      }
-    }
-    return INITIAL_PREDICTIONS;
-  });
+  const { user } = useAuth();
+  const [predictions, setPredictions] = useState<Prediction[]>(INITIAL_PREDICTIONS);
+  const [previews, setPreviews] = useState<Prediction[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchFromSupabase = async () => {
+  const fetchFromSupabase = async (isCurrent: () => boolean = () => true) => {
     try {
+      await supabase.auth.getSession();
+      const errors: string[] = [];
       const { data, error } = await supabase
         .from('predictions')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!error && data) {
-        const mapped = data.map(fromRow);
-        setPredictions(mapped);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
-        sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+      if (error) {
+        console.error('Supabase fetch predictions error:', error);
+        errors.push(error.message);
+      } else if (data && isCurrent()) {
+        setPredictions(data.map(fromRow));
       }
+
+      const { data: previewData, error: previewError } = await supabase
+        .from('public_vip_prediction_previews')
+        .select('*');
+      if (previewError) {
+        console.error('Supabase fetch VIP prediction previews error:', previewError);
+        errors.push(previewError.message);
+      } else if (previewData && isCurrent()) {
+        setPreviews(previewData.map((row: any): Prediction => ({
+          id: row.id,
+          league: row.league,
+          homeTeam: row.home_team,
+          awayTeam: row.away_team,
+          kickoff: row.match_time,
+          tip: '',
+          odds: 0,
+          confidence: row.confidence,
+          tier: 'vip',
+          isPlatformTip: true,
+          homeLogo: row.home_flag || undefined,
+          awayLogo: row.away_flag || undefined,
+          status: row.status,
+          result: row.result || undefined,
+          previewOnly: true,
+        })));
+      }
+      if (isCurrent()) setError(errors.length ? errors.join(' ') : null);
     } catch (e) {
-      console.warn('Supabase fetch predictions error, using cached state:', e);
+      console.error('Supabase fetch predictions error:', e);
+      if (isCurrent()) setError(e instanceof Error ? e.message : 'Failed to load predictions.');
     }
   };
 
-  // Egress-Optimized Fetch: Only query Supabase if cache is expired or missing
   useEffect(() => {
-    const lastFetch = sessionStorage.getItem(CACHE_TIME_KEY);
-    const now = Date.now();
+    let active = true;
+    setPredictions([]);
+    setPreviews([]);
+    setError(null);
+    fetchFromSupabase(() => active);
+    return () => { active = false; };
+  }, [user?.id, user?.role, user?.plan, user?.vipExpiresAt]);
 
-    if (!lastFetch || now - Number(lastFetch) > CACHE_TTL_MS) {
-      fetchFromSupabase();
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(predictions));
-  }, [predictions]);
+  const visiblePredictions = useMemo(() => {
+    const byId = new Map<string, Prediction>();
+    previews.forEach(prediction => byId.set(prediction.id, prediction));
+    predictions.forEach(prediction => byId.set(prediction.id, prediction));
+    return [...byId.values()].sort((a, b) => new Date(b.kickoff).getTime() - new Date(a.kickoff).getTime());
+  }, [predictions, previews]);
 
   const addPrediction = async (newPred: Omit<Prediction, 'id'>) => {
     try {
@@ -120,7 +143,6 @@ export const PredictionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
       const created = fromRow(data);
       setPredictions(prev => [created, ...prev]);
-      sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
       return { error: null };
     } catch (e) {
       return { error: e instanceof Error ? e : new Error('Failed to publish prediction.') };
@@ -133,13 +155,18 @@ export const PredictionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
   // reverted it. Now writes first — the list only ever reflects what's actually in the DB.
   const updatePrediction = async (id: string, updatedFields: Partial<Prediction>) => {
     try {
-      const { error } = await supabase.from('predictions').update(toRow(updatedFields)).eq('id', id);
+      const { data, error } = await supabase
+        .from('predictions')
+        .update(toRow(updatedFields))
+        .eq('id', id)
+        .select('id')
+        .maybeSingle();
       if (error) {
         console.error('Failed to update prediction in Supabase:', error);
         return { error: new Error(error.message) };
       }
+      if (!data) return { error: new Error("The prediction wasn't updated. It may no longer exist or you may not have permission.") };
       setPredictions(prev => prev.map(p => (p.id === id ? { ...p, ...updatedFields } : p)));
-      sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
       return { error: null };
     } catch (e) {
       console.error('Failed to update prediction in Supabase:', e);
@@ -155,7 +182,6 @@ export const PredictionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
         return { error: new Error(error.message) };
       }
       setPredictions(prev => prev.filter(p => p.id !== id));
-      sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
       return { error: null };
     } catch (e) {
       console.error('Failed to delete prediction from Supabase:', e);
@@ -164,7 +190,7 @@ export const PredictionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const toggleTier = async (id: string) => {
-    const target = predictions.find(p => p.id === id);
+    const target = visiblePredictions.find(p => p.id === id);
     if (!target) return;
     const newTier = target.tier === 'free' ? 'vip' : 'free';
     return updatePrediction(id, { tier: newTier });
@@ -173,7 +199,8 @@ export const PredictionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
   return (
     <PredictionsContext.Provider
       value={{
-        predictions,
+        predictions: visiblePredictions,
+        error,
         addPrediction,
         updatePrediction,
         deletePrediction,

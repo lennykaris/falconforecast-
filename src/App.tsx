@@ -6,6 +6,7 @@ import { PredictionsProvider } from './context/PredictionsContext';
 import { TipstersProvider } from './context/TipstersContext';
 import { BetSlipProvider } from './context/BetSlipContext';
 import { CurrencyProvider } from './context/CurrencyContext';
+import { PlatformPricingProvider, usePlatformPricing } from './context/PlatformPricingContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { CheckoutModal } from './components/CheckoutModal';
@@ -15,6 +16,7 @@ import { LandingPage } from './pages/LandingPage';
 import { HomePage } from './pages/HomePage';
 import { PostTipPage } from './pages/PostTipPage';
 import { PremiumTipsPage } from './pages/PremiumTipsPage';
+import { FreeTipsPage } from './pages/FreeTipsPage';
 import { OddsComparisonPage } from './pages/OddsComparisonPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProfilePage } from './pages/ProfilePage';
@@ -36,7 +38,6 @@ import { TipsterApplyPage } from './pages/TipsterApplyPage';
 import { BookmakersPage } from './pages/BookmakersPage';
 
 import type { SubscriptionPlan } from './types/prediction';
-import { SUBSCRIPTION_PLANS } from './data/predictions';
 import { trackPageView } from './lib/analytics';
 
 const PAGE_TITLES: Record<string, string> = {
@@ -82,8 +83,9 @@ const ScrollToTop: React.FC = () => {
 };
 
 export const AppContent: React.FC = () => {
+  const { plans } = usePlatformPricing();
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>(SUBSCRIPTION_PLANS[1]);
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>(plans[1]);
   const location = useLocation();
   const isLandingPage = location.pathname === '/welcome';
 
@@ -91,6 +93,10 @@ export const AppContent: React.FC = () => {
     if (plan) setSelectedPlan(plan);
     setIsCheckoutOpen(true);
   };
+
+  useEffect(() => {
+    setSelectedPlan(current => plans.find(plan => plan.id === current.id) || plans[1]);
+  }, [plans]);
 
   return (
     <div className="min-h-screen flex flex-col justify-between font-sans selection:bg-[#00a8ff] selection:text-white">
@@ -100,9 +106,9 @@ export const AppContent: React.FC = () => {
         {!isLandingPage && (
           <>
             <Navbar
-              onOpenCheckout={() => handleOpenCheckout(SUBSCRIPTION_PLANS[1])}
+              onOpenCheckout={() => handleOpenCheckout(plans[1])}
             />
-            <VipUpsellBanner onOpenCheckout={() => handleOpenCheckout(SUBSCRIPTION_PLANS[1])} />
+            <VipUpsellBanner onOpenCheckout={() => handleOpenCheckout(plans[1])} />
           </>
         )}
 
@@ -125,7 +131,7 @@ export const AppContent: React.FC = () => {
             
             {/* Auxiliary Routes */}
             <Route path="/vip" element={<PremiumTipsPage onOpenCheckout={handleOpenCheckout} />} />
-            <Route path="/tips" element={<HomePage onOpenCheckout={handleOpenCheckout} />} />
+            <Route path="/tips" element={<FreeTipsPage onOpenCheckout={plan => handleOpenCheckout(plan)} />} />
             <Route path="/live-scores" element={<HomePage onOpenCheckout={handleOpenCheckout} />} />
             <Route path="/news" element={<NewsPage />} />
             
@@ -168,13 +174,15 @@ export function App() {
       <ThemeProvider>
         <CurrencyProvider>
           <AuthProvider>
-            <PredictionsProvider>
-              <TipstersProvider>
-                <BetSlipProvider>
-                  <AppContent />
-                </BetSlipProvider>
-              </TipstersProvider>
-            </PredictionsProvider>
+            <PlatformPricingProvider>
+              <PredictionsProvider>
+                <TipstersProvider>
+                  <BetSlipProvider>
+                    <AppContent />
+                  </BetSlipProvider>
+                </TipstersProvider>
+              </PredictionsProvider>
+            </PlatformPricingProvider>
           </AuthProvider>
         </CurrencyProvider>
       </ThemeProvider>
